@@ -1,65 +1,172 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useMemo, useState } from "react";
+import { Search, Sparkles } from "lucide-react";
+import ToolCard from "@/components/ToolCard";
+import { categories, allTools } from "@/lib/tools";
+
+export default function HomePage() {
+  const [query, setQuery] = useState("");
+
+  const filteredCategories = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return categories;
+
+    return categories
+      .map((category) => ({
+        ...category,
+        tools: category.tools.filter(
+          (tool) =>
+            tool.title.toLowerCase().includes(q) ||
+            tool.description.toLowerCase().includes(q)
+        ),
+      }))
+      .filter((category) => category.tools.length > 0);
+  }, [query]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.js file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div>
+      {/* Hero */}
+      <section
+        style={{
+          textAlign: "center",
+          padding: "72px 20px 48px",
+          background:
+            "radial-gradient(circle at 20% 0%, #eff6ff 0%, transparent 55%), radial-gradient(circle at 80% 10%, #f5f3ff 0%, transparent 55%), #ffffff",
+        }}
+      >
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+            fontSize: "13px",
+            fontWeight: 600,
+            color: "#2563eb",
+            backgroundColor: "#eff6ff",
+            border: "1px solid #dbeafe",
+            borderRadius: "999px",
+            padding: "6px 14px",
+            marginBottom: "20px",
+          }}
+        >
+          <Sparkles size={14} />
+          100% free · Runs entirely in your browser
+        </div>
+
+        <h1
+          style={{
+            fontSize: "clamp(28px, 5vw, 44px)",
+            fontWeight: 700,
+            color: "#111827",
+            marginBottom: "16px",
+            lineHeight: 1.15,
+          }}
+        >
+          Free Online Tools,
+          <br />
+          <span
+            style={{
+              background: "linear-gradient(135deg, #2563eb, #7c3aed)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}
+          >
+            All in One Place
+          </span>
+        </h1>
+
+        <p
+          style={{
+            fontSize: "16px",
+            color: "#6b7280",
+            maxWidth: "560px",
+            margin: "0 auto 32px",
+            lineHeight: 1.6,
+          }}
+        >
+          PDF, image, and calculator tools that run entirely in your browser. No uploads, no
+          sign-up, no waiting. {allTools.length} tools and counting.
+        </p>
+
+        <div style={{ maxWidth: "480px", margin: "0 auto", position: "relative" }}>
+          <Search
+            size={18}
+            style={{
+              position: "absolute",
+              left: "16px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "#9ca3af",
+              pointerEvents: "none",
+            }}
+          />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search tools… e.g. merge, resize, GST"
+            style={{
+              width: "100%",
+              padding: "13px 16px 13px 46px",
+              fontSize: "15px",
+              borderRadius: "12px",
+              border: "1px solid #d1d5db",
+              outline: "none",
+              boxShadow: "0 1px 2px rgba(17,24,39,0.04)",
+            }}
+          />
+        </div>
+      </section>
+
+      {/* Tool grid grouped by category */}
+      <section
+        style={{
+          maxWidth: "1200px",
+          margin: "0 auto",
+          padding: "20px 20px 80px",
+        }}
+      >
+        {filteredCategories.length === 0 && (
+          <p style={{ textAlign: "center", color: "#6b7280", padding: "40px 0" }}>
+            No tools match &ldquo;{query}&rdquo;.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+        )}
+
+        {filteredCategories.map((category) => (
+          <div key={category.slug} style={{ marginBottom: "48px" }}>
+            <h2
+              style={{
+                fontSize: "19px",
+                fontWeight: 600,
+                color: "#111827",
+                marginBottom: "16px",
+              }}
+            >
+              {category.label}
+            </h2>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+                gap: "16px",
+              }}
+            >
+              {category.tools.map((tool) => (
+                <ToolCard
+                  key={tool.slug}
+                  title={tool.title}
+                  description={tool.description}
+                  href={tool.href}
+                  icon={tool.icon}
+                  category={category.slug}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
     </div>
   );
 }

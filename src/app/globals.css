@@ -2,7 +2,7 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #111827;
 }
 
 @theme inline {
@@ -12,15 +12,47 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+}
+
+/* Tool cards: lift + accent border on hover/focus */
+.tool-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.tool-card:hover,
+.tool-card:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(17, 24, 39, 0.08);
+  border-color: #c7d2fe !important;
+}
+
+/* Generic small-interactive hover for plain buttons/links using
+   className hooks (inline styles can't express :hover). */
+.hover-surface:hover {
+  background-color: #f3f4f6;
+}
+.hover-primary-text:hover {
+  color: #2563eb;
+}
+
+a {
+  color: inherit;
+}
+
+input,
+select,
+button {
+  font-family: inherit;
+}
+
+::selection {
+  background-color: #bfdbfe;
 }
