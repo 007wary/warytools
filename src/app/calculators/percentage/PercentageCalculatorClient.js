@@ -21,7 +21,8 @@ export default function PercentageCalculatorClient() {
     if (!canCompute) return null;
 
     if (mode === "of") {
-      return `${xNum}% of ${yNum} is ${((xNum / 100) * yNum).toLocaleString()}`;
+      const value = (xNum / 100) * yNum;
+      return `${xNum}% of ${yNum} is ${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
     }
     if (mode === "isWhatPercent") {
       if (yNum === 0) return "Y can't be zero.";

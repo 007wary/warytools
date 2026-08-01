@@ -2,6 +2,15 @@
 
 import { useState } from "react";
 
+// <input type="date"> gives "YYYY-MM-DD". new Date(that string) parses it
+// as UTC midnight, not local midnight — in timezones behind UTC that rolls
+// back to the previous local day. Parse the parts directly instead so the
+// date always means what the user picked, regardless of timezone.
+function parseDateInput(value) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
 function calculateAge(birthDate, onDate) {
   let years = onDate.getFullYear() - birthDate.getFullYear();
   let months = onDate.getMonth() - birthDate.getMonth();
@@ -38,7 +47,7 @@ export default function AgeCalculatorClient() {
       return;
     }
 
-    const parsed = new Date(birthDate);
+    const parsed = parseDateInput(birthDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 

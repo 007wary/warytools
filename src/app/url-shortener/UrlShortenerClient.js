@@ -11,36 +11,49 @@ const generateCode = customAlphabet(
 );
 
 const STORAGE_KEY = "warytools_short_links";
+const MAX_URL_LENGTH = 2048;
 
 function isValidUrl(value) {
+  if (typeof value !== "string" || value.length === 0 || value.length > MAX_URL_LENGTH) {
+    return false;
+  }
+
+  let url;
   try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
+    url = new URL(value);
   } catch {
     return false;
   }
+
+  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+
+  // Block shortening our own /s/ links — prevents redirect chains/loops
+  // and stops the shortener being used to obscure other short links.
+  if (url.origin === window.location.origin && url.pathname.startsWith("/s/")) {
+    return false;
+  }
+
+  return true;
 }
 
 export default function UrlShortenerClient() {
   const [longUrl, setLongUrl] = useState("");
   const [isWorking, setIsWorking] = useState(false);
   const [error, setError] = useState("");
-  const [links, setLinks] = useState([]);
-  const [copiedCode, setCopiedCode] = useState(null);
-
   // Links created in this session, persisted to localStorage so a refresh
   // doesn't lose them (but this is still just local session history, not
-  // a synced account — see the note in page.js).
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        setLinks(JSON.parse(saved));
-      } catch {
-        // ignore corrupt storage
-      }
+  // a synced account — see the note in page.js). Read once via the lazy
+  // initializer rather than in an effect, avoiding an extra render.
+  const [links, setLinks] = useState(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
     }
-  }, []);
+  });
+  const [copiedCode, setCopiedCode] = useState(null);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(links));

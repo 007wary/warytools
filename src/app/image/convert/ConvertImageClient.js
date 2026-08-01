@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
 import { formatBytes, loadImage, canvasToBlob, outputFormats } from "@/lib/imageFile";
@@ -16,6 +16,14 @@ export default function ConvertImageClient() {
   const [isWorking, setIsWorking] = useState(false);
   const [error, setError] = useState("");
   const [resultBlob, setResultBlob] = useState(null);
+
+  // Revoke the previous preview URL whenever it's replaced or the
+  // component unmounts, so switching files repeatedly doesn't leak blobs.
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   function handleFiles(fileList) {
     const selected = fileList[0];

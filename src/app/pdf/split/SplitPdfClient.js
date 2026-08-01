@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { PDFDocument } from "pdf-lib";
-import JSZip from "jszip";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
 
@@ -83,6 +82,7 @@ export default function SplitPdfClient() {
     setIsWorking(true);
 
     try {
+      const { default: JSZip } = await import("jszip");
       const bytes = await file.arrayBuffer();
       const sourcePdf = await PDFDocument.load(bytes);
       const zip = new JSZip();
