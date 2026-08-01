@@ -72,7 +72,19 @@ export default function Navbar() {
           }}
         >
           <Logo size={28} />
-          WaryTools
+          <span>
+            Wary
+            <span
+              style={{
+                background: `linear-gradient(135deg, ${colors.primary}, ${categoryColors.image.text})`,
+                WebkitBackgroundClip: "text",
+                backgroundClip: "text",
+                color: "transparent",
+              }}
+            >
+              Tools
+            </span>
+          </span>
         </Link>
 
         {/* Desktop nav */}
