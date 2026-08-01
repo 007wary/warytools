@@ -14,6 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://warytools.com"),
   title: "WaryTools — Free Online PDF, Image & Calculator Tools",
   description:
     "Free online tools for PDF editing, image processing, calculators, and URL shortening. All PDF and image tools run 100% in your browser — no uploads.",
