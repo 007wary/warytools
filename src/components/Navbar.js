@@ -165,6 +165,20 @@ export default function Navbar() {
               </div>
             );
           })}
+          <Link
+            href="/about"
+            className="hover-surface"
+            style={{
+              fontSize: "14px",
+              fontWeight: 500,
+              color: colors.textSecondary,
+              padding: "8px 12px",
+              borderRadius: "8px",
+              textDecoration: "none",
+            }}
+          >
+            About
+          </Link>
         </nav>
 
         {/* Mobile menu toggle */}
@@ -250,6 +264,20 @@ export default function Navbar() {
               </div>
             );
           })}
+          <Link
+            href="/about"
+            onClick={() => setMobileOpen(false)}
+            style={{
+              display: "block",
+              padding: "12px 4px",
+              fontSize: "15px",
+              fontWeight: 600,
+              color: colors.text,
+              textDecoration: "none",
+            }}
+          >
+            About
+          </Link>
         </div>
       )}
     </header>
