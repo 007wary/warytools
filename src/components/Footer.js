@@ -70,36 +70,17 @@ export default function Footer() {
         style={{
           borderTop: `1px solid ${colors.border}`,
           padding: "18px 20px",
+          textAlign: "center",
+          fontSize: "13px",
+          color: colors.textFaint,
           display: "flex",
-          flexWrap: "wrap",
           alignItems: "center",
           justifyContent: "center",
-          gap: "6px 20px",
+          gap: "6px",
         }}
       >
-        <span
-          style={{
-            fontSize: "13px",
-            color: colors.textFaint,
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-          }}
-        >
-          <ShieldCheck size={14} />
-          © {new Date().getFullYear()} WaryTools. All processing happens in your browser.
-        </span>
-        <nav style={{ display: "flex", gap: "16px" }}>
-          <Link href="/about" className="hover-primary-text" style={{ fontSize: "13px", color: colors.textFaint, textDecoration: "none" }}>
-            About
-          </Link>
-          <Link href="/privacy" className="hover-primary-text" style={{ fontSize: "13px", color: colors.textFaint, textDecoration: "none" }}>
-            Privacy
-          </Link>
-          <Link href="/terms" className="hover-primary-text" style={{ fontSize: "13px", color: colors.textFaint, textDecoration: "none" }}>
-            Terms
-          </Link>
-        </nav>
+        <ShieldCheck size={14} />
+        © {new Date().getFullYear()} WaryTools. All processing happens in your browser.
       </div>
     </footer>
   );
