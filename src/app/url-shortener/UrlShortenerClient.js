@@ -1,15 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { customAlphabet } from "nanoid";
 import { supabase } from "@/lib/supabaseClient";
 import { colors } from "@/lib/theme";
-
-// Avoids visually ambiguous characters (0/O, 1/l/I) in generated codes.
-const generateCode = customAlphabet(
-  "23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz",
-  7
-);
 
 const STORAGE_KEY = "warytools_short_links";
 const MAX_URL_LENGTH = 2048;
@@ -71,15 +64,20 @@ export default function UrlShortenerClient() {
     setIsWorking(true);
 
     try {
-      const shortCode = generateCode();
-      const { error: insertError } = await supabase
-        .from("short_urls")
-        .insert({ short_code: shortCode, long_url: longUrl });
+      const res = await fetch("/api/shorten", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: longUrl }),
+      });
+      const body = await res.json();
 
-      if (insertError) throw insertError;
+      if (!res.ok) {
+        setError(body.error || "Could not shorten this URL. Please try again.");
+        return;
+      }
 
       setLinks((prev) => [
-        { shortCode, longUrl, clicks: 0, createdAt: new Date().toISOString() },
+        { shortCode: body.shortCode, longUrl: body.longUrl, clicks: 0, createdAt: new Date().toISOString() },
         ...prev,
       ]);
       setLongUrl("");

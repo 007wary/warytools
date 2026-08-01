@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import * as Sentry from "@sentry/nextjs";
 import { supabase } from "@/lib/supabaseClient";
 import { colors } from "@/lib/theme";
 
@@ -44,15 +45,28 @@ export default async function ShortUrlRedirectPage({ params }) {
     .eq("short_code", code)
     .maybeSingle();
 
-  if (error || !data || !isSafeRedirectTarget(data.long_url)) {
+  // A lookup failure (Supabase outage, network error) is not the same as
+  // "this code was never registered" — report it so an outage shows up in
+  // Sentry instead of just looking like a wave of 404s.
+  if (error) {
+    Sentry.captureException(error, { extra: { code } });
     return <NotFound />;
   }
 
-  // Best-effort click tracking — don't block the redirect if this fails.
-  await supabase
+  if (!data || !isSafeRedirectTarget(data.long_url)) {
+    return <NotFound />;
+  }
+
+  // Best-effort click tracking — don't block the redirect if this fails,
+  // but still report it so a Supabase write outage isn't invisible.
+  const { error: updateError } = await supabase
     .from("short_urls")
     .update({ clicks: data.clicks + 1 })
     .eq("id", data.id);
+
+  if (updateError) {
+    Sentry.captureException(updateError, { extra: { code } });
+  }
 
   redirect(data.long_url);
 }

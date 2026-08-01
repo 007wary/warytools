@@ -14,6 +14,7 @@ export default function FileDropzone({
 }) {
   const inputRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
 
   function handleFiles(fileList) {
     if (fileList && fileList.length > 0) {
@@ -23,7 +24,18 @@ export default function FileDropzone({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label={label}
       onClick={() => inputRef.current?.click()}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          inputRef.current?.click();
+        }
+      }}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
       onDragOver={(e) => {
         e.preventDefault();
         setIsDragging(true);
@@ -41,7 +53,9 @@ export default function FileDropzone({
         textAlign: "center",
         cursor: "pointer",
         backgroundColor: isDragging ? colors.primarySoft : colors.surfaceMuted,
-        transition: "border-color 0.15s ease, background-color 0.15s ease",
+        transition: "border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease",
+        boxShadow: isFocused ? `0 0 0 3px ${colors.primarySoft}, 0 0 0 1px ${colors.primary}` : "none",
+        outline: "none",
       }}
     >
       <input
