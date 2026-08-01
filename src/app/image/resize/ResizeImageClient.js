@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
 import { formatBytes, loadImage, canvasToBlob } from "@/lib/imageFile";
+import { colors } from "@/lib/theme";
 
 export default function ResizeImageClient() {
   const [file, setFile] = useState(null);
@@ -122,7 +123,7 @@ export default function ResizeImageClient() {
         <FileDropzone onFiles={handleFiles} accept="image/*" label="Drag & drop an image here, or click to browse" />
       )}
 
-      {error && <p style={{ color: "#dc2626", fontSize: "14px", marginTop: "12px" }}>{error}</p>}
+      {error && <p style={{ color: colors.danger, fontSize: "14px", marginTop: "12px" }}>{error}</p>}
 
       {file && (
         <div>
@@ -130,13 +131,13 @@ export default function ResizeImageClient() {
             <img
               src={previewUrl}
               alt="Preview"
-              style={{ width: "160px", height: "160px", objectFit: "contain", border: "1px solid #e5e7eb", borderRadius: "8px", flexShrink: 0 }}
+              style={{ width: "160px", height: "160px", objectFit: "contain", border: `1px solid ${colors.border}`, borderRadius: "8px", flexShrink: 0 }}
             />
             <div style={{ flex: 1, minWidth: "180px" }}>
               <div
                 style={{
                   fontSize: "14px",
-                  color: "#374151",
+                  color: colors.textSecondary,
                   marginBottom: "4px",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
@@ -145,7 +146,7 @@ export default function ResizeImageClient() {
               >
                 {file.name}
               </div>
-              <div style={{ fontSize: "13px", color: "#9ca3af", marginBottom: "12px" }}>
+              <div style={{ fontSize: "13px", color: colors.textFaint, marginBottom: "12px" }}>
                 {originalWidth} × {originalHeight}px · {formatBytes(file.size)}
               </div>
               <button onClick={handleReset} style={smallButtonStyle}>
@@ -166,7 +167,7 @@ export default function ResizeImageClient() {
           {mode === "dimensions" && (
             <div style={{ marginBottom: "16px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px", flexWrap: "wrap" }}>
-                <label style={{ fontSize: "14px", color: "#374151" }}>
+                <label style={{ fontSize: "14px", color: colors.textSecondary }}>
                   Width{" "}
                   <input
                     type="number"
@@ -177,7 +178,7 @@ export default function ResizeImageClient() {
                   />
                   px
                 </label>
-                <label style={{ fontSize: "14px", color: "#374151" }}>
+                <label style={{ fontSize: "14px", color: colors.textSecondary }}>
                   Height{" "}
                   <input
                     type="number"
@@ -189,7 +190,7 @@ export default function ResizeImageClient() {
                   px
                 </label>
               </div>
-              <label style={{ fontSize: "13px", color: "#6b7280", display: "flex", alignItems: "center", gap: "6px" }}>
+              <label style={{ fontSize: "13px", color: colors.textMuted, display: "flex", alignItems: "center", gap: "6px" }}>
                 <input
                   type="checkbox"
                   checked={lockAspect}
@@ -202,7 +203,7 @@ export default function ResizeImageClient() {
 
           {mode === "percentage" && (
             <div style={{ marginBottom: "20px" }}>
-              <label style={{ fontSize: "14px", color: "#374151" }}>
+              <label style={{ fontSize: "14px", color: colors.textSecondary }}>
                 Scale: {percentage}% ({previewTargetWidth} × {previewTargetHeight}px)
               </label>
               <input
@@ -221,8 +222,8 @@ export default function ResizeImageClient() {
               onClick={handleResize}
               disabled={isWorking}
               style={{
-                backgroundColor: isWorking ? "#93c5fd" : "#2563eb",
-                color: "#fff",
+                backgroundColor: isWorking ? colors.primaryDisabled : colors.primary,
+                color: colors.primaryContrast,
                 border: "none",
                 borderRadius: "8px",
                 padding: "10px 20px",
@@ -251,9 +252,9 @@ function ModeButton({ active, onClick, children }) {
     <button
       onClick={onClick}
       style={{
-        border: `1px solid ${active ? "#2563eb" : "#e5e7eb"}`,
-        backgroundColor: active ? "#eff6ff" : "#fff",
-        color: active ? "#2563eb" : "#374151",
+        border: `1px solid ${active ? colors.primary : colors.border}`,
+        backgroundColor: active ? colors.primarySoft : colors.surface,
+        color: active ? colors.primary : colors.textSecondary,
         borderRadius: "8px",
         padding: "8px 14px",
         fontSize: "14px",
@@ -268,11 +269,11 @@ function ModeButton({ active, onClick, children }) {
 
 const smallButtonStyle = {
   background: "none",
-  border: "1px solid #e5e7eb",
+  border: `1px solid ${colors.border}`,
   borderRadius: "6px",
   padding: "4px 10px",
   fontSize: "13px",
-  color: "#374151",
+  color: colors.textSecondary,
   cursor: "pointer",
 };
 
@@ -280,7 +281,7 @@ const numberInputStyle = {
   width: "90px",
   padding: "6px 8px",
   fontSize: "14px",
-  border: "1px solid #d1d5db",
+  border: `1px solid ${colors.borderInput}`,
   borderRadius: "6px",
   marginLeft: "4px",
   marginRight: "4px",

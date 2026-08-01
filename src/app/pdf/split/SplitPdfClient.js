@@ -4,6 +4,7 @@ import { useState } from "react";
 import { PDFDocument } from "pdf-lib";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
+import { colors } from "@/lib/theme";
 
 // mode: "range" extracts pages [from, to] into one PDF.
 // mode: "all" splits every page into its own PDF, bundled as a zip.
@@ -124,7 +125,7 @@ export default function SplitPdfClient() {
       )}
 
       {error && (
-        <p style={{ color: "#dc2626", fontSize: "14px", marginTop: "12px" }}>{error}</p>
+        <p style={{ color: colors.danger, fontSize: "14px", marginTop: "12px" }}>{error}</p>
       )}
 
       {file && pageCount && (
@@ -136,7 +137,7 @@ export default function SplitPdfClient() {
               justifyContent: "space-between",
               flexWrap: "wrap",
               gap: "8px",
-              border: "1px solid #e5e7eb",
+              border: `1px solid ${colors.border}`,
               borderRadius: "8px",
               padding: "10px 12px",
               marginBottom: "20px",
@@ -145,7 +146,7 @@ export default function SplitPdfClient() {
             <span
               style={{
                 fontSize: "14px",
-                color: "#374151",
+                color: colors.textSecondary,
                 minWidth: 0,
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -158,11 +159,11 @@ export default function SplitPdfClient() {
               onClick={handleReset}
               style={{
                 background: "none",
-                border: "1px solid #e5e7eb",
+                border: `1px solid ${colors.border}`,
                 borderRadius: "6px",
                 padding: "4px 10px",
                 fontSize: "13px",
-                color: "#374151",
+                color: colors.textSecondary,
                 cursor: "pointer",
                 flexShrink: 0,
               }}
@@ -183,7 +184,7 @@ export default function SplitPdfClient() {
 
           {mode === "range" && (
             <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px", flexWrap: "wrap" }}>
-              <label style={{ fontSize: "14px", color: "#374151" }}>
+              <label style={{ fontSize: "14px", color: colors.textSecondary }}>
                 From page{" "}
                 <input
                   type="number"
@@ -194,7 +195,7 @@ export default function SplitPdfClient() {
                   style={numberInputStyle}
                 />
               </label>
-              <label style={{ fontSize: "14px", color: "#374151" }}>
+              <label style={{ fontSize: "14px", color: colors.textSecondary }}>
                 To page{" "}
                 <input
                   type="number"
@@ -209,7 +210,7 @@ export default function SplitPdfClient() {
           )}
 
           {mode === "all" && (
-            <p style={{ fontSize: "14px", color: "#6b7280", marginBottom: "20px" }}>
+            <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "20px" }}>
               Each of the {pageCount} pages will be saved as its own PDF, bundled into a zip.
             </p>
           )}
@@ -219,8 +220,8 @@ export default function SplitPdfClient() {
               onClick={mode === "range" ? handleExtractRange : handleSplitAll}
               disabled={isWorking}
               style={{
-                backgroundColor: isWorking ? "#93c5fd" : "#2563eb",
-                color: "#fff",
+                backgroundColor: isWorking ? colors.primaryDisabled : colors.primary,
+                color: colors.primaryContrast,
                 border: "none",
                 borderRadius: "8px",
                 padding: "10px 20px",
@@ -249,9 +250,9 @@ function ModeButton({ active, onClick, children }) {
     <button
       onClick={onClick}
       style={{
-        border: `1px solid ${active ? "#2563eb" : "#e5e7eb"}`,
-        backgroundColor: active ? "#eff6ff" : "#fff",
-        color: active ? "#2563eb" : "#374151",
+        border: `1px solid ${active ? colors.primary : colors.border}`,
+        backgroundColor: active ? colors.primarySoft : colors.surface,
+        color: active ? colors.primary : colors.textSecondary,
         borderRadius: "8px",
         padding: "8px 14px",
         fontSize: "14px",
@@ -268,7 +269,7 @@ const numberInputStyle = {
   width: "70px",
   padding: "6px 8px",
   fontSize: "14px",
-  border: "1px solid #d1d5db",
+  border: `1px solid ${colors.borderInput}`,
   borderRadius: "6px",
   marginLeft: "4px",
 };

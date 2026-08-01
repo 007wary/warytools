@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { colors } from "@/lib/theme";
 
 // <input type="date"> gives "YYYY-MM-DD". new Date(that string) parses it
 // as UTC midnight, not local midnight — in timezones behind UTC that rolls
@@ -62,7 +63,7 @@ export default function AgeCalculatorClient() {
   return (
     <div>
       <div style={{ marginBottom: "20px" }}>
-        <label style={{ fontSize: "14px", color: "#374151", display: "block", marginBottom: "6px" }}>
+        <label style={{ fontSize: "14px", color: colors.textSecondary, display: "block", marginBottom: "6px" }}>
           Date of birth
         </label>
         <input
@@ -73,7 +74,7 @@ export default function AgeCalculatorClient() {
         />
       </div>
 
-      {error && <p style={{ color: "#dc2626", fontSize: "14px", marginBottom: "16px" }}>{error}</p>}
+      {error && <p style={{ color: colors.danger, fontSize: "14px", marginBottom: "16px" }}>{error}</p>}
 
       <button onClick={handleCalculate} style={buttonStyle}>
         Calculate Age
@@ -83,15 +84,15 @@ export default function AgeCalculatorClient() {
         <div
           style={{
             marginTop: "24px",
-            border: "1px solid #e5e7eb",
+            border: `1px solid ${colors.border}`,
             borderRadius: "8px",
             padding: "20px",
           }}
         >
-          <p style={{ fontSize: "20px", fontWeight: 600, color: "#111827", marginBottom: "8px" }}>
+          <p style={{ fontSize: "20px", fontWeight: 600, color: colors.text, marginBottom: "8px" }}>
             {result.years} years, {result.months} months, {result.days} days
           </p>
-          <p style={{ fontSize: "14px", color: "#6b7280" }}>
+          <p style={{ fontSize: "14px", color: colors.textMuted }}>
             That&apos;s {result.totalDays.toLocaleString()} days old.
           </p>
         </div>
@@ -103,17 +104,17 @@ export default function AgeCalculatorClient() {
 const inputStyle = {
   padding: "10px 12px",
   fontSize: "14px",
-  border: "1px solid #d1d5db",
+  border: `1px solid ${colors.borderInput}`,
   borderRadius: "8px",
-  color: "#374151",
+  color: colors.textSecondary,
   width: "100%",
   maxWidth: "220px",
   boxSizing: "border-box",
 };
 
 const buttonStyle = {
-  backgroundColor: "#2563eb",
-  color: "#fff",
+  backgroundColor: colors.primary,
+  color: colors.primaryContrast,
   border: "none",
   borderRadius: "8px",
   padding: "10px 20px",

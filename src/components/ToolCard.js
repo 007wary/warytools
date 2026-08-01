@@ -1,6 +1,6 @@
 import Link from "next/link";
 import ToolIcon from "./ToolIcon";
-import { categoryColors } from "@/lib/theme";
+import { categoryColors, colors } from "@/lib/theme";
 
 // A single tool card used on the homepage and hub pages.
 export default function ToolCard({ title, description, href, icon, category }) {
@@ -12,12 +12,12 @@ export default function ToolCard({ title, description, href, icon, category }) {
       className="tool-card group"
       style={{
         display: "block",
-        border: "1px solid #e5e7eb",
+        border: `1px solid ${colors.border}`,
         borderRadius: "14px",
         padding: "20px",
         textDecoration: "none",
         color: "inherit",
-        backgroundColor: "#fff",
+        backgroundColor: colors.surface,
       }}
     >
       {icon && (
@@ -37,10 +37,10 @@ export default function ToolCard({ title, description, href, icon, category }) {
           <ToolIcon name={icon} size={20} />
         </div>
       )}
-      <div style={{ fontWeight: 600, fontSize: "15px", marginBottom: "4px", color: "#111827" }}>
+      <div style={{ fontWeight: 600, fontSize: "15px", marginBottom: "4px", color: colors.text }}>
         {title}
       </div>
-      <div style={{ fontSize: "13.5px", color: "#6b7280", lineHeight: 1.5 }}>{description}</div>
+      <div style={{ fontSize: "13.5px", color: colors.textMuted, lineHeight: 1.5 }}>{description}</div>
     </Link>
   );
 }

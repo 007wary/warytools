@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { customAlphabet } from "nanoid";
 import { supabase } from "@/lib/supabaseClient";
+import { colors } from "@/lib/theme";
 
 // Avoids visually ambiguous characters (0/O, 1/l/I) in generated codes.
 const generateCode = customAlphabet(
@@ -130,8 +131,8 @@ export default function UrlShortenerClient() {
           onClick={handleShorten}
           disabled={isWorking}
           style={{
-            backgroundColor: isWorking ? "#93c5fd" : "#2563eb",
-            color: "#fff",
+            backgroundColor: isWorking ? colors.primaryDisabled : colors.primary,
+            color: colors.primaryContrast,
             border: "none",
             borderRadius: "8px",
             padding: "10px 20px",
@@ -144,12 +145,12 @@ export default function UrlShortenerClient() {
         </button>
       </div>
 
-      {error && <p style={{ color: "#dc2626", fontSize: "14px", marginBottom: "16px" }}>{error}</p>}
+      {error && <p style={{ color: colors.danger, fontSize: "14px", marginBottom: "16px" }}>{error}</p>}
 
       {links.length > 0 && (
         <div style={{ marginTop: "28px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
-            <h2 style={{ fontSize: "16px", fontWeight: 600, color: "#111827" }}>
+            <h2 style={{ fontSize: "16px", fontWeight: 600, color: colors.text }}>
               Links from this session
             </h2>
             <button onClick={refreshClickCounts} style={smallButtonStyle}>
@@ -162,7 +163,7 @@ export default function UrlShortenerClient() {
               <li
                 key={link.shortCode}
                 style={{
-                  border: "1px solid #e5e7eb",
+                  border: `1px solid ${colors.border}`,
                   borderRadius: "8px",
                   padding: "12px 16px",
                   marginBottom: "10px",
@@ -170,13 +171,13 @@ export default function UrlShortenerClient() {
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: "14px", fontWeight: 600, color: "#2563eb" }}>
+                    <div style={{ fontSize: "14px", fontWeight: 600, color: colors.primary }}>
                       /s/{link.shortCode}
                     </div>
                     <div
                       style={{
                         fontSize: "13px",
-                        color: "#6b7280",
+                        color: colors.textMuted,
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
@@ -187,7 +188,7 @@ export default function UrlShortenerClient() {
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-                    <span style={{ fontSize: "13px", color: "#9ca3af" }}>
+                    <span style={{ fontSize: "13px", color: colors.textFaint }}>
                       {link.clicks} click{link.clicks === 1 ? "" : "s"}
                     </span>
                     <button onClick={() => handleCopy(link.shortCode)} style={smallButtonStyle}>
@@ -209,17 +210,17 @@ const inputStyle = {
   minWidth: "260px",
   padding: "10px 14px",
   fontSize: "14px",
-  border: "1px solid #d1d5db",
+  border: `1px solid ${colors.borderInput}`,
   borderRadius: "8px",
-  color: "#374151",
+  color: colors.textSecondary,
 };
 
 const smallButtonStyle = {
   background: "none",
-  border: "1px solid #e5e7eb",
+  border: `1px solid ${colors.border}`,
   borderRadius: "6px",
   padding: "5px 12px",
   fontSize: "13px",
-  color: "#374151",
+  color: colors.textSecondary,
   cursor: "pointer",
 };

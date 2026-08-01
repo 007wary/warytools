@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { categories } from "@/lib/tools";
-import { categoryColors } from "@/lib/theme";
+import { categoryColors, colors } from "@/lib/theme";
 import ToolIcon from "./ToolIcon";
 
 // Site footer listing every tool, grouped by category, for SEO and navigation.
 export default function Footer() {
   return (
-    <footer style={{ borderTop: "1px solid #e5e7eb", backgroundColor: "#f9fafb", marginTop: "auto" }}>
+    <footer style={{ borderTop: `1px solid ${colors.border}`, backgroundColor: colors.surfaceMuted, marginTop: "auto" }}>
       <div
         style={{
           maxWidth: "1200px",
@@ -29,7 +29,7 @@ export default function Footer() {
                   gap: "8px",
                   fontWeight: 600,
                   fontSize: "14px",
-                  color: "#111827",
+                  color: colors.text,
                   marginBottom: "14px",
                 }}
               >
@@ -55,7 +55,7 @@ export default function Footer() {
                     <Link
                       href={tool.href}
                       className="hover-primary-text"
-                      style={{ fontSize: "13px", color: "#6b7280", textDecoration: "none" }}
+                      style={{ fontSize: "13px", color: colors.textMuted, textDecoration: "none" }}
                     >
                       {tool.title}
                     </Link>
@@ -68,11 +68,11 @@ export default function Footer() {
       </div>
       <div
         style={{
-          borderTop: "1px solid #e5e7eb",
+          borderTop: `1px solid ${colors.border}`,
           padding: "18px 20px",
           textAlign: "center",
           fontSize: "13px",
-          color: "#9ca3af",
+          color: colors.textFaint,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",

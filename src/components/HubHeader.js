@@ -1,5 +1,5 @@
 import ToolIcon from "./ToolIcon";
-import { categoryColors } from "@/lib/theme";
+import { categoryColors, colors } from "@/lib/theme";
 
 // Shared header for hub pages (/pdf, /image, /calculators): a colored
 // icon badge, title, and description, consistent with the category's
@@ -28,13 +28,13 @@ export default function HubHeader({ categorySlug, icon, title, description }) {
         style={{
           fontSize: "clamp(24px, 4vw, 32px)",
           fontWeight: 700,
-          color: "#111827",
+          color: colors.text,
           marginBottom: "10px",
         }}
       >
         {title}
       </h1>
-      <p style={{ fontSize: "15px", color: "#6b7280", maxWidth: "620px" }}>{description}</p>
+      <p style={{ fontSize: "15px", color: colors.textMuted, maxWidth: "620px" }}>{description}</p>
     </div>
   );
 }

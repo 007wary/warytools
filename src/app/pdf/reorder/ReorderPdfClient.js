@@ -5,6 +5,7 @@ import { PDFDocument } from "pdf-lib";
 import { X } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
+import { colors } from "@/lib/theme";
 
 // Each page is { id, originalIndex, thumbnail } — id is stable across
 // reorders/deletes, originalIndex maps back to the source PDF for export.
@@ -136,11 +137,11 @@ export default function ReorderPdfClient() {
       )}
 
       {error && (
-        <p style={{ color: "#dc2626", fontSize: "14px", marginTop: "12px" }}>{error}</p>
+        <p style={{ color: colors.danger, fontSize: "14px", marginTop: "12px" }}>{error}</p>
       )}
 
       {isLoadingThumbs && (
-        <p style={{ fontSize: "14px", color: "#6b7280", marginTop: "12px" }}>
+        <p style={{ fontSize: "14px", color: colors.textMuted, marginTop: "12px" }}>
           Loading pages…
         </p>
       )}
@@ -154,7 +155,7 @@ export default function ReorderPdfClient() {
               justifyContent: "space-between",
               flexWrap: "wrap",
               gap: "8px",
-              border: "1px solid #e5e7eb",
+              border: `1px solid ${colors.border}`,
               borderRadius: "8px",
               padding: "10px 12px",
               margin: "20px 0",
@@ -163,7 +164,7 @@ export default function ReorderPdfClient() {
             <span
               style={{
                 fontSize: "14px",
-                color: "#374151",
+                color: colors.textSecondary,
                 minWidth: 0,
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -177,7 +178,7 @@ export default function ReorderPdfClient() {
             </button>
           </div>
 
-          <p style={{ fontSize: "13px", color: "#9ca3af", marginBottom: "16px" }}>
+          <p style={{ fontSize: "13px", color: colors.textFaint, marginBottom: "16px" }}>
             Drag pages to reorder them, or click the remove button to delete a page.
           </p>
 
@@ -198,11 +199,11 @@ export default function ReorderPdfClient() {
                 onDragEnd={handleDragEnd}
                 style={{
                   position: "relative",
-                  border: `1px solid ${dragIndex === index ? "#2563eb" : "#e5e7eb"}`,
+                  border: `1px solid ${dragIndex === index ? colors.primary : colors.border}`,
                   borderRadius: "8px",
                   padding: "6px",
                   cursor: "grab",
-                  backgroundColor: "#fff",
+                  backgroundColor: colors.surface,
                 }}
               >
                 <button
@@ -216,13 +217,13 @@ export default function ReorderPdfClient() {
                     height: "22px",
                     borderRadius: "50%",
                     border: "none",
-                    backgroundColor: "#fff",
-                    color: "#dc2626",
+                    backgroundColor: colors.surface,
+                    color: colors.danger,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     cursor: "pointer",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                    boxShadow: "var(--shadow-float)",
                   }}
                 >
                   <X size={13} />
@@ -236,7 +237,7 @@ export default function ReorderPdfClient() {
                   style={{
                     textAlign: "center",
                     fontSize: "12px",
-                    color: "#6b7280",
+                    color: colors.textMuted,
                     marginTop: "6px",
                   }}
                 >
@@ -251,8 +252,8 @@ export default function ReorderPdfClient() {
               onClick={handleApply}
               disabled={isWorking}
               style={{
-                backgroundColor: isWorking ? "#93c5fd" : "#2563eb",
-                color: "#fff",
+                backgroundColor: isWorking ? colors.primaryDisabled : colors.primary,
+                color: colors.primaryContrast,
                 border: "none",
                 borderRadius: "8px",
                 padding: "10px 20px",
@@ -278,10 +279,10 @@ export default function ReorderPdfClient() {
 
 const smallButtonStyle = {
   background: "none",
-  border: "1px solid #e5e7eb",
+  border: `1px solid ${colors.border}`,
   borderRadius: "6px",
   padding: "4px 10px",
   fontSize: "13px",
-  color: "#374151",
+  color: colors.textSecondary,
   cursor: "pointer",
 };

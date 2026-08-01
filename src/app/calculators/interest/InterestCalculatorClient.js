@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { colors } from "@/lib/theme";
 
 const compoundFrequencies = [
   { id: 1, label: "Annually" },
@@ -61,7 +62,7 @@ export default function InterestCalculatorClient() {
 
       {mode === "compound" && (
         <div style={{ marginBottom: "20px" }}>
-          <label style={{ fontSize: "14px", color: "#374151", display: "block", marginBottom: "6px" }}>
+          <label style={{ fontSize: "14px", color: colors.textSecondary, display: "block", marginBottom: "6px" }}>
             Compounding frequency
           </label>
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
@@ -75,7 +76,7 @@ export default function InterestCalculatorClient() {
       )}
 
       {result && (
-        <div style={{ border: "1px solid #e5e7eb", borderRadius: "8px", padding: "20px", marginTop: "4px" }}>
+        <div style={{ border: `1px solid ${colors.border}`, borderRadius: "8px", padding: "20px", marginTop: "4px" }}>
           <ResultRow label="Interest earned" value={result.interest} />
           <ResultRow label="Total amount" value={result.total} bold />
         </div>
@@ -86,7 +87,7 @@ export default function InterestCalculatorClient() {
 
 function Field({ label, children }) {
   return (
-    <label style={{ fontSize: "14px", color: "#374151" }}>
+    <label style={{ fontSize: "14px", color: colors.textSecondary }}>
       <span style={{ display: "block", marginBottom: "6px" }}>{label}</span>
       {children}
     </label>
@@ -102,7 +103,7 @@ function ResultRow({ label, value, bold }) {
         padding: "6px 0",
         fontSize: bold ? "18px" : "14px",
         fontWeight: bold ? 700 : 400,
-        color: bold ? "#111827" : "#374151",
+        color: bold ? colors.text : colors.textSecondary,
       }}
     >
       <span>{label}</span>
@@ -116,9 +117,9 @@ function ModeButton({ active, onClick, children }) {
     <button
       onClick={onClick}
       style={{
-        border: `1px solid ${active ? "#2563eb" : "#e5e7eb"}`,
-        backgroundColor: active ? "#eff6ff" : "#fff",
-        color: active ? "#2563eb" : "#374151",
+        border: `1px solid ${active ? colors.primary : colors.border}`,
+        backgroundColor: active ? colors.primarySoft : colors.surface,
+        color: active ? colors.primary : colors.textSecondary,
         borderRadius: "8px",
         padding: "8px 14px",
         fontSize: "14px",
@@ -137,7 +138,7 @@ const inputStyle = {
   boxSizing: "border-box",
   padding: "10px 12px",
   fontSize: "14px",
-  border: "1px solid #d1d5db",
+  border: `1px solid ${colors.borderInput}`,
   borderRadius: "8px",
-  color: "#374151",
+  color: colors.textSecondary,
 };

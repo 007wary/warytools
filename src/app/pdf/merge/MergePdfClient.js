@@ -5,6 +5,7 @@ import { PDFDocument } from "pdf-lib";
 import { ArrowUp, ArrowDown, X } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
+import { colors } from "@/lib/theme";
 
 // Each item in the list is { id, file } — id lets us reorder/remove
 // reliably even if two files share the same name.
@@ -89,7 +90,7 @@ export default function MergePdfClient() {
       />
 
       {error && (
-        <p style={{ color: "#dc2626", fontSize: "14px", marginTop: "12px" }}>{error}</p>
+        <p style={{ color: colors.danger, fontSize: "14px", marginTop: "12px" }}>{error}</p>
       )}
 
       {items.length > 0 && (
@@ -101,13 +102,13 @@ export default function MergePdfClient() {
                 display: "flex",
                 alignItems: "center",
                 gap: "12px",
-                border: "1px solid #e5e7eb",
+                border: `1px solid ${colors.border}`,
                 borderRadius: "8px",
                 padding: "10px 12px",
                 marginBottom: "8px",
               }}
             >
-              <span style={{ fontSize: "13px", color: "#9ca3af", width: "20px", flexShrink: 0 }}>
+              <span style={{ fontSize: "13px", color: colors.textFaint, width: "20px", flexShrink: 0 }}>
                 {index + 1}
               </span>
               <span
@@ -115,7 +116,7 @@ export default function MergePdfClient() {
                   flex: 1,
                   minWidth: 0,
                   fontSize: "14px",
-                  color: "#374151",
+                  color: colors.textSecondary,
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
@@ -141,7 +142,7 @@ export default function MergePdfClient() {
               </button>
               <button
                 onClick={() => removeItem(item.id)}
-                style={iconButtonStyle(false, "#dc2626")}
+                style={iconButtonStyle(false, colors.danger)}
                 aria-label="Remove"
               >
                 <X size={14} />
@@ -156,8 +157,8 @@ export default function MergePdfClient() {
           onClick={handleMerge}
           disabled={items.length < 2 || isMerging}
           style={{
-            backgroundColor: items.length < 2 || isMerging ? "#93c5fd" : "#2563eb",
-            color: "#fff",
+            backgroundColor: items.length < 2 || isMerging ? colors.primaryDisabled : colors.primary,
+            color: colors.primaryContrast,
             border: "none",
             borderRadius: "8px",
             padding: "10px 20px",
@@ -179,10 +180,10 @@ export default function MergePdfClient() {
   );
 }
 
-function iconButtonStyle(disabled, color = "#374151") {
+function iconButtonStyle(disabled, color = colors.textSecondary) {
   return {
     background: "none",
-    border: "1px solid #e5e7eb",
+    border: `1px solid ${colors.border}`,
     borderRadius: "7px",
     width: "28px",
     height: "28px",
@@ -190,7 +191,7 @@ function iconButtonStyle(disabled, color = "#374151") {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    color: disabled ? "#d1d5db" : color,
+    color: disabled ? colors.borderInput : color,
     cursor: disabled ? "not-allowed" : "pointer",
   };
 }

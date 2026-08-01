@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { colors } from "@/lib/theme";
 
 const gstSlabs = [5, 12, 18, 28];
 
@@ -44,7 +45,7 @@ export default function GstCalculatorClient() {
       </div>
 
       <div style={{ marginBottom: "20px" }}>
-        <label style={{ fontSize: "14px", color: "#374151", display: "block", marginBottom: "6px" }}>
+        <label style={{ fontSize: "14px", color: colors.textSecondary, display: "block", marginBottom: "6px" }}>
           {mode === "add" ? "Amount (before GST)" : "Amount (GST-inclusive)"}
         </label>
         <input
@@ -57,7 +58,7 @@ export default function GstCalculatorClient() {
       </div>
 
       <div style={{ marginBottom: "20px" }}>
-        <label style={{ fontSize: "14px", color: "#374151", display: "block", marginBottom: "6px" }}>
+        <label style={{ fontSize: "14px", color: colors.textSecondary, display: "block", marginBottom: "6px" }}>
           GST rate
         </label>
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
@@ -72,7 +73,7 @@ export default function GstCalculatorClient() {
       {result && (
         <div
           style={{
-            border: "1px solid #e5e7eb",
+            border: `1px solid ${colors.border}`,
             borderRadius: "8px",
             padding: "20px",
           }}
@@ -95,7 +96,7 @@ function ResultRow({ label, value, bold }) {
         padding: "6px 0",
         fontSize: bold ? "18px" : "14px",
         fontWeight: bold ? 700 : 400,
-        color: bold ? "#111827" : "#374151",
+        color: bold ? colors.text : colors.textSecondary,
       }}
     >
       <span>{label}</span>
@@ -109,9 +110,9 @@ function ModeButton({ active, onClick, children }) {
     <button
       onClick={onClick}
       style={{
-        border: `1px solid ${active ? "#2563eb" : "#e5e7eb"}`,
-        backgroundColor: active ? "#eff6ff" : "#fff",
-        color: active ? "#2563eb" : "#374151",
+        border: `1px solid ${active ? colors.primary : colors.border}`,
+        backgroundColor: active ? colors.primarySoft : colors.surface,
+        color: active ? colors.primary : colors.textSecondary,
         borderRadius: "8px",
         padding: "8px 14px",
         fontSize: "14px",
@@ -127,9 +128,9 @@ function ModeButton({ active, onClick, children }) {
 const inputStyle = {
   padding: "10px 12px",
   fontSize: "14px",
-  border: "1px solid #d1d5db",
+  border: `1px solid ${colors.borderInput}`,
   borderRadius: "8px",
-  color: "#374151",
+  color: colors.textSecondary,
   width: "100%",
   maxWidth: "220px",
   boxSizing: "border-box",

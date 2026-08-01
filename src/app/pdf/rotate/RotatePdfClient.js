@@ -5,6 +5,7 @@ import { PDFDocument, degrees } from "pdf-lib";
 import { RotateCcw, RotateCw } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
+import { colors } from "@/lib/theme";
 
 // rotations[i] is the extra rotation (0/90/180/270) to apply to page i,
 // on top of whatever rotation the page already has.
@@ -101,7 +102,7 @@ export default function RotatePdfClient() {
       )}
 
       {error && (
-        <p style={{ color: "#dc2626", fontSize: "14px", marginTop: "12px" }}>{error}</p>
+        <p style={{ color: colors.danger, fontSize: "14px", marginTop: "12px" }}>{error}</p>
       )}
 
       {file && pageCount && (
@@ -113,7 +114,7 @@ export default function RotatePdfClient() {
               justifyContent: "space-between",
               flexWrap: "wrap",
               gap: "8px",
-              border: "1px solid #e5e7eb",
+              border: `1px solid ${colors.border}`,
               borderRadius: "8px",
               padding: "10px 12px",
               marginBottom: "20px",
@@ -122,7 +123,7 @@ export default function RotatePdfClient() {
             <span
               style={{
                 fontSize: "14px",
-                color: "#374151",
+                color: colors.textSecondary,
                 minWidth: 0,
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -135,11 +136,11 @@ export default function RotatePdfClient() {
               onClick={handleReset}
               style={{
                 background: "none",
-                border: "1px solid #e5e7eb",
+                border: `1px solid ${colors.border}`,
                 borderRadius: "6px",
                 padding: "4px 10px",
                 fontSize: "13px",
-                color: "#374151",
+                color: colors.textSecondary,
                 cursor: "pointer",
                 flexShrink: 0,
               }}
@@ -165,16 +166,16 @@ export default function RotatePdfClient() {
                   display: "flex",
                   alignItems: "center",
                   gap: "12px",
-                  border: "1px solid #e5e7eb",
+                  border: `1px solid ${colors.border}`,
                   borderRadius: "8px",
                   padding: "10px 12px",
                   marginBottom: "8px",
                 }}
               >
-                <span style={{ fontSize: "14px", color: "#374151", flex: 1, minWidth: 0 }}>
+                <span style={{ fontSize: "14px", color: colors.textSecondary, flex: 1, minWidth: 0 }}>
                   Page {index + 1}
                 </span>
-                <span style={{ fontSize: "13px", color: "#9ca3af", width: "50px", flexShrink: 0 }}>
+                <span style={{ fontSize: "13px", color: colors.textFaint, width: "50px", flexShrink: 0 }}>
                   {rotation}°
                 </span>
                 <button
@@ -200,8 +201,8 @@ export default function RotatePdfClient() {
               onClick={handleApply}
               disabled={!hasChanges || isWorking}
               style={{
-                backgroundColor: !hasChanges || isWorking ? "#93c5fd" : "#2563eb",
-                color: "#fff",
+                backgroundColor: !hasChanges || isWorking ? colors.primaryDisabled : colors.primary,
+                color: colors.primaryContrast,
                 border: "none",
                 borderRadius: "8px",
                 padding: "10px 20px",
@@ -227,7 +228,7 @@ export default function RotatePdfClient() {
 
 const iconButtonStyle = {
   background: "none",
-  border: "1px solid #e5e7eb",
+  border: `1px solid ${colors.border}`,
   borderRadius: "7px",
   width: "32px",
   height: "32px",
@@ -235,14 +236,14 @@ const iconButtonStyle = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  color: "#374151",
+  color: colors.textSecondary,
   cursor: "pointer",
 };
 
 const secondaryButtonStyle = {
-  border: "1px solid #e5e7eb",
-  backgroundColor: "#fff",
-  color: "#374151",
+  border: `1px solid ${colors.border}`,
+  backgroundColor: colors.surface,
+  color: colors.textSecondary,
   borderRadius: "8px",
   padding: "8px 14px",
   fontSize: "14px",

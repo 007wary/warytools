@@ -1,24 +1,59 @@
-// Central design tokens. Category colors give each tool group a distinct
-// identity across cards, hub pages, and the nav — everything else stays
-// neutral so the color reads as intentional, not noisy.
+// Central design tokens. These reference the CSS custom properties defined
+// in globals.css (light values in :root, dark overrides under
+// prefers-color-scheme: dark) rather than hardcoding hex values, so any
+// color read from here — inline style, JS logic, wherever — automatically
+// follows the OS/browser color-scheme preference along with the rest of
+// the site. Category colors give each tool group a distinct identity
+// across cards, hub pages, and the nav — everything else stays neutral so
+// the color reads as intentional, not noisy.
 export const categoryColors = {
-  pdf: { text: "#dc2626", bg: "#fef2f2", border: "#fecaca" },
-  image: { text: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe" },
-  calculators: { text: "#0891b2", bg: "#ecfeff", border: "#a5f3fc" },
-  "url-shortener": { text: "#16a34a", bg: "#f0fdf4", border: "#bbf7d0" },
+  pdf: {
+    text: "var(--category-pdf-text)",
+    bg: "var(--category-pdf-bg)",
+    border: "var(--category-pdf-border)",
+  },
+  image: {
+    text: "var(--category-image-text)",
+    bg: "var(--category-image-bg)",
+    border: "var(--category-image-border)",
+  },
+  calculators: {
+    text: "var(--category-calculators-text)",
+    bg: "var(--category-calculators-bg)",
+    border: "var(--category-calculators-border)",
+  },
+  "url-shortener": {
+    text: "var(--category-url-shortener-text)",
+    bg: "var(--category-url-shortener-bg)",
+    border: "var(--category-url-shortener-border)",
+  },
 };
 
 export const colors = {
-  text: "#111827",
-  textMuted: "#6b7280",
-  textFaint: "#9ca3af",
-  border: "#e5e7eb",
-  surface: "#ffffff",
-  surfaceMuted: "#f9fafb",
-  primary: "#2563eb",
-  primaryHover: "#1d4ed8",
-  primarySoft: "#eff6ff",
-  danger: "#dc2626",
-  success: "#16a34a",
-  warning: "#b45309",
+  text: "var(--text)",
+  textSecondary: "var(--text-secondary)",
+  textMuted: "var(--text-muted)",
+  textFaint: "var(--text-faint)",
+  border: "var(--border)",
+  borderMuted: "var(--border-muted)",
+  borderInput: "var(--border-input)",
+  surface: "var(--surface)",
+  surfaceMuted: "var(--surface-muted)",
+  surfaceHover: "var(--surface-hover)",
+  primary: "var(--primary)",
+  primaryHover: "var(--primary-hover)",
+  primarySoft: "var(--primary-soft)",
+  primarySoftBorder: "var(--primary-soft-border)",
+  primaryDisabled: "var(--primary-disabled)",
+  primaryContrast: "var(--primary-contrast)",
+  danger: "var(--danger)",
+  dangerSoft: "var(--danger-soft)",
+  dangerSoftBorder: "var(--danger-soft-border)",
+  success: "var(--success)",
+  successSoft: "var(--success-soft)",
+  successSoftBorder: "var(--success-soft-border)",
+  warningText: "var(--warning-text)",
+  warningIcon: "var(--warning-icon)",
+  warningSoft: "var(--warning-soft)",
+  warningSoftBorder: "var(--warning-soft-border)",
 };

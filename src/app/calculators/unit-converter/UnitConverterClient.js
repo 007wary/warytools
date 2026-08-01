@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { unitCategories, convertLinear, convertTemperature } from "@/lib/unitConversions";
+import { colors } from "@/lib/theme";
 
 export default function UnitConverterClient() {
   const [category, setCategory] = useState("length");
@@ -38,9 +39,9 @@ export default function UnitConverterClient() {
             key={id}
             onClick={() => handleCategoryChange(id)}
             style={{
-              border: `1px solid ${category === id ? "#2563eb" : "#e5e7eb"}`,
-              backgroundColor: category === id ? "#eff6ff" : "#fff",
-              color: category === id ? "#2563eb" : "#374151",
+              border: `1px solid ${category === id ? colors.primary : colors.border}`,
+              backgroundColor: category === id ? colors.primarySoft : colors.surface,
+              color: category === id ? colors.primary : colors.textSecondary,
               borderRadius: "8px",
               padding: "8px 14px",
               fontSize: "14px",
@@ -54,7 +55,7 @@ export default function UnitConverterClient() {
       </div>
 
       <div style={{ display: "flex", gap: "12px", alignItems: "flex-end", flexWrap: "wrap", marginBottom: "20px" }}>
-        <label style={{ fontSize: "14px", color: "#374151" }}>
+        <label style={{ fontSize: "14px", color: colors.textSecondary }}>
           <span style={{ display: "block", marginBottom: "6px" }}>Value</span>
           <input
             type="number"
@@ -64,7 +65,7 @@ export default function UnitConverterClient() {
           />
         </label>
 
-        <label style={{ fontSize: "14px", color: "#374151" }}>
+        <label style={{ fontSize: "14px", color: colors.textSecondary }}>
           <span style={{ display: "block", marginBottom: "6px" }}>From</span>
           <select value={fromUnit} onChange={(e) => setFromUnit(e.target.value)} style={selectStyle}>
             {Object.entries(units).map(([id, unit]) => (
@@ -75,7 +76,7 @@ export default function UnitConverterClient() {
           </select>
         </label>
 
-        <label style={{ fontSize: "14px", color: "#374151" }}>
+        <label style={{ fontSize: "14px", color: colors.textSecondary }}>
           <span style={{ display: "block", marginBottom: "6px" }}>To</span>
           <select value={toUnit} onChange={(e) => setToUnit(e.target.value)} style={selectStyle}>
             {Object.entries(units).map(([id, unit]) => (
@@ -88,8 +89,8 @@ export default function UnitConverterClient() {
       </div>
 
       {result !== null && (
-        <div style={{ border: "1px solid #e5e7eb", borderRadius: "8px", padding: "20px" }}>
-          <p style={{ fontSize: "18px", fontWeight: 600, color: "#111827" }}>
+        <div style={{ border: `1px solid ${colors.border}`, borderRadius: "8px", padding: "20px" }}>
+          <p style={{ fontSize: "18px", fontWeight: 600, color: colors.text }}>
             {numValue} {units[fromUnit].label} = {result.toLocaleString(undefined, { maximumFractionDigits: 6 })}{" "}
             {units[toUnit].label}
           </p>
@@ -105,9 +106,9 @@ const inputStyle = {
   boxSizing: "border-box",
   padding: "10px 12px",
   fontSize: "14px",
-  border: "1px solid #d1d5db",
+  border: `1px solid ${colors.borderInput}`,
   borderRadius: "8px",
-  color: "#374151",
+  color: colors.textSecondary,
 };
 
 const selectStyle = {
@@ -116,8 +117,8 @@ const selectStyle = {
   boxSizing: "border-box",
   padding: "10px 12px",
   fontSize: "14px",
-  border: "1px solid #d1d5db",
+  border: `1px solid ${colors.borderInput}`,
   borderRadius: "8px",
-  color: "#374151",
-  backgroundColor: "#fff",
+  color: colors.textSecondary,
+  backgroundColor: colors.surface,
 };

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
 import { formatBytes, loadImage, canvasToBlob, outputFormats } from "@/lib/imageFile";
+import { colors } from "@/lib/theme";
 
 // Fixed high quality for lossy output — this tool is about changing format,
 // not tuning compression (that's what /image/compress is for).
@@ -55,7 +56,7 @@ export default function ConvertImageClient() {
       // JPG has no transparency — fill white behind the image first so
       // transparent PNGs don't turn black.
       if (format === "image/jpeg") {
-        ctx.fillStyle = "#ffffff";
+        ctx.fillStyle = colors.surface;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
       ctx.drawImage(img, 0, 0);
@@ -85,7 +86,7 @@ export default function ConvertImageClient() {
         <FileDropzone onFiles={handleFiles} accept="image/*" label="Drag & drop an image here, or click to browse" />
       )}
 
-      {error && <p style={{ color: "#dc2626", fontSize: "14px", marginTop: "12px" }}>{error}</p>}
+      {error && <p style={{ color: colors.danger, fontSize: "14px", marginTop: "12px" }}>{error}</p>}
 
       {file && (
         <div>
@@ -93,13 +94,13 @@ export default function ConvertImageClient() {
             <img
               src={previewUrl}
               alt="Preview"
-              style={{ width: "160px", height: "160px", objectFit: "contain", border: "1px solid #e5e7eb", borderRadius: "8px", flexShrink: 0 }}
+              style={{ width: "160px", height: "160px", objectFit: "contain", border: `1px solid ${colors.border}`, borderRadius: "8px", flexShrink: 0 }}
             />
             <div style={{ flex: 1, minWidth: "180px" }}>
               <div
                 style={{
                   fontSize: "14px",
-                  color: "#374151",
+                  color: colors.textSecondary,
                   marginBottom: "4px",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
@@ -108,7 +109,7 @@ export default function ConvertImageClient() {
               >
                 {file.name}
               </div>
-              <div style={{ fontSize: "13px", color: "#9ca3af", marginBottom: "12px" }}>
+              <div style={{ fontSize: "13px", color: colors.textFaint, marginBottom: "12px" }}>
                 {formatBytes(file.size)} · {file.type}
               </div>
               <button onClick={handleReset} style={smallButtonStyle}>
@@ -118,7 +119,7 @@ export default function ConvertImageClient() {
           </div>
 
           <div style={{ marginBottom: "20px" }}>
-            <label style={{ fontSize: "14px", color: "#374151", display: "block", marginBottom: "6px" }}>
+            <label style={{ fontSize: "14px", color: colors.textSecondary, display: "block", marginBottom: "6px" }}>
               Convert to
             </label>
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
@@ -131,7 +132,7 @@ export default function ConvertImageClient() {
           </div>
 
           {format === "image/jpeg" && file.type === "image/png" && (
-            <p style={{ fontSize: "13px", color: "#9ca3af", marginBottom: "16px" }}>
+            <p style={{ fontSize: "13px", color: colors.textFaint, marginBottom: "16px" }}>
               JPG doesn&apos;t support transparency — any transparent areas will become white.
             </p>
           )}
@@ -141,8 +142,8 @@ export default function ConvertImageClient() {
               onClick={handleConvert}
               disabled={isWorking}
               style={{
-                backgroundColor: isWorking ? "#93c5fd" : "#2563eb",
-                color: "#fff",
+                backgroundColor: isWorking ? colors.primaryDisabled : colors.primary,
+                color: colors.primaryContrast,
                 border: "none",
                 borderRadius: "8px",
                 padding: "10px 20px",
@@ -171,9 +172,9 @@ function ModeButton({ active, onClick, children }) {
     <button
       onClick={onClick}
       style={{
-        border: `1px solid ${active ? "#2563eb" : "#e5e7eb"}`,
-        backgroundColor: active ? "#eff6ff" : "#fff",
-        color: active ? "#2563eb" : "#374151",
+        border: `1px solid ${active ? colors.primary : colors.border}`,
+        backgroundColor: active ? colors.primarySoft : colors.surface,
+        color: active ? colors.primary : colors.textSecondary,
         borderRadius: "8px",
         padding: "8px 14px",
         fontSize: "14px",
@@ -188,10 +189,10 @@ function ModeButton({ active, onClick, children }) {
 
 const smallButtonStyle = {
   background: "none",
-  border: "1px solid #e5e7eb",
+  border: `1px solid ${colors.border}`,
   borderRadius: "6px",
   padding: "4px 10px",
   fontSize: "13px",
-  color: "#374151",
+  color: colors.textSecondary,
   cursor: "pointer",
 };

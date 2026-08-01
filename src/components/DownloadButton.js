@@ -1,6 +1,7 @@
 "use client";
 
 import { Download } from "lucide-react";
+import { colors } from "@/lib/theme";
 
 // Triggers a browser download for a Blob/File, entirely client-side.
 // Usage: <DownloadButton getBlob={() => myBlob} filename="result.pdf" />
@@ -24,8 +25,8 @@ export default function DownloadButton({ getBlob, filename, children, disabled }
       onClick={handleClick}
       disabled={disabled}
       style={{
-        backgroundColor: disabled ? "#93c5fd" : "#16a34a",
-        color: "#fff",
+        backgroundColor: disabled ? colors.primaryDisabled : colors.success,
+        color: colors.primaryContrast,
         border: "none",
         borderRadius: "8px",
         padding: "10px 20px",

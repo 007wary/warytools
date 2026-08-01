@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Search, Sparkles } from "lucide-react";
 import ToolCard from "@/components/ToolCard";
 import { categories, allTools } from "@/lib/tools";
+import { colors, categoryColors } from "@/lib/theme";
 
 export default function HomePage() {
   const [query, setQuery] = useState("");
@@ -32,7 +33,7 @@ export default function HomePage() {
           textAlign: "center",
           padding: "72px 20px 48px",
           background:
-            "radial-gradient(circle at 20% 0%, #eff6ff 0%, transparent 55%), radial-gradient(circle at 80% 10%, #f5f3ff 0%, transparent 55%), #ffffff",
+            `radial-gradient(circle at 20% 0%, ${colors.primarySoft} 0%, transparent 55%), radial-gradient(circle at 80% 10%, ${categoryColors.image.bg} 0%, transparent 55%), ${colors.surface}`,
         }}
       >
         <div
@@ -42,9 +43,9 @@ export default function HomePage() {
             gap: "6px",
             fontSize: "13px",
             fontWeight: 600,
-            color: "#2563eb",
-            backgroundColor: "#eff6ff",
-            border: "1px solid #dbeafe",
+            color: colors.primary,
+            backgroundColor: colors.primarySoft,
+            border: `1px solid ${colors.primarySoftBorder}`,
             borderRadius: "999px",
             padding: "6px 14px",
             marginBottom: "20px",
@@ -58,7 +59,7 @@ export default function HomePage() {
           style={{
             fontSize: "clamp(28px, 5vw, 44px)",
             fontWeight: 700,
-            color: "#111827",
+            color: colors.text,
             marginBottom: "16px",
             lineHeight: 1.15,
           }}
@@ -67,7 +68,7 @@ export default function HomePage() {
           <br />
           <span
             style={{
-              background: "linear-gradient(135deg, #2563eb, #7c3aed)",
+              background: `linear-gradient(135deg, ${colors.primary}, ${categoryColors.image.text})`,
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               backgroundClip: "text",
@@ -80,7 +81,7 @@ export default function HomePage() {
         <p
           style={{
             fontSize: "16px",
-            color: "#6b7280",
+            color: colors.textMuted,
             maxWidth: "560px",
             margin: "0 auto 32px",
             lineHeight: 1.6,
@@ -98,7 +99,7 @@ export default function HomePage() {
               left: "16px",
               top: "50%",
               transform: "translateY(-50%)",
-              color: "#9ca3af",
+              color: colors.textFaint,
               pointerEvents: "none",
             }}
           />
@@ -112,9 +113,9 @@ export default function HomePage() {
               padding: "13px 16px 13px 46px",
               fontSize: "15px",
               borderRadius: "12px",
-              border: "1px solid #d1d5db",
+              border: `1px solid ${colors.borderInput}`,
               outline: "none",
-              boxShadow: "0 1px 2px rgba(17,24,39,0.04)",
+              boxShadow: "var(--shadow-subtle)",
             }}
           />
         </div>
@@ -129,7 +130,7 @@ export default function HomePage() {
         }}
       >
         {filteredCategories.length === 0 && (
-          <p style={{ textAlign: "center", color: "#6b7280", padding: "40px 0" }}>
+          <p style={{ textAlign: "center", color: colors.textMuted, padding: "40px 0" }}>
             No tools match &ldquo;{query}&rdquo;.
           </p>
         )}
@@ -140,7 +141,7 @@ export default function HomePage() {
               style={{
                 fontSize: "19px",
                 fontWeight: 600,
-                color: "#111827",
+                color: colors.text,
                 marginBottom: "16px",
               }}
             >

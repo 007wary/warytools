@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Menu, X, ChevronDown } from "lucide-react";
 import { categories } from "@/lib/tools";
-import { categoryColors } from "@/lib/theme";
+import { categoryColors, colors } from "@/lib/theme";
 import ToolIcon from "./ToolIcon";
 
 // Top navigation bar: hover dropdowns on desktop, a slide-down accordion
@@ -39,8 +39,8 @@ export default function Navbar() {
   return (
     <header
       style={{
-        borderBottom: "1px solid #e5e7eb",
-        backgroundColor: "rgba(255,255,255,0.9)",
+        borderBottom: `1px solid ${colors.border}`,
+        backgroundColor: "var(--header-bg)",
         backdropFilter: "blur(8px)",
         position: "sticky",
         top: 0,
@@ -63,7 +63,7 @@ export default function Navbar() {
           style={{
             fontWeight: 700,
             fontSize: "19px",
-            color: "#111827",
+            color: colors.text,
             textDecoration: "none",
             display: "flex",
             alignItems: "center",
@@ -75,7 +75,7 @@ export default function Navbar() {
               width: "28px",
               height: "28px",
               borderRadius: "8px",
-              background: "linear-gradient(135deg, #2563eb, #7c3aed)",
+              background: `linear-gradient(135deg, ${colors.primary}, ${categoryColors.image.text})`,
               display: "inline-block",
             }}
           />
@@ -108,7 +108,7 @@ export default function Navbar() {
                     cursor: "pointer",
                     fontSize: "14px",
                     fontWeight: 500,
-                    color: "#374151",
+                    color: colors.textSecondary,
                     padding: "8px 12px",
                     borderRadius: "8px",
                     display: "flex",
@@ -117,7 +117,7 @@ export default function Navbar() {
                   }}
                 >
                   {category.label}
-                  <ChevronDown size={14} strokeWidth={2} style={{ color: "#9ca3af" }} />
+                  <ChevronDown size={14} strokeWidth={2} style={{ color: colors.textFaint }} />
                 </button>
 
                 {openSlug === category.slug && (
@@ -127,10 +127,10 @@ export default function Navbar() {
                       top: "100%",
                       left: alignRight ? "auto" : 0,
                       right: alignRight ? 0 : "auto",
-                      backgroundColor: "#fff",
-                      border: "1px solid #e5e7eb",
+                      backgroundColor: colors.surface,
+                      border: `1px solid ${colors.border}`,
                       borderRadius: "12px",
-                      boxShadow: "0 12px 28px rgba(17,24,39,0.12)",
+                      boxShadow: "var(--shadow-dropdown)",
                       minWidth: "240px",
                       padding: "6px",
                     }}
@@ -147,7 +147,7 @@ export default function Navbar() {
                           padding: "8px 10px",
                           borderRadius: "8px",
                           fontSize: "14px",
-                          color: "#374151",
+                          color: colors.textSecondary,
                           textDecoration: "none",
                         }}
                       >
@@ -169,11 +169,12 @@ export default function Navbar() {
           className="flex md:hidden items-center justify-center hover-surface"
           style={{
             background: "none",
-            border: "1px solid #e5e7eb",
+            border: `1px solid ${colors.border}`,
             borderRadius: "8px",
             width: "38px",
             height: "38px",
             cursor: "pointer",
+            color: colors.text,
           }}
         >
           {mobileOpen ? <X size={18} /> : <Menu size={18} />}
@@ -184,13 +185,13 @@ export default function Navbar() {
       {mobileOpen && (
         <div
           className="md:hidden"
-          style={{ borderTop: "1px solid #e5e7eb", padding: "8px 20px 16px" }}
+          style={{ borderTop: `1px solid ${colors.border}`, padding: "8px 20px 16px" }}
         >
           {categories.map((category) => {
             const accent = categoryColors[category.slug];
             const isExpanded = mobileExpanded === category.slug;
             return (
-              <div key={category.slug} style={{ borderBottom: "1px solid #f3f4f6" }}>
+              <div key={category.slug} style={{ borderBottom: `1px solid ${colors.borderMuted}` }}>
                 <button
                   onClick={() => setMobileExpanded(isExpanded ? null : category.slug)}
                   style={{
@@ -204,14 +205,14 @@ export default function Navbar() {
                     padding: "12px 4px",
                     fontSize: "15px",
                     fontWeight: 600,
-                    color: "#111827",
+                    color: colors.text,
                   }}
                 >
                   {category.label}
                   <ChevronDown
                     size={16}
                     style={{
-                      color: "#9ca3af",
+                      color: colors.textFaint,
                       transform: isExpanded ? "rotate(180deg)" : "none",
                       transition: "transform 0.15s ease",
                     }}
@@ -231,7 +232,7 @@ export default function Navbar() {
                           gap: "10px",
                           padding: "10px 4px 10px 8px",
                           fontSize: "14px",
-                          color: "#374151",
+                          color: colors.textSecondary,
                           textDecoration: "none",
                         }}
                       >

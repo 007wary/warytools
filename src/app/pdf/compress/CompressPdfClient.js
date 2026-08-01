@@ -4,6 +4,7 @@ import { useState } from "react";
 import { PDFDocument } from "pdf-lib";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
+import { colors } from "@/lib/theme";
 
 function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;
@@ -75,7 +76,7 @@ export default function CompressPdfClient() {
       )}
 
       {error && (
-        <p style={{ color: "#dc2626", fontSize: "14px", marginTop: "12px" }}>{error}</p>
+        <p style={{ color: colors.danger, fontSize: "14px", marginTop: "12px" }}>{error}</p>
       )}
 
       {file && (
@@ -87,7 +88,7 @@ export default function CompressPdfClient() {
               justifyContent: "space-between",
               flexWrap: "wrap",
               gap: "8px",
-              border: "1px solid #e5e7eb",
+              border: `1px solid ${colors.border}`,
               borderRadius: "8px",
               padding: "10px 12px",
               marginBottom: "20px",
@@ -96,7 +97,7 @@ export default function CompressPdfClient() {
             <span
               style={{
                 fontSize: "14px",
-                color: "#374151",
+                color: colors.textSecondary,
                 minWidth: 0,
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -109,11 +110,11 @@ export default function CompressPdfClient() {
               onClick={handleReset}
               style={{
                 background: "none",
-                border: "1px solid #e5e7eb",
+                border: `1px solid ${colors.border}`,
                 borderRadius: "6px",
                 padding: "4px 10px",
                 fontSize: "13px",
-                color: "#374151",
+                color: colors.textSecondary,
                 cursor: "pointer",
                 flexShrink: 0,
               }}
@@ -122,7 +123,7 @@ export default function CompressPdfClient() {
             </button>
           </div>
 
-          <p style={{ fontSize: "13px", color: "#9ca3af", marginBottom: "20px" }}>
+          <p style={{ fontSize: "13px", color: colors.textFaint, marginBottom: "20px" }}>
             Note: this compresses the PDF&apos;s internal structure (removes redundant data).
             It works best on text/vector-heavy PDFs — scanned or image-heavy PDFs will shrink
             much less, since re-encoding embedded images isn&apos;t possible fully in-browser yet.
@@ -133,8 +134,8 @@ export default function CompressPdfClient() {
               onClick={handleCompress}
               disabled={isWorking}
               style={{
-                backgroundColor: isWorking ? "#93c5fd" : "#2563eb",
-                color: "#fff",
+                backgroundColor: isWorking ? colors.primaryDisabled : colors.primary,
+                color: colors.primaryContrast,
                 border: "none",
                 borderRadius: "8px",
                 padding: "10px 20px",
@@ -154,13 +155,13 @@ export default function CompressPdfClient() {
           </div>
 
           {resultBlob && (
-            <p style={{ fontSize: "14px", color: "#374151", marginTop: "16px" }}>
+            <p style={{ fontSize: "14px", color: colors.textSecondary, marginTop: "16px" }}>
               {formatBytes(originalSize)} → {formatBytes(resultBlob.size)}
               {savedPercent !== null && savedPercent > 0 && (
-                <span style={{ color: "#16a34a", fontWeight: 600 }}> ({savedPercent}% smaller)</span>
+                <span style={{ color: colors.success, fontWeight: 600 }}> ({savedPercent}% smaller)</span>
               )}
               {savedPercent === 0 && (
-                <span style={{ color: "#6b7280" }}> (already well optimized)</span>
+                <span style={{ color: colors.textMuted }}> (already well optimized)</span>
               )}
             </p>
           )}

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { colors } from "@/lib/theme";
 
 // Must match the alphabet/length UrlShortenerClient generates codes with.
 const CODE_PATTERN = /^[23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{7}$/;
@@ -7,10 +8,10 @@ const CODE_PATTERN = /^[23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxy
 function NotFound() {
   return (
     <section style={{ maxWidth: "600px", margin: "0 auto", padding: "48px 20px 80px" }}>
-      <h1 style={{ fontSize: "22px", fontWeight: 700, color: "#111827", marginBottom: "12px" }}>
+      <h1 style={{ fontSize: "22px", fontWeight: 700, color: colors.text, marginBottom: "12px" }}>
         Link not found
       </h1>
-      <p style={{ fontSize: "15px", color: "#6b7280" }}>
+      <p style={{ fontSize: "15px", color: colors.textMuted }}>
         This short link doesn&apos;t exist or may have been removed.
       </p>
     </section>

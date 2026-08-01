@@ -5,6 +5,7 @@ import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
 import WarningBanner from "@/components/WarningBanner";
 import { formatBytes, loadImage, canvasToBlob } from "@/lib/imageFile";
+import { colors } from "@/lib/theme";
 
 // PNG has no quality parameter — the slider only affects JPG/WebP output.
 // We default the output format to the same as the input when it supports
@@ -85,7 +86,7 @@ export default function CompressImageClient() {
         <FileDropzone onFiles={handleFiles} accept="image/*" label="Drag & drop an image here, or click to browse" />
       )}
 
-      {error && <p style={{ color: "#dc2626", fontSize: "14px", marginTop: "12px" }}>{error}</p>}
+      {error && <p style={{ color: colors.danger, fontSize: "14px", marginTop: "12px" }}>{error}</p>}
 
       {file && (
         <div>
@@ -93,13 +94,13 @@ export default function CompressImageClient() {
             <img
               src={previewUrl}
               alt="Preview"
-              style={{ width: "160px", height: "160px", objectFit: "contain", border: "1px solid #e5e7eb", borderRadius: "8px", flexShrink: 0 }}
+              style={{ width: "160px", height: "160px", objectFit: "contain", border: `1px solid ${colors.border}`, borderRadius: "8px", flexShrink: 0 }}
             />
             <div style={{ flex: 1, minWidth: "180px" }}>
               <div
                 style={{
                   fontSize: "14px",
-                  color: "#374151",
+                  color: colors.textSecondary,
                   marginBottom: "4px",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
@@ -108,7 +109,7 @@ export default function CompressImageClient() {
               >
                 {file.name}
               </div>
-              <div style={{ fontSize: "13px", color: "#9ca3af", marginBottom: "12px" }}>
+              <div style={{ fontSize: "13px", color: colors.textFaint, marginBottom: "12px" }}>
                 {formatBytes(file.size)}
               </div>
               <button onClick={handleReset} style={smallButtonStyle}>
@@ -118,7 +119,7 @@ export default function CompressImageClient() {
           </div>
 
           <div style={{ marginBottom: "16px" }}>
-            <label style={{ fontSize: "14px", color: "#374151", display: "block", marginBottom: "6px" }}>
+            <label style={{ fontSize: "14px", color: colors.textSecondary, display: "block", marginBottom: "6px" }}>
               Output format
             </label>
             <select
@@ -134,7 +135,7 @@ export default function CompressImageClient() {
 
           {supportsQuality ? (
             <div style={{ marginBottom: "20px" }}>
-              <label style={{ fontSize: "14px", color: "#374151" }}>
+              <label style={{ fontSize: "14px", color: colors.textSecondary }}>
                 Quality: {Math.round(quality * 100)}%
               </label>
               <input
@@ -148,7 +149,7 @@ export default function CompressImageClient() {
               />
             </div>
           ) : (
-            <p style={{ fontSize: "13px", color: "#9ca3af", marginBottom: "20px" }}>
+            <p style={{ fontSize: "13px", color: colors.textFaint, marginBottom: "20px" }}>
               PNG is lossless — there&apos;s no quality setting to adjust.
             </p>
           )}
@@ -166,8 +167,8 @@ export default function CompressImageClient() {
               onClick={handleCompress}
               disabled={isWorking}
               style={{
-                backgroundColor: isWorking ? "#93c5fd" : "#2563eb",
-                color: "#fff",
+                backgroundColor: isWorking ? colors.primaryDisabled : colors.primary,
+                color: colors.primaryContrast,
                 border: "none",
                 borderRadius: "8px",
                 padding: "10px 20px",
@@ -187,16 +188,16 @@ export default function CompressImageClient() {
           </div>
 
           {resultBlob && (
-            <p style={{ fontSize: "14px", color: "#374151", marginTop: "16px" }}>
+            <p style={{ fontSize: "14px", color: colors.textSecondary, marginTop: "16px" }}>
               {formatBytes(file.size)} → {formatBytes(resultBlob.size)}
               {sizeChangePercent > 0 && (
-                <span style={{ color: "#16a34a", fontWeight: 600 }}>
+                <span style={{ color: colors.success, fontWeight: 600 }}>
                   {" "}
                   ({sizeChangePercent}% smaller)
                 </span>
               )}
               {sizeChangePercent <= 0 && (
-                <span style={{ color: "#dc2626", fontWeight: 600 }}>
+                <span style={{ color: colors.danger, fontWeight: 600 }}>
                   {" "}
                   ({Math.abs(sizeChangePercent)}% larger — try JPG or WebP instead)
                 </span>
@@ -211,19 +212,19 @@ export default function CompressImageClient() {
 
 const smallButtonStyle = {
   background: "none",
-  border: "1px solid #e5e7eb",
+  border: `1px solid ${colors.border}`,
   borderRadius: "6px",
   padding: "4px 10px",
   fontSize: "13px",
-  color: "#374151",
+  color: colors.textSecondary,
   cursor: "pointer",
 };
 
 const selectStyle = {
   padding: "8px 10px",
   fontSize: "14px",
-  border: "1px solid #d1d5db",
+  border: `1px solid ${colors.borderInput}`,
   borderRadius: "6px",
-  color: "#374151",
-  backgroundColor: "#fff",
+  color: colors.textSecondary,
+  backgroundColor: colors.surface,
 };

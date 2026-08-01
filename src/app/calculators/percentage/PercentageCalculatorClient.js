@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { colors } from "@/lib/theme";
 
 const modes = [
   { id: "of", label: "X% of Y" },
@@ -45,9 +46,9 @@ export default function PercentageCalculatorClient() {
             key={m.id}
             onClick={() => setMode(m.id)}
             style={{
-              border: `1px solid ${mode === m.id ? "#2563eb" : "#e5e7eb"}`,
-              backgroundColor: mode === m.id ? "#eff6ff" : "#fff",
-              color: mode === m.id ? "#2563eb" : "#374151",
+              border: `1px solid ${mode === m.id ? colors.primary : colors.border}`,
+              backgroundColor: mode === m.id ? colors.primarySoft : colors.surface,
+              color: mode === m.id ? colors.primary : colors.textSecondary,
               borderRadius: "8px",
               padding: "8px 14px",
               fontSize: "14px",
@@ -61,7 +62,7 @@ export default function PercentageCalculatorClient() {
       </div>
 
       <div style={{ display: "flex", gap: "12px", alignItems: "center", marginBottom: "20px", flexWrap: "wrap" }}>
-        <label style={{ fontSize: "14px", color: "#374151" }}>
+        <label style={{ fontSize: "14px", color: colors.textSecondary }}>
           X{" "}
           <input
             type="number"
@@ -71,7 +72,7 @@ export default function PercentageCalculatorClient() {
             placeholder="0"
           />
         </label>
-        <label style={{ fontSize: "14px", color: "#374151" }}>
+        <label style={{ fontSize: "14px", color: colors.textSecondary }}>
           Y{" "}
           <input
             type="number"
@@ -86,12 +87,12 @@ export default function PercentageCalculatorClient() {
       {result && (
         <div
           style={{
-            border: "1px solid #e5e7eb",
+            border: `1px solid ${colors.border}`,
             borderRadius: "8px",
             padding: "16px 20px",
           }}
         >
-          <p style={{ fontSize: "18px", fontWeight: 600, color: "#111827" }}>{result}</p>
+          <p style={{ fontSize: "18px", fontWeight: 600, color: colors.text }}>{result}</p>
         </div>
       )}
     </div>
@@ -104,7 +105,7 @@ const inputStyle = {
   boxSizing: "border-box",
   padding: "8px 10px",
   fontSize: "14px",
-  border: "1px solid #d1d5db",
+  border: `1px solid ${colors.borderInput}`,
   borderRadius: "6px",
   marginLeft: "4px",
 };
