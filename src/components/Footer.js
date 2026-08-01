@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
 import { categories } from "@/lib/tools";
 import { categoryColors, colors } from "@/lib/theme";
 import ToolIcon from "./ToolIcon";
@@ -73,14 +72,9 @@ export default function Footer() {
           textAlign: "center",
           fontSize: "13px",
           color: colors.textFaint,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "6px",
         }}
       >
-        <ShieldCheck size={14} />
-        © {new Date().getFullYear()} WaryTools. All processing happens in your browser.
+        © {new Date().getFullYear()} WaryTools.
       </div>
     </footer>
   );
