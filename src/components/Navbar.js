@@ -6,6 +6,7 @@ import { Menu, X, ChevronDown } from "lucide-react";
 import { categories } from "@/lib/tools";
 import { categoryColors, colors } from "@/lib/theme";
 import ToolIcon from "./ToolIcon";
+import Logo from "./Logo";
 
 // Top navigation bar: hover dropdowns on desktop, a slide-down accordion
 // menu on mobile (below md breakpoint).
@@ -70,15 +71,7 @@ export default function Navbar() {
             gap: "8px",
           }}
         >
-          <span
-            style={{
-              width: "28px",
-              height: "28px",
-              borderRadius: "8px",
-              background: `linear-gradient(135deg, ${colors.primary}, ${categoryColors.image.text})`,
-              display: "inline-block",
-            }}
-          />
+          <Logo size={28} />
           WaryTools
         </Link>
 
