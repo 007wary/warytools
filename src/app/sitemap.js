@@ -26,6 +26,15 @@ function discoverRoutes(dir, baseDir = dir) {
   return routes;
 }
 
+// Rough priority/change-frequency by route depth: homepage highest, hub
+// pages next, individual tools and static pages below that.
+function priorityFor(route) {
+  if (route === "") return 1;
+  const segments = route.split("/").filter(Boolean);
+  if (segments.length === 1) return 0.8;
+  return 0.6;
+}
+
 export default function sitemap() {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://warytools.com";
   const appDir = path.join(process.cwd(), "src", "app");
@@ -34,6 +43,7 @@ export default function sitemap() {
 
   return routes.map((route) => ({
     url: `${baseUrl}${route}`,
-    lastModified: new Date(),
+    changeFrequency: route === "" ? "weekly" : "monthly",
+    priority: priorityFor(route),
   }));
 }

@@ -2,6 +2,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import JsonLd from "@/components/JsonLd";
+import { jsonLdGraph, organizationJsonLd, websiteJsonLd } from "@/lib/jsonLd";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,8 +21,23 @@ const description =
 
 export const metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://warytools.com"),
-  title,
+  title: {
+    template: "%s — WaryTools",
+    default: title,
+  },
   description,
+  alternates: {
+    canonical: "/",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+    },
+  },
   openGraph: {
     title,
     description,
@@ -35,6 +52,12 @@ export const metadata = {
   },
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#2563eb",
+};
+
 export default function RootLayout({ children }) {
   return (
     <html
@@ -42,6 +65,7 @@ export default function RootLayout({ children }) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <JsonLd data={jsonLdGraph(organizationJsonLd(), websiteJsonLd())} />
         <Navbar />
         <main style={{ flex: 1 }}>{children}</main>
         <Footer />

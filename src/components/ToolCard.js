@@ -3,7 +3,8 @@ import ToolIcon from "./ToolIcon";
 import { categoryColors, colors } from "@/lib/theme";
 
 // A single tool card used on the homepage and hub pages.
-export default function ToolCard({ title, description, href, icon, category }) {
+export default function ToolCard({ title, description, href, icon, category, headingLevel = "h3" }) {
+  const Heading = headingLevel;
   const accent = categoryColors[category] || categoryColors.pdf;
 
   return (
@@ -37,10 +38,10 @@ export default function ToolCard({ title, description, href, icon, category }) {
           <ToolIcon name={icon} size={20} />
         </div>
       )}
-      <div style={{ fontWeight: 600, fontSize: "15px", marginBottom: "4px", color: colors.text }}>
+      <Heading style={{ fontWeight: 600, fontSize: "15px", marginBottom: "4px", color: colors.text }}>
         {title}
-      </div>
-      <div style={{ fontSize: "13.5px", color: colors.textMuted, lineHeight: 1.5 }}>{description}</div>
+      </Heading>
+      <p style={{ fontSize: "13.5px", color: colors.textMuted, lineHeight: 1.5, margin: 0 }}>{description}</p>
     </Link>
   );
 }

@@ -1,11 +1,43 @@
 import { categories, allTools } from "@/lib/tools";
 import { colors, categoryColors } from "@/lib/theme";
 import { ToolSearchProvider, ToolSearchBox, ToolSearchGrid } from "@/components/ToolSearch";
+import JsonLd from "@/components/JsonLd";
+import { jsonLdGraph, collectionPageJsonLd } from "@/lib/jsonLd";
+
+const title = "Free Online PDF, Image & Calculator Tools";
+const description =
+  "Free PDF, image, calculator, and URL shortener tools that run entirely in your browser — no uploads, no sign-up, no ads.";
+
+export const metadata = {
+  title,
+  description,
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: `WaryTools — ${title}`,
+    description,
+  },
+  twitter: {
+    title: `WaryTools — ${title}`,
+    description,
+  },
+};
 
 export default function HomePage() {
   return (
     <ToolSearchProvider>
       <div>
+        <JsonLd
+          data={jsonLdGraph(
+            collectionPageJsonLd({
+              name: "WaryTools",
+              description,
+              href: "/",
+              tools: allTools,
+            })
+          )}
+        />
         {/* Hero */}
         <section
           style={{
