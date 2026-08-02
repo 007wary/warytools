@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { simpleInterest, compoundInterest } from "@/lib/calculatorMath";
 import { colors } from "@/lib/theme";
 
 const compoundFrequencies = [
@@ -26,13 +27,7 @@ export default function InterestCalculatorClient() {
   function getResult() {
     if (!canCompute) return null;
 
-    if (mode === "simple") {
-      const interest = (p * r * t) / 100;
-      return { interest, total: p + interest };
-    }
-
-    const total = p * Math.pow(1 + r / 100 / frequency, frequency * t);
-    return { interest: total - p, total };
+    return mode === "simple" ? simpleInterest(p, r, t) : compoundInterest(p, r, t, frequency);
   }
 
   const result = getResult();

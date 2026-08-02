@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { percentageOf, whatPercent, percentChange } from "@/lib/calculatorMath";
 import { colors } from "@/lib/theme";
 
 const modes = [
@@ -22,18 +23,24 @@ export default function PercentageCalculatorClient() {
     if (!canCompute) return null;
 
     if (mode === "of") {
-      const value = (xNum / 100) * yNum;
+      const value = percentageOf(xNum, yNum);
       return `${xNum}% of ${yNum} is ${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
     }
     if (mode === "isWhatPercent") {
-      if (yNum === 0) return "Y can't be zero.";
-      return `${xNum} is ${((xNum / yNum) * 100).toFixed(2)}% of ${yNum}`;
+      try {
+        return `${xNum} is ${whatPercent(xNum, yNum).toFixed(2)}% of ${yNum}`;
+      } catch {
+        return "Y can't be zero.";
+      }
     }
     // change
-    if (xNum === 0) return "X can't be zero.";
-    const change = ((yNum - xNum) / xNum) * 100;
-    const direction = change >= 0 ? "increase" : "decrease";
-    return `${Math.abs(change).toFixed(2)}% ${direction} from ${xNum} to ${yNum}`;
+    try {
+      const change = percentChange(xNum, yNum);
+      const direction = change >= 0 ? "increase" : "decrease";
+      return `${Math.abs(change).toFixed(2)}% ${direction} from ${xNum} to ${yNum}`;
+    } catch {
+      return "X can't be zero.";
+    }
   }
 
   const result = getResult();

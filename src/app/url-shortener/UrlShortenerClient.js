@@ -2,34 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { isValidUrl } from "@/lib/urlShortenerValidation";
 import { colors } from "@/lib/theme";
 
 const STORAGE_KEY = "warytools_short_links";
-const MAX_URL_LENGTH = 2048;
 const MAX_SAVED_LINKS = 5;
-
-function isValidUrl(value) {
-  if (typeof value !== "string" || value.length === 0 || value.length > MAX_URL_LENGTH) {
-    return false;
-  }
-
-  let url;
-  try {
-    url = new URL(value);
-  } catch {
-    return false;
-  }
-
-  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
-
-  // Block shortening our own /s/ links — prevents redirect chains/loops
-  // and stops the shortener being used to obscure other short links.
-  if (url.origin === window.location.origin && url.pathname.startsWith("/s/")) {
-    return false;
-  }
-
-  return true;
-}
 
 export default function UrlShortenerClient() {
   const [longUrl, setLongUrl] = useState("");
@@ -57,7 +34,7 @@ export default function UrlShortenerClient() {
   async function handleShorten() {
     setError("");
 
-    if (!isValidUrl(longUrl)) {
+    if (!isValidUrl(longUrl, window.location.origin)) {
       setError("Please enter a valid URL, including http:// or https://.");
       return;
     }

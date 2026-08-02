@@ -1,39 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { parseDateInput, diffBetween } from "@/lib/dateMath";
 import { colors } from "@/lib/theme";
-
-// <input type="date"> gives "YYYY-MM-DD". new Date(that string) parses it
-// as UTC midnight, not local midnight — in timezones behind UTC that rolls
-// back to the previous local day. Parse the parts directly instead so the
-// date always means what the user picked, regardless of timezone.
-function parseDateInput(value) {
-  const [year, month, day] = value.split("-").map(Number);
-  return new Date(year, month - 1, day);
-}
-
-function diffBetween(start, end) {
-  const [earlier, later] = start <= end ? [start, end] : [end, start];
-
-  let years = later.getFullYear() - earlier.getFullYear();
-  let months = later.getMonth() - earlier.getMonth();
-  let days = later.getDate() - earlier.getDate();
-
-  if (days < 0) {
-    months -= 1;
-    const prevMonth = new Date(later.getFullYear(), later.getMonth(), 0);
-    days += prevMonth.getDate();
-  }
-
-  if (months < 0) {
-    years -= 1;
-    months += 12;
-  }
-
-  const totalDays = Math.floor((later - earlier) / (1000 * 60 * 60 * 24));
-
-  return { years, months, days, totalDays };
-}
 
 export default function DateDifferenceClient() {
   const [startDate, setStartDate] = useState("");

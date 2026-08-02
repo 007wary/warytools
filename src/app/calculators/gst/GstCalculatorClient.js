@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { addGst, removeGst } from "@/lib/calculatorMath";
 import { colors } from "@/lib/theme";
 
 const gstSlabs = [5, 12, 18, 28];
@@ -16,19 +17,7 @@ export default function GstCalculatorClient() {
   function getResult() {
     if (!canCompute) return null;
 
-    if (mode === "add") {
-      const gstAmount = (amountNum * rate) / 100;
-      return {
-        base: amountNum,
-        gstAmount,
-        total: amountNum + gstAmount,
-      };
-    }
-
-    // Remove GST: amountNum is treated as the GST-inclusive total.
-    const base = amountNum / (1 + rate / 100);
-    const gstAmount = amountNum - base;
-    return { base, gstAmount, total: amountNum };
+    return mode === "add" ? addGst(amountNum, rate) : removeGst(amountNum, rate);
   }
 
   const result = getResult();
