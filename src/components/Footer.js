@@ -20,9 +20,10 @@ export default function Footer() {
           maxWidth: "1200px",
           margin: "0 auto",
           padding: "48px 20px 40px",
-          display: "grid",
-          gridTemplateColumns: "1.6fr 1fr 1fr",
-          gap: "32px",
+          display: "flex",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: "40px",
         }}
       >
         <div>
@@ -59,65 +60,67 @@ export default function Footer() {
           </p>
         </div>
 
-        <div>
-          <div
-            style={{
-              fontSize: "11px",
-              fontWeight: 700,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              color: colors.textFaint,
-              marginBottom: "18px",
-            }}
-          >
-            Company
+        <div style={{ display: "flex", gap: "64px", flexWrap: "wrap" }}>
+          <div>
+            <div
+              style={{
+                fontSize: "11px",
+                fontWeight: 700,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: colors.textFaint,
+                marginBottom: "18px",
+              }}
+            >
+              Company
+            </div>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              <li style={{ marginBottom: "14px" }}>
+                <Link
+                  href="/about"
+                  className="footer-link"
+                  style={{ fontSize: "14px", color: colors.textMuted, textDecoration: "none" }}
+                >
+                  About
+                </Link>
+              </li>
+            </ul>
           </div>
-          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            <li style={{ marginBottom: "14px" }}>
-              <Link
-                href="/about"
-                className="footer-link"
-                style={{ fontSize: "14px", color: colors.textMuted, textDecoration: "none" }}
-              >
-                About
-              </Link>
-            </li>
-          </ul>
-        </div>
 
-        <div>
-          <div
-            style={{
-              fontSize: "11px",
-              fontWeight: 700,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              color: colors.textFaint,
-              marginBottom: "18px",
-            }}
-          >
-            Legal
+          <div>
+            <div
+              style={{
+                fontSize: "11px",
+                fontWeight: 700,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: colors.textFaint,
+                marginBottom: "18px",
+              }}
+            >
+              Legal
+            </div>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              <li style={{ marginBottom: "14px" }}>
+                <Link
+                  href="/privacy"
+                  className="footer-link"
+                  style={{ fontSize: "14px", color: colors.textMuted, textDecoration: "none" }}
+                >
+                  Privacy Policy
+                </Link>
+              </li>
+              <li style={{ marginBottom: "14px" }}>
+                <Link
+                  href="/terms"
+                  className="footer-link"
+                  style={{ fontSize: "14px", color: colors.textMuted, textDecoration: "none" }}
+                >
+                  Terms of Use
+                </Link>
+              </li>
+            </ul>
           </div>
-          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            <li style={{ marginBottom: "14px" }}>
-              <Link
-                href="/privacy"
-                className="footer-link"
-                style={{ fontSize: "14px", color: colors.textMuted, textDecoration: "none" }}
-              >
-                Privacy Policy
-              </Link>
-            </li>
-            <li style={{ marginBottom: "14px" }}>
-              <Link
-                href="/terms"
-                className="footer-link"
-                style={{ fontSize: "14px", color: colors.textMuted, textDecoration: "none" }}
-              >
-                Terms of Use
-              </Link>
-            </li>
-          </ul>
         </div>
       </div>
       <div
