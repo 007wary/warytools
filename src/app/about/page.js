@@ -2,13 +2,21 @@ import Link from "next/link";
 import { ShieldCheck, Zap, EyeOff, Heart } from "lucide-react";
 import Logo from "@/components/Logo";
 import ToolIcon from "@/components/ToolIcon";
+import JsonLd from "@/components/JsonLd";
 import { categories, allTools } from "@/lib/tools";
 import { colors, categoryColors } from "@/lib/theme";
+import { jsonLdGraph, organizationJsonLd, breadcrumbJsonLd } from "@/lib/jsonLd";
+
+const aboutTitle = "About";
+const aboutDescription =
+  "WaryTools is a free collection of PDF, image, calculator, and URL tools that run entirely in your browser. No uploads, no accounts, no ads slowing you down.";
 
 export const metadata = {
-  title: "About — WaryTools",
-  description:
-    "WaryTools is a free collection of PDF, image, calculator, and URL tools that run entirely in your browser. No uploads, no accounts, no ads slowing you down.",
+  title: aboutTitle,
+  description: aboutDescription,
+  alternates: { canonical: "/about" },
+  openGraph: { title: `${aboutTitle} — WaryTools`, description: aboutDescription },
+  twitter: { title: `${aboutTitle} — WaryTools`, description: aboutDescription },
 };
 
 const principles = [
@@ -45,6 +53,15 @@ const principles = [
 export default function AboutPage() {
   return (
     <div>
+      <JsonLd
+        data={jsonLdGraph(
+          organizationJsonLd(),
+          breadcrumbJsonLd([
+            { name: "Home", href: "/" },
+            { name: "About", href: "/about" },
+          ])
+        )}
+      />
       {/* Hero */}
       <section
         style={{

@@ -1,10 +1,15 @@
 import { Mail, MessageSquareText, Bug } from "lucide-react";
 import { colors, categoryColors } from "@/lib/theme";
 
+const contactTitle = "Contact";
+const contactDescription = "Get in touch with WaryTools — report a bug, suggest a tool, or ask a question.";
+
 export const metadata = {
-  title: "Contact — WaryTools",
-  description:
-    "Get in touch with WaryTools — report a bug, suggest a tool, or ask a question.",
+  title: contactTitle,
+  description: contactDescription,
+  alternates: { canonical: "/contact" },
+  openGraph: { title: `${contactTitle} — WaryTools`, description: contactDescription },
+  twitter: { title: `${contactTitle} — WaryTools`, description: contactDescription },
 };
 
 const CONTACT_EMAIL = "007mwnswrangwary@gmail.com";

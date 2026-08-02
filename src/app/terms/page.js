@@ -1,9 +1,14 @@
 import { colors } from "@/lib/theme";
 
+const termsTitle = "Terms of Use";
+const termsDescription = "The terms for using WaryTools' free PDF, image, calculator, and URL shortener tools.";
+
 export const metadata = {
-  title: "Terms of Use — WaryTools",
-  description:
-    "The terms for using WaryTools' free PDF, image, calculator, and URL shortener tools.",
+  title: termsTitle,
+  description: termsDescription,
+  alternates: { canonical: "/terms" },
+  openGraph: { title: `${termsTitle} — WaryTools`, description: termsDescription },
+  twitter: { title: `${termsTitle} — WaryTools`, description: termsDescription },
 };
 
 const LAST_UPDATED = "August 2, 2026";

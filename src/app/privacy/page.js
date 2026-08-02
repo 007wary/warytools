@@ -1,9 +1,15 @@
 import { colors } from "@/lib/theme";
 
+const privacyTitle = "Privacy Policy";
+const privacyDescription =
+  "How WaryTools handles your data: PDF and image files are processed entirely in your browser and never uploaded. Learn what the URL shortener, analytics, advertising, and error tracking store, and how the site is secured.";
+
 export const metadata = {
-  title: "Privacy Policy — WaryTools",
-  description:
-    "How WaryTools handles your data: PDF and image files are processed entirely in your browser and never uploaded. Learn what the URL shortener, analytics, advertising, and error tracking store, and how the site is secured.",
+  title: privacyTitle,
+  description: privacyDescription,
+  alternates: { canonical: "/privacy" },
+  openGraph: { title: `${privacyTitle} — WaryTools`, description: privacyDescription },
+  twitter: { title: `${privacyTitle} — WaryTools`, description: privacyDescription },
 };
 
 const LAST_UPDATED = "August 2, 2026";
