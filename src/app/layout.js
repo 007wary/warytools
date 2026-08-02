@@ -13,11 +13,26 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const title = "WaryTools — Free Online PDF, Image & Calculator Tools";
+const description =
+  "Free online tools for PDF editing, image processing, calculators, and URL shortening. All PDF and image tools run 100% in your browser — no uploads.";
+
 export const metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://warytools.com"),
-  title: "WaryTools — Free Online PDF, Image & Calculator Tools",
-  description:
-    "Free online tools for PDF editing, image processing, calculators, and URL shortening. All PDF and image tools run 100% in your browser — no uploads.",
+  title,
+  description,
+  openGraph: {
+    title,
+    description,
+    siteName: "WaryTools",
+    type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+  },
 };
 
 export default function RootLayout({ children }) {

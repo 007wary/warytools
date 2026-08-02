@@ -84,6 +84,15 @@ export default function Footer() {
                   About
                 </Link>
               </li>
+              <li style={{ marginBottom: "14px" }}>
+                <Link
+                  href="/contact"
+                  className="footer-link"
+                  style={{ fontSize: "14px", color: colors.textMuted, textDecoration: "none" }}
+                >
+                  Contact
+                </Link>
+              </li>
             </ul>
           </div>
 
