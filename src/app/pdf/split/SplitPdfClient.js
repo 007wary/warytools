@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { PDFDocument } from "pdf-lib";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
 import { colors } from "@/lib/theme";
@@ -31,6 +30,7 @@ export default function SplitPdfClient() {
     setFile(selected);
 
     try {
+      const { PDFDocument } = await import("pdf-lib");
       const bytes = await selected.arrayBuffer();
       const pdf = await PDFDocument.load(bytes);
       const count = pdf.getPageCount();
@@ -57,6 +57,7 @@ export default function SplitPdfClient() {
         return;
       }
 
+      const { PDFDocument } = await import("pdf-lib");
       const bytes = await file.arrayBuffer();
       const sourcePdf = await PDFDocument.load(bytes);
       const newPdf = await PDFDocument.create();
@@ -83,7 +84,10 @@ export default function SplitPdfClient() {
     setIsWorking(true);
 
     try {
-      const { default: JSZip } = await import("jszip");
+      const [{ default: JSZip }, { PDFDocument }] = await Promise.all([
+        import("jszip"),
+        import("pdf-lib"),
+      ]);
       const bytes = await file.arrayBuffer();
       const sourcePdf = await PDFDocument.load(bytes);
       const zip = new JSZip();

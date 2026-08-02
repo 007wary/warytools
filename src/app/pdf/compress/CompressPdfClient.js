@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { PDFDocument } from "pdf-lib";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
 import { colors } from "@/lib/theme";
@@ -37,6 +36,7 @@ export default function CompressPdfClient() {
     setIsWorking(true);
 
     try {
+      const { PDFDocument } = await import("pdf-lib");
       const bytes = await file.arrayBuffer();
       const pdf = await PDFDocument.load(bytes);
 

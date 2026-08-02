@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { PDFDocument, degrees } from "pdf-lib";
 import { RotateCcw, RotateCw } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
@@ -29,6 +28,7 @@ export default function RotatePdfClient() {
     setFile(selected);
 
     try {
+      const { PDFDocument } = await import("pdf-lib");
       const bytes = await selected.arrayBuffer();
       const pdf = await PDFDocument.load(bytes);
       const count = pdf.getPageCount();
@@ -60,6 +60,7 @@ export default function RotatePdfClient() {
     setIsWorking(true);
 
     try {
+      const { PDFDocument, degrees } = await import("pdf-lib");
       const bytes = await file.arrayBuffer();
       const pdf = await PDFDocument.load(bytes);
       const pages = pdf.getPages();

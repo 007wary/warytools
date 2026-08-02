@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { PDFDocument } from "pdf-lib";
 import { X } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
@@ -101,6 +100,7 @@ export default function ReorderPdfClient() {
     setIsWorking(true);
 
     try {
+      const { PDFDocument } = await import("pdf-lib");
       const bytes = await file.arrayBuffer();
       const sourcePdf = await PDFDocument.load(bytes);
       const newPdf = await PDFDocument.create();
