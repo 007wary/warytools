@@ -6,6 +6,7 @@ import { colors } from "@/lib/theme";
 
 const STORAGE_KEY = "warytools_short_links";
 const MAX_URL_LENGTH = 2048;
+const MAX_SAVED_LINKS = 5;
 
 function isValidUrl(value) {
   if (typeof value !== "string" || value.length === 0 || value.length > MAX_URL_LENGTH) {
@@ -42,7 +43,7 @@ export default function UrlShortenerClient() {
     if (typeof window === "undefined") return [];
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? JSON.parse(saved) : [];
+      return saved ? JSON.parse(saved).slice(0, MAX_SAVED_LINKS) : [];
     } catch {
       return [];
     }
@@ -79,7 +80,7 @@ export default function UrlShortenerClient() {
       setLinks((prev) => [
         { shortCode: body.shortCode, longUrl: body.longUrl, clicks: 0, createdAt: new Date().toISOString() },
         ...prev,
-      ]);
+      ].slice(0, MAX_SAVED_LINKS));
       setLongUrl("");
     } catch (err) {
       console.error(err);
@@ -189,6 +190,14 @@ export default function UrlShortenerClient() {
                     <span style={{ fontSize: "13px", color: colors.textFaint }}>
                       {link.clicks} click{link.clicks === 1 ? "" : "s"}
                     </span>
+                    <a
+                      href={`/s/${link.shortCode}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ ...smallButtonStyle, textDecoration: "none", display: "inline-block" }}
+                    >
+                      Open link
+                    </a>
                     <button onClick={() => handleCopy(link.shortCode)} style={smallButtonStyle}>
                       {copiedCode === link.shortCode ? "Copied!" : "Copy"}
                     </button>

@@ -41,9 +41,6 @@ export default function TermsPage() {
         >
           Terms of Use
         </h1>
-        <p style={{ fontSize: "15px", color: colors.textMuted, maxWidth: "540px", margin: "0 auto" }}>
-          Plain-language terms for using a free, browser-based toolset.
-        </p>
         <p style={{ fontSize: "13px", color: colors.textFaint, marginTop: "12px" }}>
           Last updated {LAST_UPDATED}
         </p>
