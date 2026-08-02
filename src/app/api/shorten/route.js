@@ -44,9 +44,10 @@ function isValidHttpUrl(value) {
   }
 }
 
+// Must match the character class enforced by the "short_urls" RLS insert
+// policy, which excludes visually ambiguous characters (0, 1, I, O, l).
 function generateCode(length = 7) {
-  const chars =
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
   let code = "";
   for (let i = 0; i < length; i++) {
     code += chars[Math.floor(Math.random() * chars.length)];

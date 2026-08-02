@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, Sparkles } from "lucide-react";
+import { Search } from "lucide-react";
 import ToolCard from "@/components/ToolCard";
 import { categories, allTools } from "@/lib/tools";
 import { colors, categoryColors } from "@/lib/theme";
@@ -36,25 +36,6 @@ export default function HomePage() {
             `radial-gradient(circle at 20% 0%, ${colors.primarySoft} 0%, transparent 55%), radial-gradient(circle at 80% 10%, ${categoryColors.image.bg} 0%, transparent 55%), ${colors.surface}`,
         }}
       >
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "6px",
-            fontSize: "13px",
-            fontWeight: 600,
-            color: colors.primary,
-            backgroundColor: colors.primarySoft,
-            border: `1px solid ${colors.primarySoftBorder}`,
-            borderRadius: "999px",
-            padding: "6px 14px",
-            marginBottom: "20px",
-          }}
-        >
-          <Sparkles size={14} />
-          100% free · Runs entirely in your browser
-        </div>
-
         <h1
           style={{
             fontSize: "clamp(28px, 5vw, 44px)",

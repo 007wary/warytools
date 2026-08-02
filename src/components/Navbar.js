@@ -91,6 +91,30 @@ export default function Navbar() {
         <nav style={{ gap: "4px" }} className="hidden md:flex">
           {categories.map((category, categoryIndex) => {
             const accent = categoryColors[category.slug];
+
+            // Single-tool categories (currently just the URL shortener) go
+            // straight to their hub page instead of opening a one-item
+            // dropdown — a menu with one entry is just an extra click.
+            if (category.tools.length === 1) {
+              return (
+                <Link
+                  key={category.slug}
+                  href={category.hubHref}
+                  className="hover-surface"
+                  style={{
+                    fontSize: "14px",
+                    fontWeight: 500,
+                    color: colors.textSecondary,
+                    padding: "8px 12px",
+                    borderRadius: "8px",
+                    textDecoration: "none",
+                  }}
+                >
+                  {category.label}
+                </Link>
+              );
+            }
+
             // Only the very last item sits close enough to the viewport's
             // right edge to risk its dropdown overflowing — align just
             // that one's panel to its button's right edge instead of left.
@@ -200,15 +224,51 @@ export default function Navbar() {
         </button>
       </div>
 
-      {/* Mobile accordion menu */}
+      {/* Mobile accordion menu — absolutely positioned so it overlays the
+          page instead of pushing content down when it opens. */}
       {mobileOpen && (
         <div
           className="md:hidden"
-          style={{ borderTop: `1px solid ${colors.border}`, padding: "8px 20px 16px" }}
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            right: 0,
+            maxHeight: "calc(100vh - 64px)",
+            overflowY: "auto",
+            backgroundColor: "var(--header-bg)",
+            backdropFilter: "blur(8px)",
+            borderTop: `1px solid ${colors.border}`,
+            borderBottom: `1px solid ${colors.border}`,
+            boxShadow: "var(--shadow-dropdown)",
+            padding: "8px 20px 16px",
+          }}
         >
           {categories.map((category) => {
             const accent = categoryColors[category.slug];
             const isExpanded = mobileExpanded === category.slug;
+
+            if (category.tools.length === 1) {
+              return (
+                <Link
+                  key={category.slug}
+                  href={category.hubHref}
+                  onClick={() => setMobileOpen(false)}
+                  style={{
+                    display: "block",
+                    padding: "12px 4px",
+                    fontSize: "15px",
+                    fontWeight: 600,
+                    color: colors.text,
+                    textDecoration: "none",
+                    borderBottom: `1px solid ${colors.borderMuted}`,
+                  }}
+                >
+                  {category.label}
+                </Link>
+              );
+            }
+
             return (
               <div key={category.slug} style={{ borderBottom: `1px solid ${colors.borderMuted}` }}>
                 <button

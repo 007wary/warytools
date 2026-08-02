@@ -102,16 +102,37 @@ export default function TermsPage() {
         <Section id="third-party" title="6. Third-party services">
           <p>
             The URL shortener relies on Supabase for storage, and error monitoring is handled by
-            Sentry. Their own terms and privacy practices apply to the respective slice of the
-            service they support — see the{" "}
+            Sentry. WaryTools also uses Google Analytics to understand site usage and Google
+            AdSense to serve ads that keep the tools free. Each of these third parties has its
+            own terms and privacy practices that apply to the slice of the service they support —
+            see the{" "}
             <a href="/privacy" style={{ color: colors.primary, textDecoration: "underline" }}>
               privacy policy
             </a>{" "}
-            for what data reaches them.
+            for what data reaches them and how to opt out of analytics or ad personalization.
           </p>
         </Section>
 
-        <Section id="changes-to-service" title="7. Changes to the service">
+        <Section id="advertising" title="7. Advertising">
+          <p>
+            WaryTools is free to use and is supported in part by ads served through Google
+            AdSense. Ads are placed around tools, not inside them, and are never inserted into a
+            file, image, or document you process. By using the site, you agree to the presence of
+            these ads; using an ad blocker doesn&rsquo;t affect your ability to use any tool.
+          </p>
+        </Section>
+
+        <Section id="ip" title="8. Your content and ownership">
+          <p>
+            You retain full ownership of anything you process with WaryTools — files, images, and
+            calculator inputs never reach our servers, so we have no rights to them, no copy of
+            them, and no way to access them. For the URL shortener, you&rsquo;re responsible for
+            the destination URLs you create short links for, and must have the right to link to
+            that content (see &ldquo;Acceptable use&rdquo; above).
+          </p>
+        </Section>
+
+        <Section id="changes-to-service" title="9. Changes to the service">
           <p>
             Tools may be added, changed, or removed over time as WaryTools evolves. We&rsquo;ll
             try to avoid breaking changes to existing tools, but can&rsquo;t guarantee any
@@ -119,7 +140,24 @@ export default function TermsPage() {
           </p>
         </Section>
 
-        <Section id="contact" title="8. Contact">
+        <Section id="termination" title="10. Suspension and termination">
+          <p>
+            We may block, rate-limit, or restrict access for any use that violates these terms —
+            including abusive traffic, scraping, or short links created for malicious purposes —
+            without prior notice. Since there are no accounts, this applies at the level of
+            access to the site or specific links, not a user record.
+          </p>
+        </Section>
+
+        <Section id="governing-law" title="11. Governing law">
+          <p>
+            These terms are governed by the laws of India, without regard to conflict-of-law
+            principles. Any dispute arising from use of WaryTools will be subject to the
+            jurisdiction of the courts located in India.
+          </p>
+        </Section>
+
+        <Section id="contact" title="12. Contact">
           <p>
             Questions about these terms can be directed through the contact details listed on
             the site.

@@ -89,10 +89,10 @@ export default function AboutPage() {
             lineHeight: 1.6,
           }}
         >
-          WaryTools is a small, focused set of PDF, image, calculator, and URL tools —{" "}
+          WaryTools is a focused set of PDF, image, calculator, and URL tools —{" "}
           {allTools.length}{" "}
-          of them and counting — built to just work, without the sign-ups, uploads, or ads that
-          usually come with &ldquo;free online tools.&rdquo;
+          and counting — that do the job in your browser tab and nothing more. No account to
+          create, no file to upload, no ad to wait out. Just the tool.
         </p>
       </section>
 
@@ -102,16 +102,21 @@ export default function AboutPage() {
           Why this exists
         </h2>
         <p style={{ fontSize: "15px", color: colors.textSecondary, lineHeight: 1.75, marginBottom: "16px" }}>
-          Most &ldquo;free&rdquo; online tools make you pay in other ways: an account you didn&rsquo;t want, a file
-          uploaded to a server you don&rsquo;t control, or a page so loaded with ads that finding the
-          actual tool becomes the hard part. WaryTools started as a reaction to that — a place to
-          merge a PDF or resize an image without any of it.
+          &ldquo;Free&rdquo; online tools rarely are. You pay with an account you never wanted, a file
+          handed to a server you don&rsquo;t control, or a page so buried in ads that finding the tool
+          becomes the actual task. WaryTools is the alternative: merge a PDF, resize an image, get
+          the answer — none of the toll.
         </p>
         <p style={{ fontSize: "15px", color: colors.textSecondary, lineHeight: 1.75 }}>
-          Wherever the browser can do the job — reading a PDF, drawing to a canvas, doing the
-          math — it does. The URL shortener is the one exception, since a short link only works
-          if something remembers where it points; that piece runs on Supabase and nothing else,
-          detailed on the <Link href="/privacy" style={{ color: colors.primary, textDecoration: "underline" }}>privacy page</Link>.
+          The rule is simple: if the browser can do it, the browser does it — reading a PDF,
+          drawing to a canvas, running the math, all on your machine, none of it uploaded. The
+          URL shortener breaks that rule by necessity, since a short link is useless unless
+          something remembers where it points. That one piece runs on Supabase, nowhere else, and
+          exactly what it stores is on the{" "}
+          <Link href="/privacy" style={{ color: colors.primary, textDecoration: "underline" }}>
+            privacy page
+          </Link>
+          .
         </p>
       </section>
 
@@ -131,7 +136,7 @@ export default function AboutPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
             gap: "20px",
           }}
         >
