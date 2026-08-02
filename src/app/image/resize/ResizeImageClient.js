@@ -91,9 +91,17 @@ export default function ResizeImageClient() {
       canvas.width = targetWidth;
       canvas.height = targetHeight;
       const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
 
       const outputType = file.type === "image/png" ? "image/png" : "image/jpeg";
+
+      // JPG has no transparency — fill white behind the image first so
+      // transparent source images (e.g. WebP/GIF with alpha) don't turn black.
+      if (outputType === "image/jpeg") {
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+      ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+
       const blob = await canvasToBlob(canvas, outputType, 0.92);
       setResultBlob(blob);
     } catch (err) {

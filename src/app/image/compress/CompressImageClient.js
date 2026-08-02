@@ -51,6 +51,13 @@ export default function CompressImageClient() {
       canvas.width = img.naturalWidth;
       canvas.height = img.naturalHeight;
       const ctx = canvas.getContext("2d");
+
+      // JPG has no transparency — fill white behind the image first so
+      // transparent source images don't turn black.
+      if (format === "image/jpeg") {
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
       ctx.drawImage(img, 0, 0);
 
       const blob = await canvasToBlob(canvas, format, quality);

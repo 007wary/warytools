@@ -56,7 +56,7 @@ export default function ConvertImageClient() {
       // JPG has no transparency — fill white behind the image first so
       // transparent PNGs don't turn black.
       if (format === "image/jpeg") {
-        ctx.fillStyle = colors.surface;
+        ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
       ctx.drawImage(img, 0, 0);

@@ -63,7 +63,10 @@ export default function FileDropzone({
         type="file"
         accept={accept}
         multiple={multiple}
-        onChange={(e) => handleFiles(e.target.files)}
+        onChange={(e) => {
+          handleFiles(e.target.files);
+          e.target.value = "";
+        }}
         style={{ display: "none" }}
       />
       <div
