@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
 import { colors } from "@/lib/theme";
@@ -35,7 +35,8 @@ export default function ReorderPdfClient() {
       const pdfjsLib = (await import("@/lib/pdfjs")).default;
       const bytes = await selected.arrayBuffer();
       const doc = await pdfjsLib.getDocument({ data: bytes.slice(0) }).promise;
-      const newPages = [];
+
+      setPages([]);
 
       for (let i = 1; i <= doc.numPages; i++) {
         const page = await doc.getPage(i);
@@ -46,14 +47,17 @@ export default function ReorderPdfClient() {
         const ctx = canvas.getContext("2d");
         await page.render({ canvasContext: ctx, viewport }).promise;
 
-        newPages.push({
-          id: nextId++,
-          originalIndex: i - 1,
-          thumbnail: canvas.toDataURL("image/png"),
-        });
-      }
+        const thumbnail = await new Promise((resolve) =>
+          canvas.toBlob((blob) => resolve(URL.createObjectURL(blob)), "image/png")
+        );
 
-      setPages(newPages);
+        const newPage = { id: nextId++, originalIndex: i - 1, thumbnail };
+        setPages((prev) => [...prev, newPage]);
+
+        // Yield to the event loop between pages so the UI stays responsive
+        // (progress is visible, and taps/scrolls aren't blocked) on large PDFs.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
     } catch (err) {
       console.error(err);
       setError("Could not read this PDF. Make sure it's valid and unencrypted.");
@@ -65,7 +69,11 @@ export default function ReorderPdfClient() {
 
   function removePage(id) {
     setResultBlob(null);
-    setPages((prev) => prev.filter((p) => p.id !== id));
+    setPages((prev) => {
+      const removed = prev.find((p) => p.id === id);
+      if (removed) URL.revokeObjectURL(removed.thumbnail);
+      return prev.filter((p) => p.id !== id);
+    });
   }
 
   function handleDragStart(index) {
@@ -88,6 +96,19 @@ export default function ReorderPdfClient() {
 
   function handleDragEnd() {
     setDragIndex(null);
+  }
+
+  function movePage(index, direction) {
+    const target = index + direction;
+    if (target < 0 || target >= pages.length) return;
+
+    setPages((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(index, 1);
+      next.splice(target, 0, moved);
+      return next;
+    });
+    setResultBlob(null);
   }
 
   async function handleApply() {
@@ -121,7 +142,10 @@ export default function ReorderPdfClient() {
 
   function handleReset() {
     setFile(null);
-    setPages([]);
+    setPages((prev) => {
+      prev.forEach((p) => URL.revokeObjectURL(p.thumbnail));
+      return [];
+    });
     setResultBlob(null);
     setError("");
   }
@@ -179,14 +203,15 @@ export default function ReorderPdfClient() {
           </div>
 
           <p style={{ fontSize: "13px", color: colors.textFaint, marginBottom: "16px" }}>
-            Drag pages to reorder them, or click the remove button to delete a page.
+            Drag pages to reorder them (or use the arrows on touch devices), and use the remove
+            button to delete a page.
           </p>
 
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
-              gap: "12px",
+              gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+              gap: "14px",
               marginBottom: "24px",
             }}
           >
@@ -201,7 +226,7 @@ export default function ReorderPdfClient() {
                   position: "relative",
                   border: `1px solid ${dragIndex === index ? colors.primary : colors.border}`,
                   borderRadius: "8px",
-                  padding: "6px",
+                  padding: "8px",
                   cursor: "grab",
                   backgroundColor: colors.surface,
                 }}
@@ -213,8 +238,8 @@ export default function ReorderPdfClient() {
                     position: "absolute",
                     top: "4px",
                     right: "4px",
-                    width: "22px",
-                    height: "22px",
+                    width: "32px",
+                    height: "32px",
                     borderRadius: "50%",
                     border: "none",
                     backgroundColor: colors.surface,
@@ -226,7 +251,7 @@ export default function ReorderPdfClient() {
                     boxShadow: "var(--shadow-float)",
                   }}
                 >
-                  <X size={13} />
+                  <X size={15} />
                 </button>
                 <img
                   src={page.thumbnail}
@@ -238,10 +263,28 @@ export default function ReorderPdfClient() {
                     textAlign: "center",
                     fontSize: "12px",
                     color: colors.textMuted,
-                    marginTop: "6px",
+                    margin: "6px 0 8px",
                   }}
                 >
                   Page {index + 1}
+                </div>
+                <div style={{ display: "flex", gap: "6px" }}>
+                  <button
+                    onClick={() => movePage(index, -1)}
+                    disabled={index === 0}
+                    aria-label={`Move page ${index + 1} earlier`}
+                    style={moveButtonStyle(index === 0)}
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    onClick={() => movePage(index, 1)}
+                    disabled={index === pages.length - 1}
+                    aria-label={`Move page ${index + 1} later`}
+                    style={moveButtonStyle(index === pages.length - 1)}
+                  >
+                    <ChevronRight size={16} />
+                  </button>
                 </div>
               </div>
             ))}
@@ -286,3 +329,19 @@ const smallButtonStyle = {
   color: colors.textSecondary,
   cursor: "pointer",
 };
+
+function moveButtonStyle(disabled) {
+  return {
+    flex: 1,
+    height: "34px",
+    borderRadius: "6px",
+    border: `1px solid ${colors.border}`,
+    backgroundColor: colors.surface,
+    color: disabled ? colors.textFaint : colors.textSecondary,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: disabled ? "not-allowed" : "pointer",
+    opacity: disabled ? 0.5 : 1,
+  };
+}

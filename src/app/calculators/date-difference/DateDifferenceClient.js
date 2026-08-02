@@ -90,7 +90,7 @@ export default function DateDifferenceClient() {
 
 const inputStyle = {
   padding: "10px 12px",
-  fontSize: "14px",
+  fontSize: "16px",
   border: `1px solid ${colors.borderInput}`,
   borderRadius: "8px",
   color: colors.textSecondary,
@@ -104,7 +104,7 @@ const buttonStyle = {
   color: colors.primaryContrast,
   border: "none",
   borderRadius: "8px",
-  padding: "10px 20px",
+  padding: "12px 20px",
   fontSize: "14px",
   fontWeight: 600,
   cursor: "pointer",

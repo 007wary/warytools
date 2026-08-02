@@ -107,7 +107,7 @@ function ResultRow({ label, value, bold }) {
       }}
     >
       <span>{label}</span>
-      <span>{value.toFixed(2)}</span>
+      <span style={{ wordBreak: "break-word" }}>{value.toFixed(2)}</span>
     </div>
   );
 }
@@ -121,7 +121,7 @@ function ModeButton({ active, onClick, children }) {
         backgroundColor: active ? colors.primarySoft : colors.surface,
         color: active ? colors.primary : colors.textSecondary,
         borderRadius: "8px",
-        padding: "8px 14px",
+        padding: "10px 16px",
         fontSize: "14px",
         fontWeight: 500,
         cursor: "pointer",
@@ -137,7 +137,7 @@ const inputStyle = {
   maxWidth: "140px",
   boxSizing: "border-box",
   padding: "10px 12px",
-  fontSize: "14px",
+  fontSize: "16px",
   border: `1px solid ${colors.borderInput}`,
   borderRadius: "8px",
   color: colors.textSecondary,

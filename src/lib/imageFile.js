@@ -34,6 +34,24 @@ export function canvasToBlob(canvas, mimeType, quality) {
   });
 }
 
+// Full-resolution phone photos (8000px+ on a side) are slow to draw/encode
+// and can spike memory enough to crash the tab on low-end devices. Caps the
+// longest edge for canvas work that doesn't have an explicit target size
+// (i.e. compress, which re-encodes at the source resolution by default).
+export const MAX_CANVAS_EDGE = 4096;
+
+export function getCappedDimensions(width, height, maxEdge = MAX_CANVAS_EDGE) {
+  const longestEdge = Math.max(width, height);
+  if (longestEdge <= maxEdge) return { width, height, capped: false };
+
+  const scale = maxEdge / longestEdge;
+  return {
+    width: Math.round(width * scale),
+    height: Math.round(height * scale),
+    capped: true,
+  };
+}
+
 export const outputFormats = [
   { mimeType: "image/jpeg", label: "JPG", extension: "jpg", supportsQuality: true },
   { mimeType: "image/webp", label: "WebP", extension: "webp", supportsQuality: true },

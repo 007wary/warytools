@@ -58,12 +58,12 @@ export default function ContactPage() {
       </section>
 
       {/* Reasons */}
-      <section style={{ maxWidth: "1000px", margin: "0 auto", padding: "0 20px 56px" }}>
+      <section style={{ maxWidth: "1000px", margin: "0 auto", padding: "16px 20px 56px" }}>
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: "16px",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))",
+            gap: "24px",
           }}
         >
           {reasons.map(({ icon: Icon, title, body, accent }) => (
@@ -72,7 +72,7 @@ export default function ContactPage() {
               style={{
                 border: `1px solid ${colors.border}`,
                 borderRadius: "14px",
-                padding: "20px",
+                padding: "28px 20px 20px",
                 backgroundColor: colors.surface,
               }}
             >
@@ -86,7 +86,7 @@ export default function ContactPage() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  marginBottom: "14px",
+                  marginBottom: "18px",
                 }}
               >
                 <Icon size={19} />
@@ -133,10 +133,12 @@ export default function ContactPage() {
             href={`mailto:${CONTACT_EMAIL}`}
             className="footer-link"
             style={{
-              fontSize: "18px",
+              display: "block",
+              fontSize: "clamp(15px, 4.5vw, 18px)",
               fontWeight: 600,
               color: colors.text,
               textDecoration: "none",
+              wordBreak: "break-word",
             }}
           >
             {CONTACT_EMAIL}

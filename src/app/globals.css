@@ -179,3 +179,43 @@ button {
 ::selection {
   background-color: var(--selection-bg);
 }
+
+/* Range sliders: browser-default thumbs (~14-20px) are well under the
+   ~40-44px recommended touch target, so enlarge the hit area explicitly
+   for every <input type="range"> on the site (quality/resize sliders). */
+input[type="range"] {
+  height: 28px;
+  padding: 0;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 3px solid var(--surface);
+  box-shadow: var(--shadow-float);
+  cursor: pointer;
+  margin-top: -10px;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 3px solid var(--surface);
+  box-shadow: var(--shadow-float);
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-input);
+}
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-input);
+}

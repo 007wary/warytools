@@ -108,11 +108,30 @@ export default function UrlShortenerClient() {
     setLinks((prev) => prev.map((l) => ({ ...l, clicks: clicksByCode[l.shortCode] ?? l.clicks })));
   }
 
-  function handleCopy(shortCode) {
+  async function handleCopy(shortCode) {
     const shortUrl = `${window.location.origin}/s/${shortCode}`;
-    navigator.clipboard.writeText(shortUrl);
-    setCopiedCode(shortCode);
-    setTimeout(() => setCopiedCode(null), 2000);
+
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(shortUrl);
+      } else {
+        // Fallback for browsers/WebViews without the Clipboard API
+        // (older Samsung Internet, some in-app browsers).
+        const textarea = document.createElement("textarea");
+        textarea.value = shortUrl;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+      setCopiedCode(shortCode);
+      setTimeout(() => setCopiedCode(null), 2000);
+    } catch (err) {
+      console.error(err);
+      setError("Could not copy the link. Please copy it manually.");
+    }
   }
 
   return (
@@ -134,10 +153,11 @@ export default function UrlShortenerClient() {
             color: colors.primaryContrast,
             border: "none",
             borderRadius: "8px",
-            padding: "10px 20px",
+            padding: "12px 20px",
             fontSize: "14px",
             fontWeight: 600,
             cursor: isWorking ? "not-allowed" : "pointer",
+            flexShrink: 0,
           }}
         >
           {isWorking ? "Shortening…" : "Shorten"}
@@ -174,6 +194,7 @@ export default function UrlShortenerClient() {
                       /s/{link.shortCode}
                     </div>
                     <div
+                      title={link.longUrl}
                       style={{
                         fontSize: "13px",
                         color: colors.textMuted,
@@ -213,10 +234,11 @@ export default function UrlShortenerClient() {
 }
 
 const inputStyle = {
-  flex: 1,
-  minWidth: "260px",
-  padding: "10px 14px",
-  fontSize: "14px",
+  flex: "1 1 260px",
+  minWidth: 0,
+  width: "100%",
+  padding: "12px 14px",
+  fontSize: "16px",
   border: `1px solid ${colors.borderInput}`,
   borderRadius: "8px",
   color: colors.textSecondary,
@@ -226,7 +248,7 @@ const smallButtonStyle = {
   background: "none",
   border: `1px solid ${colors.border}`,
   borderRadius: "6px",
-  padding: "5px 12px",
+  padding: "8px 14px",
   fontSize: "13px",
   color: colors.textSecondary,
   cursor: "pointer",

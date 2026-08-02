@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
 import WarningBanner from "@/components/WarningBanner";
-import { formatBytes, loadImage, canvasToBlob } from "@/lib/imageFile";
+import { formatBytes, loadImage, canvasToBlob, getCappedDimensions } from "@/lib/imageFile";
 import { colors } from "@/lib/theme";
 
 // PNG has no quality parameter — the slider only affects JPG/WebP output.
@@ -18,6 +18,7 @@ export default function CompressImageClient() {
   const [isWorking, setIsWorking] = useState(false);
   const [error, setError] = useState("");
   const [resultBlob, setResultBlob] = useState(null);
+  const [wasDownscaled, setWasDownscaled] = useState(false);
 
   // Revoke the previous preview URL whenever it's replaced or the
   // component unmounts, so switching files repeatedly doesn't leak blobs.
@@ -36,6 +37,7 @@ export default function CompressImageClient() {
 
     setError("");
     setResultBlob(null);
+    setWasDownscaled(false);
     setFile(selected);
     setPreviewUrl(URL.createObjectURL(selected));
     setFormat(selected.type === "image/png" ? "image/jpeg" : selected.type);
@@ -47,9 +49,11 @@ export default function CompressImageClient() {
 
     try {
       const img = await loadImage(file);
+      const { width, height, capped } = getCappedDimensions(img.naturalWidth, img.naturalHeight);
+      setWasDownscaled(capped);
       const canvas = document.createElement("canvas");
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
+      canvas.width = width;
+      canvas.height = height;
       const ctx = canvas.getContext("2d");
 
       // JPG has no transparency — fill white behind the image first so
@@ -58,7 +62,7 @@ export default function CompressImageClient() {
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
-      ctx.drawImage(img, 0, 0);
+      ctx.drawImage(img, 0, 0, width, height);
 
       const blob = await canvasToBlob(canvas, format, quality);
       setResultBlob(blob);
@@ -74,6 +78,7 @@ export default function CompressImageClient() {
     setFile(null);
     setPreviewUrl(null);
     setResultBlob(null);
+    setWasDownscaled(false);
     setError("");
   }
 
@@ -194,8 +199,15 @@ export default function CompressImageClient() {
             )}
           </div>
 
+          {resultBlob && wasDownscaled && (
+            <p style={{ fontSize: "13px", color: colors.textFaint, marginTop: "16px" }}>
+              This image was very large, so it was scaled down to a max of 4096px on the longest
+              side before compressing.
+            </p>
+          )}
+
           {resultBlob && (
-            <p style={{ fontSize: "14px", color: colors.textSecondary, marginTop: "16px" }}>
+            <p style={{ fontSize: "14px", color: colors.textSecondary, marginTop: wasDownscaled ? "4px" : "16px" }}>
               {formatBytes(file.size)} → {formatBytes(resultBlob.size)}
               {sizeChangePercent > 0 && (
                 <span style={{ color: colors.success, fontWeight: 600 }}>
@@ -221,15 +233,15 @@ const smallButtonStyle = {
   background: "none",
   border: `1px solid ${colors.border}`,
   borderRadius: "6px",
-  padding: "4px 10px",
+  padding: "8px 14px",
   fontSize: "13px",
   color: colors.textSecondary,
   cursor: "pointer",
 };
 
 const selectStyle = {
-  padding: "8px 10px",
-  fontSize: "14px",
+  padding: "10px 12px",
+  fontSize: "16px",
   border: `1px solid ${colors.borderInput}`,
   borderRadius: "6px",
   color: colors.textSecondary,

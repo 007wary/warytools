@@ -79,7 +79,7 @@ export default function Footer() {
                 <Link
                   href="/about"
                   className="footer-link"
-                  style={{ fontSize: "14px", color: colors.textMuted, textDecoration: "none" }}
+                  style={{ display: "inline-block", padding: "4px 0", fontSize: "14px", color: colors.textMuted, textDecoration: "none" }}
                 >
                   About
                 </Link>
@@ -88,7 +88,7 @@ export default function Footer() {
                 <Link
                   href="/contact"
                   className="footer-link"
-                  style={{ fontSize: "14px", color: colors.textMuted, textDecoration: "none" }}
+                  style={{ display: "inline-block", padding: "4px 0", fontSize: "14px", color: colors.textMuted, textDecoration: "none" }}
                 >
                   Contact
                 </Link>
@@ -114,7 +114,7 @@ export default function Footer() {
                 <Link
                   href="/privacy"
                   className="footer-link"
-                  style={{ fontSize: "14px", color: colors.textMuted, textDecoration: "none" }}
+                  style={{ display: "inline-block", padding: "4px 0", fontSize: "14px", color: colors.textMuted, textDecoration: "none" }}
                 >
                   Privacy Policy
                 </Link>
@@ -123,7 +123,7 @@ export default function Footer() {
                 <Link
                   href="/terms"
                   className="footer-link"
-                  style={{ fontSize: "14px", color: colors.textMuted, textDecoration: "none" }}
+                  style={{ display: "inline-block", padding: "4px 0", fontSize: "14px", color: colors.textMuted, textDecoration: "none" }}
                 >
                   Terms of Use
                 </Link>

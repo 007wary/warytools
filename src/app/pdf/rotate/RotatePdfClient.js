@@ -166,6 +166,7 @@ export default function RotatePdfClient() {
                 style={{
                   display: "flex",
                   alignItems: "center",
+                  flexWrap: "wrap",
                   gap: "12px",
                   border: `1px solid ${colors.border}`,
                   borderRadius: "8px",
@@ -231,8 +232,8 @@ const iconButtonStyle = {
   background: "none",
   border: `1px solid ${colors.border}`,
   borderRadius: "7px",
-  width: "32px",
-  height: "32px",
+  width: "38px",
+  height: "38px",
   flexShrink: 0,
   display: "flex",
   alignItems: "center",

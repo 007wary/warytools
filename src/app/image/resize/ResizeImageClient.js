@@ -198,7 +198,7 @@ export default function ResizeImageClient() {
                   px
                 </label>
               </div>
-              <label style={{ fontSize: "13px", color: colors.textMuted, display: "flex", alignItems: "center", gap: "6px" }}>
+              <label style={{ fontSize: "13px", color: colors.textMuted, display: "flex", alignItems: "center", gap: "6px", padding: "6px 0" }}>
                 <input
                   type="checkbox"
                   checked={lockAspect}
@@ -264,7 +264,7 @@ function ModeButton({ active, onClick, children }) {
         backgroundColor: active ? colors.primarySoft : colors.surface,
         color: active ? colors.primary : colors.textSecondary,
         borderRadius: "8px",
-        padding: "8px 14px",
+        padding: "10px 16px",
         fontSize: "14px",
         fontWeight: 500,
         cursor: "pointer",
@@ -279,7 +279,7 @@ const smallButtonStyle = {
   background: "none",
   border: `1px solid ${colors.border}`,
   borderRadius: "6px",
-  padding: "4px 10px",
+  padding: "8px 14px",
   fontSize: "13px",
   color: colors.textSecondary,
   cursor: "pointer",
@@ -287,8 +287,8 @@ const smallButtonStyle = {
 
 const numberInputStyle = {
   width: "90px",
-  padding: "6px 8px",
-  fontSize: "14px",
+  padding: "8px 10px",
+  fontSize: "16px",
   border: `1px solid ${colors.borderInput}`,
   borderRadius: "6px",
   marginLeft: "4px",
