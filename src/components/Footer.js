@@ -1,80 +1,136 @@
 import Link from "next/link";
-import { categories } from "@/lib/tools";
 import { categoryColors, colors } from "@/lib/theme";
-import ToolIcon from "./ToolIcon";
+import Logo from "./Logo";
 
-// Site footer listing every tool, grouped by category, for SEO and navigation.
+// Utility footer: brand block plus Company/Legal links. Tool links live in
+// the navbar (rendered in the DOM on every page, so crawlers already see
+// them) — repeating them here would just be duplication.
 export default function Footer() {
   return (
-    <footer style={{ borderTop: `1px solid ${colors.border}`, backgroundColor: colors.surfaceMuted, marginTop: "auto" }}>
+    <footer
+      style={{
+        borderTop: "2px solid transparent",
+        borderImage: `linear-gradient(90deg, ${colors.primary}, ${categoryColors.image.text}) 1`,
+        backgroundColor: colors.surfaceMuted,
+        marginTop: "auto",
+      }}
+    >
       <div
         style={{
           maxWidth: "1200px",
           margin: "0 auto",
-          padding: "48px 20px",
+          padding: "48px 20px 40px",
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          gridTemplateColumns: "1.6fr 1fr 1fr",
           gap: "32px",
         }}
       >
-        {categories.map((category) => {
-          const accent = categoryColors[category.slug];
-          return (
-            <div key={category.slug}>
-              <div
+        <div>
+          <Link
+            href="/"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "9px",
+              fontWeight: 700,
+              fontSize: "19px",
+              color: colors.text,
+              textDecoration: "none",
+              marginBottom: "14px",
+            }}
+          >
+            <Logo size={28} />
+            <span>
+              Wary
+              <span
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  fontWeight: 600,
-                  fontSize: "14px",
-                  color: colors.text,
-                  marginBottom: "14px",
+                  background: `linear-gradient(135deg, ${colors.primary}, ${categoryColors.image.text})`,
+                  WebkitBackgroundClip: "text",
+                  backgroundClip: "text",
+                  color: "transparent",
                 }}
               >
-                <span
-                  style={{
-                    width: "24px",
-                    height: "24px",
-                    borderRadius: "7px",
-                    backgroundColor: accent.bg,
-                    color: accent.text,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <ToolIcon name={category.icon} size={13} />
-                </span>
-                {category.label}
-              </div>
-              <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                {category.tools.map((tool) => (
-                  <li key={tool.slug} style={{ marginBottom: "8px" }}>
-                    <Link
-                      href={tool.href}
-                      className="hover-primary-text"
-                      style={{ fontSize: "13px", color: colors.textMuted, textDecoration: "none" }}
-                    >
-                      {tool.title}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          );
-        })}
+                Tools
+              </span>
+            </span>
+          </Link>
+          <p style={{ fontSize: "13px", lineHeight: 1.65, color: colors.textMuted, margin: 0, maxWidth: "280px" }}>
+            Free, browser-based PDF, image, and calculator tools. Nothing you upload ever leaves your device.
+          </p>
+        </div>
+
+        <div>
+          <div
+            style={{
+              fontSize: "11px",
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: colors.textFaint,
+              marginBottom: "18px",
+            }}
+          >
+            Company
+          </div>
+          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            <li style={{ marginBottom: "14px" }}>
+              <Link
+                href="/about"
+                className="footer-link"
+                style={{ fontSize: "14px", color: colors.textMuted, textDecoration: "none" }}
+              >
+                About
+              </Link>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <div
+            style={{
+              fontSize: "11px",
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: colors.textFaint,
+              marginBottom: "18px",
+            }}
+          >
+            Legal
+          </div>
+          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            <li style={{ marginBottom: "14px" }}>
+              <Link
+                href="/privacy"
+                className="footer-link"
+                style={{ fontSize: "14px", color: colors.textMuted, textDecoration: "none" }}
+              >
+                Privacy Policy
+              </Link>
+            </li>
+            <li style={{ marginBottom: "14px" }}>
+              <Link
+                href="/terms"
+                className="footer-link"
+                style={{ fontSize: "14px", color: colors.textMuted, textDecoration: "none" }}
+              >
+                Terms of Use
+              </Link>
+            </li>
+          </ul>
+        </div>
       </div>
       <div
         style={{
           borderTop: `1px solid ${colors.border}`,
+          maxWidth: "1200px",
+          margin: "0 auto",
           padding: "18px 20px",
-          textAlign: "center",
-          fontSize: "13px",
+          fontSize: "12.5px",
           color: colors.textFaint,
         }}
       >
-        © {new Date().getFullYear()} WaryTools.
+        © {new Date().getFullYear()} WaryTools. All rights reserved.
       </div>
     </footer>
   );

@@ -160,6 +160,11 @@ body {
 .hover-primary-text:hover {
   color: var(--primary);
 }
+.footer-link:hover {
+  color: var(--primary);
+  text-decoration: underline !important;
+  text-underline-offset: 3px;
+}
 
 a {
   color: inherit;
