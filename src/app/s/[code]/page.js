@@ -41,7 +41,7 @@ export default async function ShortUrlRedirectPage({ params }) {
 
   const { data, error } = await supabase
     .from("short_urls")
-    .select("id, long_url, clicks")
+    .select("id, long_url")
     .eq("short_code", code)
     .maybeSingle();
 
@@ -59,10 +59,11 @@ export default async function ShortUrlRedirectPage({ params }) {
 
   // Best-effort click tracking — don't block the redirect if this fails,
   // but still report it so a Supabase write outage isn't invisible.
-  const { error: updateError } = await supabase
-    .from("short_urls")
-    .update({ clicks: data.clicks + 1 })
-    .eq("id", data.id);
+  // Uses an atomic RPC (not select+update) so concurrent redirects on the
+  // same link can't race and lose increments.
+  const { error: updateError } = await supabase.rpc("increment_short_url_clicks", {
+    row_id: data.id,
+  });
 
   if (updateError) {
     Sentry.captureException(updateError, { extra: { code } });

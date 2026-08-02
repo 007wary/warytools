@@ -35,13 +35,27 @@ function getClientIp(req) {
   return req.headers.get("x-real-ip") || "unknown";
 }
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://warytools.com";
+const SITE_ORIGIN = new URL(SITE_URL).origin;
+
 function isValidHttpUrl(value) {
+  let url;
   try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
+    url = new URL(value);
   } catch {
     return false;
   }
+
+  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+
+  // Block shortening our own /s/ links — prevents redirect chains/loops
+  // and stops the shortener being used to obscure other short links.
+  // Mirrors the client-side check in UrlShortenerClient.js.
+  if (url.origin === SITE_ORIGIN && url.pathname.startsWith("/s/")) {
+    return false;
+  }
+
+  return true;
 }
 
 // Must match the character class enforced by the "short_urls" RLS insert
