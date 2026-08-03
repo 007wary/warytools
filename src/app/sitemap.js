@@ -17,13 +17,33 @@ function discoverRoutes(dir, baseDir = dir) {
 
     if (fs.existsSync(path.join(fullPath, "page.js"))) {
       const route = "/" + path.relative(baseDir, fullPath).split(path.sep).join("/");
-      routes.push(route);
+      routes.push({ route, dir: fullPath });
     }
 
     routes.push(...discoverRoutes(fullPath, baseDir));
   }
 
   return routes;
+}
+
+// Newest mtime across the files that make up a route. A tool page's content
+// lives in both page.js (copy/metadata) and its sibling <Name>Client.js (the
+// actual tool), so an edit to either should move the date — timestamping only
+// page.js would under-report changes to the interactive half.
+//
+// Deliberately not derived from git: Vercel builds from a shallow clone, so
+// commit dates aren't reliably available and would silently degrade to a
+// constant. File mtimes are the honest signal inside the build sandbox.
+function lastModifiedFor(dir) {
+  let newest = 0;
+
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (!entry.isFile() || !entry.name.endsWith(".js")) continue;
+    const { mtimeMs } = fs.statSync(path.join(dir, entry.name));
+    if (mtimeMs > newest) newest = mtimeMs;
+  }
+
+  return newest ? new Date(newest) : new Date();
 }
 
 // Rough priority/change-frequency by route depth: homepage highest, hub
@@ -39,10 +59,13 @@ export default function sitemap() {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://wary.tools";
   const appDir = path.join(process.cwd(), "src", "app");
 
-  const routes = ["", ...discoverRoutes(appDir)];
+  // The homepage lives at the app root itself, so it isn't produced by the
+  // directory walk — prepend it explicitly.
+  const routes = [{ route: "", dir: appDir }, ...discoverRoutes(appDir)];
 
-  return routes.map((route) => ({
+  return routes.map(({ route, dir }) => ({
     url: `${baseUrl}${route}`,
+    lastModified: lastModifiedFor(dir),
     changeFrequency: route === "" ? "weekly" : "monthly",
     priority: priorityFor(route),
   }));
