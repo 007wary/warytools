@@ -15,7 +15,9 @@ npm run start    # run the production build
 npm run lint     # ESLint (flat config, eslint-config-next)
 ```
 
-There is no test suite in this repo. `postinstall` runs `scripts/copy-pdf-worker.mjs`, which copies `pdf.worker.min.mjs` from `node_modules/pdfjs-dist` into `public/` — re-run `npm install` (or the script directly) if that file goes missing after bumping `pdfjs-dist`.
+`npm test` runs the vitest suite (`npm run test:watch` for watch mode) — 51 tests across five files in `src/lib/`, covering the pure-logic helpers: `calculatorMath`, `unitConversions`, `dateMath`, `imageFile`, and `urlShortenerValidation`. There are no component or end-to-end tests; UI and file-processing behaviour is only verified by `npm run build` and manual checks.
+
+`postinstall` runs `scripts/copy-pdf-worker.mjs`, which copies `pdf.worker.min.mjs` from `node_modules/pdfjs-dist` into `public/` — re-run `npm install` (or the script directly) if that file goes missing after bumping `pdfjs-dist`.
 
 ## Architecture
 
