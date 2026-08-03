@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { isValidUrl, MAX_URL_LENGTH } from "./urlShortenerValidation";
 
-const SITE_ORIGIN = "https://warytools.com";
+const SITE_ORIGIN = "https://wary.tools";
 
 describe("isValidUrl", () => {
   it("accepts a normal https URL", () => {

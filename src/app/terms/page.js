@@ -54,7 +54,7 @@ export default function TermsPage() {
       <section style={{ maxWidth: "720px", margin: "0 auto", padding: "56px 20px 80px" }}>
         <Section id="acceptance" title="1. Acceptance of terms">
           <p>
-            By using WaryTools (warytools.com), you agree to these terms. If you don&rsquo;t
+            By using WaryTools (wary.tools), you agree to these terms. If you don&rsquo;t
             agree, please don&rsquo;t use the site. We may update these terms occasionally; the
             date above reflects the latest revision.
           </p>

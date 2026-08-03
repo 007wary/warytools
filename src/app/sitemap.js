@@ -36,7 +36,7 @@ function priorityFor(route) {
 }
 
 export default function sitemap() {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://warytools.com";
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://wary.tools";
   const appDir = path.join(process.cwd(), "src", "app");
 
   const routes = ["", ...discoverRoutes(appDir)];

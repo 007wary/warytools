@@ -46,7 +46,7 @@ The only feature with real backend state. [src/lib/supabaseClient.js](src/lib/su
 - `src/app/url-shortener/UrlShortenerClient.js` inserts into the `short_urls` table (`short_code`, `long_url`, `clicks`) and mirrors created links into `localStorage` for session history (not an account system — just avoids losing links on refresh).
 - `src/app/s/[code]/page.js` is a dynamic server route that looks up the code, increments `clicks` best-effort, and redirects — this is the one page that isn't purely static.
 
-Requires `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` (see `.env.local.example`); optional `NEXT_PUBLIC_SITE_URL` for `sitemap.js`/`robots.js` (defaults to `https://warytools.com`).
+Requires `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` (see `.env.local.example`); optional `NEXT_PUBLIC_SITE_URL` for `sitemap.js`/`robots.js` (defaults to `https://wary.tools`).
 
 ### Styling and design tokens
 

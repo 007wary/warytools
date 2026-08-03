@@ -37,7 +37,7 @@ Free online tools for PDF editing, image processing, calculators, and URL shorte
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon/public key |
-| `NEXT_PUBLIC_SITE_URL` | (Optional) canonical site URL used for `sitemap.xml`/`robots.txt`; defaults to `https://warytools.com` |
+| `NEXT_PUBLIC_SITE_URL` | (Optional) canonical site URL used for `sitemap.xml`/`robots.txt`; defaults to `https://wary.tools` |
 
 The URL shortener expects a Supabase table named `short_urls` with `id`, `short_code`, `long_url`, and `clicks` columns. **Row-level security is the only real access control** — the browser talks to Supabase directly with the public anon key, so RLS policies must enforce:
 

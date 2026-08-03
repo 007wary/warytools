@@ -20,7 +20,7 @@ const description =
   "Free online tools for PDF editing, image processing, calculators, and URL shortening. All PDF and image tools run 100% in your browser — no uploads.";
 
 export const metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://warytools.com"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://wary.tools"),
   title: {
     template: "%s — WaryTools",
     default: title,

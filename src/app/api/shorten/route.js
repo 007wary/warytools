@@ -35,7 +35,7 @@ function getClientIp(req) {
   return req.headers.get("x-real-ip") || "unknown";
 }
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://warytools.com";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://wary.tools";
 const SITE_ORIGIN = new URL(SITE_URL).origin;
 
 function isValidHttpUrl(value) {
