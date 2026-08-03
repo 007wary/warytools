@@ -5,6 +5,7 @@ import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
 import { colors } from "@/lib/theme";
+import { events, trackEvent } from "@/lib/analytics";
 
 // Each page is { id, originalIndex, thumbnail } — id is stable across
 // reorders/deletes, originalIndex maps back to the source PDF for export.
@@ -132,8 +133,10 @@ export default function ReorderPdfClient() {
 
       const outBytes = await newPdf.save();
       setResultBlob(new Blob([outBytes], { type: "application/pdf" }));
+      trackEvent(events.TOOL_RUN, { page_count: pages.length });
     } catch (err) {
       console.error(err);
+      trackEvent(events.TOOL_ERROR, { reason: "reorder_failed" });
       setError("Could not save the reordered PDF.");
     } finally {
       setIsWorking(false);

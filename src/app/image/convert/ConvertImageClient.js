@@ -5,6 +5,7 @@ import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
 import { formatBytes, loadImage, canvasToBlob, outputFormats } from "@/lib/imageFile";
 import { colors } from "@/lib/theme";
+import { events, sizeBucket, trackEvent } from "@/lib/analytics";
 
 // Fixed high quality for lossy output — this tool is about changing format,
 // not tuning compression (that's what /image/compress is for).
@@ -63,8 +64,16 @@ export default function ConvertImageClient() {
 
       const blob = await canvasToBlob(canvas, format, OUTPUT_QUALITY);
       setResultBlob(blob);
+      // Source -> target format pairs show which conversions people
+      // actually want (e.g. heic->jpg), which is worth knowing.
+      trackEvent(events.TOOL_RUN, {
+        source_format: file?.type || "unknown",
+        output_format: format,
+        size_bucket: sizeBucket(file?.size),
+      });
     } catch (err) {
       console.error(err);
+      trackEvent(events.TOOL_ERROR, { reason: "image_convert_failed" });
       setError("Could not convert this image.");
     } finally {
       setIsWorking(false);

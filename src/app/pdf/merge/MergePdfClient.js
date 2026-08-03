@@ -5,6 +5,7 @@ import { ArrowUp, ArrowDown, X } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
 import { colors } from "@/lib/theme";
+import { events, trackEvent } from "@/lib/analytics";
 
 // Each item in the list is { id, file } — id lets us reorder/remove
 // reliably even if two files share the same name.
@@ -72,8 +73,13 @@ export default function MergePdfClient() {
 
       const mergedBytes = await mergedPdf.save();
       setMergedBlob(new Blob([mergedBytes], { type: "application/pdf" }));
+      trackEvent(events.TOOL_RUN, {
+        file_count: items.length,
+        page_count: mergedPdf.getPageCount(),
+      });
     } catch (err) {
       setError("Could not merge these PDFs. Make sure each file is a valid, unencrypted PDF.");
+      trackEvent(events.TOOL_ERROR, { reason: "merge_failed" });
       console.error(err);
     } finally {
       setIsMerging(false);

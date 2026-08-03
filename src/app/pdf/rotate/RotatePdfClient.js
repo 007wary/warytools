@@ -5,6 +5,7 @@ import { RotateCcw, RotateCw } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
 import { colors } from "@/lib/theme";
+import { events, trackEvent } from "@/lib/analytics";
 
 // rotations[i] is the extra rotation (0/90/180/270) to apply to page i,
 // on top of whatever rotation the page already has.
@@ -74,8 +75,13 @@ export default function RotatePdfClient() {
 
       const outBytes = await pdf.save();
       setResultBlob(new Blob([outBytes], { type: "application/pdf" }));
+      trackEvent(events.TOOL_RUN, {
+        page_count: pages.length,
+        rotated_pages: rotations.filter((r) => r).length,
+      });
     } catch (err) {
       console.error(err);
+      trackEvent(events.TOOL_ERROR, { reason: "rotate_failed" });
       setError("Could not rotate this PDF.");
     } finally {
       setIsWorking(false);

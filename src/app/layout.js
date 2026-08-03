@@ -3,6 +3,8 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import JsonLd from "@/components/JsonLd";
+import Analytics from "@/components/Analytics";
+import AnalyticsRouteTracker from "@/components/AnalyticsRouteTracker";
 import { jsonLdGraph, organizationJsonLd, websiteJsonLd } from "@/lib/jsonLd";
 
 const geistSans = Geist({
@@ -66,6 +68,8 @@ export default function RootLayout({ children }) {
     >
       <body className="min-h-full flex flex-col">
         <JsonLd data={jsonLdGraph(organizationJsonLd(), websiteJsonLd())} />
+        <Analytics />
+        <AnalyticsRouteTracker />
         <Navbar />
         <main style={{ flex: 1 }}>{children}</main>
         <Footer />

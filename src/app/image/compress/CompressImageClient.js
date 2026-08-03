@@ -6,6 +6,7 @@ import DownloadButton from "@/components/DownloadButton";
 import WarningBanner from "@/components/WarningBanner";
 import { formatBytes, loadImage, canvasToBlob, getCappedDimensions } from "@/lib/imageFile";
 import { colors } from "@/lib/theme";
+import { events, sizeBucket, trackEvent } from "@/lib/analytics";
 
 // PNG has no quality parameter — the slider only affects JPG/WebP output.
 // We default the output format to the same as the input when it supports
@@ -66,8 +67,19 @@ export default function CompressImageClient() {
 
       const blob = await canvasToBlob(canvas, format, quality);
       setResultBlob(blob);
+      trackEvent(events.TOOL_RUN, {
+        output_format: format,
+        // Quality is the main lever on this tool — worth knowing whether
+        // people move the slider off its 0.8 default at all.
+        quality: Math.round(quality * 100),
+        was_downscaled: capped,
+        size_bucket: sizeBucket(file?.size),
+        saved_percent:
+          file?.size > 0 ? Math.max(0, Math.round((1 - blob.size / file.size) * 100)) : 0,
+      });
     } catch (err) {
       console.error(err);
+      trackEvent(events.TOOL_ERROR, { reason: "image_compress_failed" });
       setError("Could not compress this image.");
     } finally {
       setIsWorking(false);

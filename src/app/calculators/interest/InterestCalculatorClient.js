@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { simpleInterest, compoundInterest } from "@/lib/calculatorMath";
 import { colors } from "@/lib/theme";
+import { useTrackedCalculation } from "@/lib/analytics";
 
 const compoundFrequencies = [
   { id: 1, label: "Annually" },
@@ -31,6 +32,14 @@ export default function InterestCalculatorClient() {
   }
 
   const result = getResult();
+
+  // Only the mode and (for compound) the frequency are sent — never the
+  // principal, which is a financial figure and none of analytics' business.
+  useTrackedCalculation({
+    active: canCompute,
+    params: { mode, ...(mode === "compound" ? { frequency } : {}) },
+    deps: [canCompute, mode, frequency, principal, rate, years],
+  });
 
   return (
     <div>

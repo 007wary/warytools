@@ -4,6 +4,7 @@ import { useState } from "react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
 import { colors } from "@/lib/theme";
+import { events, sizeBucket, trackEvent } from "@/lib/analytics";
 
 function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;
@@ -45,8 +46,19 @@ export default function CompressPdfClient() {
       // structure — this mainly helps text/vector-heavy PDFs.
       const outBytes = await pdf.save({ useObjectStreams: true });
       setResultBlob(new Blob([outBytes], { type: "application/pdf" }));
+      trackEvent(events.TOOL_RUN, {
+        page_count: pdf.getPageCount(),
+        size_bucket: sizeBucket(originalSize),
+        // Whether compression actually helped — this tool can't recompress
+        // images, so knowing the real-world hit rate is worth measuring.
+        saved_percent:
+          originalSize > 0
+            ? Math.max(0, Math.round((1 - outBytes.length / originalSize) * 100))
+            : 0,
+      });
     } catch (err) {
       console.error(err);
+      trackEvent(events.TOOL_ERROR, { reason: "compress_failed" });
       setError("Could not compress this PDF. Make sure it's valid and unencrypted.");
     } finally {
       setIsWorking(false);

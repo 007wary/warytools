@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { UploadCloud } from "lucide-react";
 import { colors } from "@/lib/theme";
+import { events, sizeBucket, trackEvent } from "@/lib/analytics";
 
 // Drag-and-drop + click-to-browse file picker used across PDF/Image tools.
 // Calls onFiles(FileList) whenever files are dropped or selected.
@@ -16,8 +17,16 @@ export default function FileDropzone({
   const [isDragging, setIsDragging] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
 
-  function handleFiles(fileList) {
+  // `method` distinguishes drag-and-drop from click-to-browse — a real UX
+  // signal, and free to capture here since this is the only entry point.
+  function handleFiles(fileList, method) {
     if (fileList && fileList.length > 0) {
+      const files = Array.from(fileList);
+      trackEvent(events.FILE_SELECTED, {
+        method,
+        file_count: files.length,
+        size_bucket: sizeBucket(files.reduce((sum, f) => sum + (f.size || 0), 0)),
+      });
       onFiles(fileList);
     }
   }
@@ -44,7 +53,7 @@ export default function FileDropzone({
       onDrop={(e) => {
         e.preventDefault();
         setIsDragging(false);
-        handleFiles(e.dataTransfer.files);
+        handleFiles(e.dataTransfer.files, "drag_drop");
       }}
       style={{
         border: `2px dashed ${isDragging ? colors.primary : colors.borderInput}`,
@@ -64,7 +73,7 @@ export default function FileDropzone({
         accept={accept}
         multiple={multiple}
         onChange={(e) => {
-          handleFiles(e.target.files);
+          handleFiles(e.target.files, "browse");
           e.target.value = "";
         }}
         style={{ display: "none" }}

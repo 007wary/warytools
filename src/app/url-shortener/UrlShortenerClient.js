@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { isValidUrl } from "@/lib/urlShortenerValidation";
 import { colors } from "@/lib/theme";
+import { events, trackEvent } from "@/lib/analytics";
 
 const STORAGE_KEY = "warytools_short_links";
 const MAX_SAVED_LINKS = 5;
@@ -36,6 +37,7 @@ export default function UrlShortenerClient() {
 
     if (!isValidUrl(longUrl, window.location.origin)) {
       setError("Please enter a valid URL, including http:// or https://.");
+      trackEvent(events.TOOL_ERROR, { reason: "invalid_url" });
       return;
     }
 
@@ -51,6 +53,7 @@ export default function UrlShortenerClient() {
 
       if (!res.ok) {
         setError(body.error || "Could not shorten this URL. Please try again.");
+        trackEvent(events.TOOL_ERROR, { reason: "api_error", status: res.status });
         return;
       }
 
@@ -59,8 +62,12 @@ export default function UrlShortenerClient() {
         ...prev,
       ].slice(0, MAX_SAVED_LINKS));
       setLongUrl("");
+      // The shortened URL itself is deliberately not sent — it's user
+      // content, and the useful signal is just that a link was created.
+      trackEvent(events.TOOL_RUN);
     } catch (err) {
       console.error(err);
+      trackEvent(events.TOOL_ERROR, { reason: "network_error" });
       setError("Could not shorten this URL. Please try again.");
     } finally {
       setIsWorking(false);
@@ -105,8 +112,12 @@ export default function UrlShortenerClient() {
       }
       setCopiedCode(shortCode);
       setTimeout(() => setCopiedCode(null), 2000);
+      // Copying is the real completion signal for this tool — a shortened
+      // link nobody copies never actually got used.
+      trackEvent(events.LINK_COPIED);
     } catch (err) {
       console.error(err);
+      trackEvent(events.TOOL_ERROR, { reason: "copy_failed" });
       setError("Could not copy the link. Please copy it manually.");
     }
   }

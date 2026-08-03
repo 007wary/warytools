@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { unitCategories, convertLinear, convertTemperature } from "@/lib/unitConversions";
 import { colors } from "@/lib/theme";
+import { useTrackedCalculation } from "@/lib/analytics";
 
 export default function UnitConverterClient() {
   const [category, setCategory] = useState("length");
@@ -30,6 +31,14 @@ export default function UnitConverterClient() {
   }
 
   const units = unitCategories[category].units;
+
+  // The from->to pair is the useful signal here: it shows which conversions
+  // are worth featuring (and which deserve their own landing page for SEO).
+  useTrackedCalculation({
+    active: canCompute,
+    params: { category, from_unit: fromUnit, to_unit: toUnit },
+    deps: [canCompute, category, fromUnit, toUnit, value],
+  });
 
   return (
     <div>

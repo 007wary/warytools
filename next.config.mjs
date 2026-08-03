@@ -20,9 +20,10 @@ function sentryCspReportUri() {
 
 // Security headers applied to every response. Since all PDF/image processing
 // happens client-side with no first-party API, the CSP can stay tight —
-// scripts/styles only need 'self' (+ 'unsafe-inline' for Next's inline
+// scripts/styles need 'self' (+ 'unsafe-inline' for Next's inline
 // bootstrap/style tags) and connect-src only needs to reach Supabase and
-// Sentry (error reporting from the browser).
+// Sentry (error reporting from the browser), plus the Google Analytics
+// hosts added below when a measurement ID is configured.
 const reportUri = sentryCspReportUri();
 
 // React's dev-mode overlay uses eval() to reconstruct stack traces across
@@ -30,16 +31,31 @@ const reportUri = sentryCspReportUri();
 // 'unsafe-eval' is added only when running `next dev`.
 const isDev = process.env.NODE_ENV === "development";
 
+// Google Analytics needs three CSP holes, so they're opened only when a
+// measurement ID is configured — with analytics off the policy stays as
+// tight as it was before. gtag.js is served from googletagmanager.com, sends
+// hits to the google-analytics.com/google.com collect endpoints, and falls
+// back to a GIF pixel on those same hosts when sendBeacon/fetch is
+// unavailable (hence the img-src entries).
+const gaEnabled = Boolean(process.env.NEXT_PUBLIC_GA_ID);
+const gaScriptSrc = gaEnabled ? " https://www.googletagmanager.com" : "";
+const gaConnectSrc = gaEnabled
+  ? " https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com"
+  : "";
+const gaImgSrc = gaEnabled
+  ? " https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com"
+  : "";
+
 const securityHeaders = [
   {
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}${gaScriptSrc}`,
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob:",
+      `img-src 'self' data: blob:${gaImgSrc}`,
       "font-src 'self' data:",
-      "connect-src 'self' https://*.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io",
+      `connect-src 'self' https://*.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io${gaConnectSrc}`,
       "worker-src 'self' blob:",
       "frame-ancestors 'none'",
       "base-uri 'self'",

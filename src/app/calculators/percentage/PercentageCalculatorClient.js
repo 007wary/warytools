@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { percentageOf, whatPercent, percentChange } from "@/lib/calculatorMath";
 import { colors } from "@/lib/theme";
+import { useTrackedCalculation } from "@/lib/analytics";
 
 const modes = [
   { id: "of", label: "X% of Y" },
@@ -44,6 +45,14 @@ export default function PercentageCalculatorClient() {
   }
 
   const result = getResult();
+
+  // Which of the three variants people actually use — useful for deciding
+  // which one should be the default.
+  useTrackedCalculation({
+    active: canCompute,
+    params: { mode },
+    deps: [canCompute, mode, x, y],
+  });
 
   return (
     <div>

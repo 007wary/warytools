@@ -4,6 +4,7 @@ import { useState } from "react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
 import { colors } from "@/lib/theme";
+import { events, trackEvent } from "@/lib/analytics";
 
 // mode: "range" extracts pages [from, to] into one PDF.
 // mode: "all" splits every page into its own PDF, bundled as a zip.
@@ -71,8 +72,14 @@ export default function SplitPdfClient() {
       const outBytes = await newPdf.save();
       setResultBlob(new Blob([outBytes], { type: "application/pdf" }));
       setResultFilename(`pages-${from}-${to}.pdf`);
+      trackEvent(events.TOOL_RUN, {
+        mode: "range",
+        page_count: to - from + 1,
+        source_page_count: pageCount,
+      });
     } catch (err) {
       console.error(err);
+      trackEvent(events.TOOL_ERROR, { reason: "split_range_failed" });
       setError("Something went wrong extracting those pages.");
     } finally {
       setIsWorking(false);
@@ -103,8 +110,10 @@ export default function SplitPdfClient() {
       const zipBlob = await zip.generateAsync({ type: "blob" });
       setResultBlob(zipBlob);
       setResultFilename("split-pages.zip");
+      trackEvent(events.TOOL_RUN, { mode: "split_all", page_count: pageCount });
     } catch (err) {
       console.error(err);
+      trackEvent(events.TOOL_ERROR, { reason: "split_all_failed" });
       setError("Something went wrong splitting this PDF.");
     } finally {
       setIsWorking(false);

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { parseDateInput, diffBetween } from "@/lib/dateMath";
 import { colors } from "@/lib/theme";
+import { events, trackEvent } from "@/lib/analytics";
 
 export default function DateDifferenceClient() {
   const [startDate, setStartDate] = useState("");
@@ -16,12 +17,14 @@ export default function DateDifferenceClient() {
 
     if (!startDate || !endDate) {
       setError("Please choose both dates.");
+      trackEvent(events.TOOL_ERROR, { reason: "missing_dates" });
       return;
     }
 
     const start = parseDateInput(startDate);
     const end = parseDateInput(endDate);
     setResult(diffBetween(start, end));
+    trackEvent(events.TOOL_RUN);
   }
 
   return (

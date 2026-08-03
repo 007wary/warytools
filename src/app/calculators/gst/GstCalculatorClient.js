@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { addGst, removeGst } from "@/lib/calculatorMath";
 import { colors } from "@/lib/theme";
+import { useTrackedCalculation } from "@/lib/analytics";
 
 const gstSlabs = [5, 12, 18, 28];
 
@@ -21,6 +22,14 @@ export default function GstCalculatorClient() {
   }
 
   const result = getResult();
+
+  // Debounced so typing an amount sends one event, not one per keystroke.
+  // The amount itself is never sent — only which mode and rate were used.
+  useTrackedCalculation({
+    active: canCompute,
+    params: { mode, rate },
+    deps: [canCompute, mode, rate, amount],
+  });
 
   return (
     <div>

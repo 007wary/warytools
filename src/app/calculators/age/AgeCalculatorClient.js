@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { parseDateInput, diffBetween } from "@/lib/dateMath";
 import { colors } from "@/lib/theme";
+import { events, trackEvent } from "@/lib/analytics";
 
 export default function AgeCalculatorClient() {
   const [birthDate, setBirthDate] = useState("");
@@ -15,6 +16,7 @@ export default function AgeCalculatorClient() {
 
     if (!birthDate) {
       setError("Please choose a date of birth.");
+      trackEvent(events.TOOL_ERROR, { reason: "missing_date" });
       return;
     }
 
@@ -24,10 +26,12 @@ export default function AgeCalculatorClient() {
 
     if (parsed > today) {
       setError("Date of birth can't be in the future.");
+      trackEvent(events.TOOL_ERROR, { reason: "future_date" });
       return;
     }
 
     setResult(diffBetween(parsed, today));
+    trackEvent(events.TOOL_RUN);
   }
 
   return (

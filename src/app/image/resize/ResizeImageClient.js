@@ -5,6 +5,7 @@ import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
 import { formatBytes, loadImage, canvasToBlob } from "@/lib/imageFile";
 import { colors } from "@/lib/theme";
+import { events, sizeBucket, trackEvent } from "@/lib/analytics";
 
 export default function ResizeImageClient() {
   const [file, setFile] = useState(null);
@@ -104,8 +105,16 @@ export default function ResizeImageClient() {
 
       const blob = await canvasToBlob(canvas, outputType, 0.92);
       setResultBlob(blob);
+      // `mode` tells us whether people resize by exact pixels or by
+      // percentage — directly useful for which input to make the default.
+      trackEvent(events.TOOL_RUN, {
+        mode,
+        output_format: outputType,
+        size_bucket: sizeBucket(file?.size),
+      });
     } catch (err) {
       console.error(err);
+      trackEvent(events.TOOL_ERROR, { reason: "image_resize_failed" });
       setError("Could not resize this image.");
     } finally {
       setIsWorking(false);
