@@ -1,11 +1,12 @@
 import { categories, allTools } from "@/lib/tools";
+import { SITE_URL } from "@/lib/siteUrl";
 
 export const dynamic = "force-static";
 
 // Generated from the tool registry (src/lib/tools.js) so it can never drift
 // from the site's actual tools, mirroring sitemap.js/robots.js.
 export async function GET() {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://wary.tools";
+  const baseUrl = SITE_URL;
   const link = (href) => `${baseUrl}${href}`;
 
   const toolSections = categories

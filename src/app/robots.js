@@ -1,12 +1,41 @@
+import { SITE_URL } from "@/lib/siteUrl";
+
+// Whether this build is serving the canonical production site. Vercel sets
+// VERCEL_ENV to "production" | "preview" | "development" automatically; it is
+// unset for local builds and non-Vercel hosts, which are treated as canonical
+// so `next build && next start` anywhere else still produces a normal
+// robots.txt.
+function isNonCanonicalDeploy() {
+  const env = process.env.VERCEL_ENV;
+  return Boolean(env) && env !== "production";
+}
+
 export default function robots() {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://wary.tools";
+  // Preview and staging deploys serve a full copy of the site on a
+  // *.vercel.app host. Emitting the production "Allow: /" there invites
+  // crawlers to index every page on a non-canonical domain — duplicate
+  // content competing with wary.tools — and advertises a sitemap of 23
+  // canonical URLs from a host that isn't canonical. Canonical tags from
+  // metadataBase are only a hint, and Vercel's preview noindex header isn't
+  // contractual, so block crawling outright and omit the sitemap entirely.
+  if (isNonCanonicalDeploy()) {
+    return {
+      rules: {
+        userAgent: "*",
+        disallow: "/",
+      },
+    };
+  }
 
   return {
     rules: {
       userAgent: "*",
       allow: "/",
+      // /s/ is the shortener's redirect route: crawling it would inflate
+      // click counts and index redirect stubs rather than real pages.
+      // /api/ has no crawlable content.
       disallow: ["/s/", "/api/"],
     },
-    sitemap: `${baseUrl}/sitemap.xml`,
+    sitemap: `${SITE_URL}/sitemap.xml`,
   };
 }

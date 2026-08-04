@@ -3,11 +3,9 @@
 // (src/components/JsonLd.js). Keeping these as pure builders (no JSX) means
 // they can run in server components without pulling in a client bundle.
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://wary.tools";
+import { SITE_URL, absoluteUrl } from "./siteUrl";
 
-export function absoluteUrl(href) {
-  return `${SITE_URL}${href}`;
-}
+export { absoluteUrl };
 
 export function organizationJsonLd() {
   return {

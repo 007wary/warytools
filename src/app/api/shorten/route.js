@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
+import { SITE_URL } from "@/lib/siteUrl";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -35,7 +36,6 @@ function getClientIp(req) {
   return req.headers.get("x-real-ip") || "unknown";
 }
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://wary.tools";
 const SITE_ORIGIN = new URL(SITE_URL).origin;
 
 function isValidHttpUrl(value) {

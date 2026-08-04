@@ -6,6 +6,7 @@ import JsonLd from "@/components/JsonLd";
 import Analytics from "@/components/Analytics";
 import AnalyticsRouteTracker from "@/components/AnalyticsRouteTracker";
 import { jsonLdGraph, organizationJsonLd, websiteJsonLd } from "@/lib/jsonLd";
+import { SITE_URL } from "@/lib/siteUrl";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,7 +23,7 @@ const description =
   "Free online tools for PDF editing, image processing, calculators, and URL shortening. All PDF and image tools run 100% in your browser — no uploads.";
 
 export const metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://wary.tools"),
+  metadataBase: new URL(SITE_URL),
   title: {
     template: "%s — WaryTools",
     default: title,
