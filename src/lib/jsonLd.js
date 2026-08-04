@@ -15,7 +15,9 @@ export function organizationJsonLd() {
     "@id": `${SITE_URL}/#organization`,
     name: "WaryTools",
     url: SITE_URL,
-    logo: `${SITE_URL}/icon.svg`,
+    // Raster, not the SVG: Google's logo structured-data field only accepts
+    // formats it can crawl as an image (PNG/JPG/GIF), and ignores SVG.
+    logo: `${SITE_URL}/icon-512.png`,
     description:
       "Free online tools for PDF editing, image processing, calculators, and URL shortening — all running client-side in the browser.",
   };

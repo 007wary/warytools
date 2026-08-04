@@ -1,14 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
   <rect width="64" height="64" rx="14" fill="#2563eb"/>
-  <text
-    x="32"
-    y="34"
-    text-anchor="middle"
-    dominant-baseline="central"
-    font-family="Arial, Helvetica, sans-serif"
-    font-weight="700"
-    font-size="28"
-    fill="#ffffff"
-    letter-spacing="-1"
-  >WT</text>
+  <g fill="#ffffff">
+    <path d="M4 20 h7.4 l2.9 13.2 3.5-13.2 h5.6 l3.5 13.2 2.9-13.2 h7.4 l-6.6 24 h-7 l-3-11.6 -3 11.6 h-7 z"/>
+    <path d="M38 20 h22 v6.4 h-8 v17.6 h-6.4 v-17.6 h-7.6 z"/>
+  </g>
 </svg>
