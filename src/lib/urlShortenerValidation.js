@@ -83,8 +83,25 @@ function isPrivateIpv6(hostname) {
   if (/^f[cd]/.test(inner)) return true;
   if (/^fe[89ab]/.test(inner)) return true;
   // IPv4-mapped (::ffff:127.0.0.1) — check the embedded address.
-  const mapped = inner.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
-  if (mapped) return isPrivateIpv4(mapped[1]);
+  //
+  // Both spellings have to be handled. `new URL()` canonicalizes the
+  // dotted-decimal form into hex ("[::ffff:127.0.0.1]" parses to
+  // "[::ffff:7f00:1]"), so by the time checkUrl() reads url.hostname only the
+  // hex form is ever present — matching the dotted form alone let
+  // "https://[::ffff:169.254.169.254]/x" through to the metadata endpoint.
+  // The dotted branch is kept because this helper is also called directly
+  // with un-parsed hostnames.
+  const mappedDotted = inner.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
+  if (mappedDotted) return isPrivateIpv4(mappedDotted[1]);
+
+  const mappedHex = inner.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+  if (mappedHex) {
+    const high = parseInt(mappedHex[1], 16);
+    const low = parseInt(mappedHex[2], 16);
+    const dotted = [high >> 8, high & 0xff, low >> 8, low & 0xff].join(".");
+    return isPrivateIpv4(dotted);
+  }
+
   return false;
 }
 
@@ -95,7 +112,19 @@ function isPrivateIpv6(hostname) {
 // the URL back to the browser rather than fetching it ourselves.
 export function isPubliclyRoutableHost(hostname) {
   if (!hostname) return false;
-  const lower = hostname.toLowerCase();
+
+  // A trailing dot is the fully-qualified (root-label) form of a name:
+  // "localhost." resolves exactly like "localhost". Stripping it before the
+  // checks below is what stops it slipping past them — the exact-match set
+  // and the suffix list both otherwise miss the dotted spelling, while the
+  // IP-shape tests already rejected "10.0.0.1." by failing to parse.
+  //
+  // Every trailing dot goes, not just one: stripping a single dot leaves
+  // "localhost.." as "localhost.", which still misses the exact-match set.
+  // Only the trailing run is touched, so an interior dot still separates
+  // labels as usual.
+  const lower = hostname.toLowerCase().replace(/\.+$/, "");
+  if (!lower) return false;
 
   if (LOCAL_HOSTNAMES.has(lower)) return false;
   if (PRIVATE_TLDS.some((tld) => lower === tld.slice(1) || lower.endsWith(tld))) return false;
