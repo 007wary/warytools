@@ -5,18 +5,19 @@ import RelatedTools from "@/components/RelatedTools";
 import { categories } from "@/lib/tools";
 import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
+import { pageMetadata } from "@/lib/pageMetadata";
 
-const title = "Unit Converter";
-const description = "Convert length, weight, and temperature units.";
+const title = "Unit Converter — Length, Weight & Temperature";
+const description =
+  "Free online unit converter for length, weight, and temperature — cm to inches, kg to pounds, Celsius to Fahrenheit and more. Instant results.";
+const appName = "Unit Converter";
 const href = "/calculators/unit-converter";
 
-export const metadata = {
+export const metadata = pageMetadata({
   title,
   description,
-  alternates: { canonical: href },
-  openGraph: { title: `${title} — WaryTools`, description },
-  twitter: { title: `${title} — WaryTools`, description },
-};
+  path: href,
+});
 
 const faqs = [
   {
@@ -40,11 +41,11 @@ export default function UnitConverterPage() {
     <section style={{ maxWidth: "700px", margin: "0 auto", padding: "48px 20px 80px" }}>
       <JsonLd
         data={jsonLdGraph(
-          toolSoftwareAppJsonLd({ name: title, description, href, categorySlug: "calculators" }),
+          toolSoftwareAppJsonLd({ name: appName, description, href, categorySlug: "calculators" }),
           breadcrumbJsonLd([
             { name: "Home", href: "/" },
             { name: "Calculators", href: "/calculators" },
-            { name: title, href },
+            { name: appName, href },
           ]),
           faqJsonLd(faqs)
         )}

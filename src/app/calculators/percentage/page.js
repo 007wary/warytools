@@ -5,18 +5,19 @@ import RelatedTools from "@/components/RelatedTools";
 import { categories } from "@/lib/tools";
 import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
+import { pageMetadata } from "@/lib/pageMetadata";
 
-const title = "Percentage Calculator";
-const description = "Percentage of a number, percentage change, and more.";
+const title = "Percentage Calculator — Percent & Change";
+const description =
+  "Free online percentage calculator: work out a percentage of a number, percentage increase or decrease, and what percent one number is of another.";
+const appName = "Percentage Calculator";
 const href = "/calculators/percentage";
 
-export const metadata = {
+export const metadata = pageMetadata({
   title,
   description,
-  alternates: { canonical: href },
-  openGraph: { title: `${title} — WaryTools`, description },
-  twitter: { title: `${title} — WaryTools`, description },
-};
+  path: href,
+});
 
 const faqs = [
   {
@@ -40,11 +41,11 @@ export default function PercentageCalculatorPage() {
     <section style={{ maxWidth: "600px", margin: "0 auto", padding: "48px 20px 80px" }}>
       <JsonLd
         data={jsonLdGraph(
-          toolSoftwareAppJsonLd({ name: title, description, href, categorySlug: "calculators" }),
+          toolSoftwareAppJsonLd({ name: appName, description, href, categorySlug: "calculators" }),
           breadcrumbJsonLd([
             { name: "Home", href: "/" },
             { name: "Calculators", href: "/calculators" },
-            { name: title, href },
+            { name: appName, href },
           ]),
           faqJsonLd(faqs)
         )}

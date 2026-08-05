@@ -5,18 +5,19 @@ import RelatedTools from "@/components/RelatedTools";
 import { categories } from "@/lib/tools";
 import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
+import { pageMetadata } from "@/lib/pageMetadata";
 
-const title = "Resize Image";
-const description = "Resize images by dimensions or percentage, right in your browser.";
+const title = "Resize Image Online Free";
+const description =
+  "Resize JPG, PNG, and WebP images by exact pixel dimensions or percentage — free, no sign-up. Runs in your browser, so nothing is uploaded.";
+const appName = "Resize Image";
 const href = "/image/resize";
 
-export const metadata = {
+export const metadata = pageMetadata({
   title,
   description,
-  alternates: { canonical: href },
-  openGraph: { title: `${title} — WaryTools`, description },
-  twitter: { title: `${title} — WaryTools`, description },
-};
+  path: href,
+});
 
 const faqs = [
   {
@@ -41,17 +42,17 @@ export default function ResizeImagePage() {
     <section style={{ maxWidth: "800px", margin: "0 auto", padding: "48px 20px 80px" }}>
       <JsonLd
         data={jsonLdGraph(
-          toolSoftwareAppJsonLd({ name: title, description, href, categorySlug: "image" }),
+          toolSoftwareAppJsonLd({ name: appName, description, href, categorySlug: "image" }),
           breadcrumbJsonLd([
             { name: "Home", href: "/" },
             { name: "Image Tools", href: "/image" },
-            { name: title, href },
+            { name: appName, href },
           ]),
           faqJsonLd(faqs)
         )}
       />
       <h1 style={{ fontSize: "28px", fontWeight: 700, color: colors.text, marginBottom: "12px" }}>
-        Resize Image
+        Resize Image Online
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
         Resize by exact dimensions or by percentage. Everything happens in your browser — files

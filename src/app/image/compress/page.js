@@ -5,18 +5,19 @@ import RelatedTools from "@/components/RelatedTools";
 import { categories } from "@/lib/tools";
 import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
+import { pageMetadata } from "@/lib/pageMetadata";
 
-const title = "Compress Image";
-const description = "Reduce image file size with a quality slider, right in your browser.";
+const title = "Compress Image Online Free";
+const description =
+  "Compress JPG, PNG, and WebP images online to reduce file size, free and without sign-up. Runs in your browser — your photos are never uploaded.";
+const appName = "Compress Image";
 const href = "/image/compress";
 
-export const metadata = {
+export const metadata = pageMetadata({
   title,
   description,
-  alternates: { canonical: href },
-  openGraph: { title: `${title} — WaryTools`, description },
-  twitter: { title: `${title} — WaryTools`, description },
-};
+  path: href,
+});
 
 const faqs = [
   {
@@ -41,17 +42,17 @@ export default function CompressImagePage() {
     <section style={{ maxWidth: "800px", margin: "0 auto", padding: "48px 20px 80px" }}>
       <JsonLd
         data={jsonLdGraph(
-          toolSoftwareAppJsonLd({ name: title, description, href, categorySlug: "image" }),
+          toolSoftwareAppJsonLd({ name: appName, description, href, categorySlug: "image" }),
           breadcrumbJsonLd([
             { name: "Home", href: "/" },
             { name: "Image Tools", href: "/image" },
-            { name: title, href },
+            { name: appName, href },
           ]),
           faqJsonLd(faqs)
         )}
       />
       <h1 style={{ fontSize: "28px", fontWeight: 700, color: colors.text, marginBottom: "12px" }}>
-        Compress Image
+        Compress Image Online
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
         Reduce your image&apos;s file size with an adjustable quality slider. Everything happens

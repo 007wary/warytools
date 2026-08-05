@@ -3,20 +3,13 @@ import HubHeader from "@/components/HubHeader";
 import JsonLd from "@/components/JsonLd";
 import { categories } from "@/lib/tools";
 import { jsonLdGraph, collectionPageJsonLd, breadcrumbJsonLd } from "@/lib/jsonLd";
+import { pageMetadata } from "@/lib/pageMetadata";
 
-const title = "Free Image Tools";
+const title = "Free Image Tools — Compress, Resize, Convert";
 const description =
-  "Compress, resize, and convert images for free. Everything runs in your browser — your files never leave your device.";
+  "Free online image tools to compress, resize, and convert JPG, PNG, and WebP files. No sign-up — everything runs in your browser, nothing uploaded.";
 
-export const metadata = {
-  title,
-  description,
-  alternates: {
-    canonical: "/image",
-  },
-  openGraph: { title: `${title} — WaryTools`, description },
-  twitter: { title: `${title} — WaryTools`, description },
-};
+export const metadata = pageMetadata({ title, description, path: "/image" });
 
 export default function ImageHubPage() {
   const category = categories.find((c) => c.slug === "image");

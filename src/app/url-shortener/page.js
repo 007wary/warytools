@@ -3,18 +3,19 @@ import JsonLd from "@/components/JsonLd";
 import FaqSection from "@/components/FaqSection";
 import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
+import { pageMetadata } from "@/lib/pageMetadata";
 
-const title = "URL Shortener";
-const description = "Shorten a long URL for free and track clicks, no account required.";
+const title = "Free URL Shortener with Click Tracking";
+const description =
+  "Shorten long URLs into clean short links for free, with no account required. Track how many clicks each link gets, straight from your browser.";
+const appName = "URL Shortener";
 const href = "/url-shortener";
 
-export const metadata = {
+export const metadata = pageMetadata({
   title,
   description,
-  alternates: { canonical: href },
-  openGraph: { title: `${title} — WaryTools`, description },
-  twitter: { title: `${title} — WaryTools`, description },
-};
+  path: href,
+});
 
 const faqs = [
   {
@@ -37,16 +38,16 @@ export default function UrlShortenerPage() {
     <section style={{ maxWidth: "700px", margin: "0 auto", padding: "48px 20px 80px" }}>
       <JsonLd
         data={jsonLdGraph(
-          toolSoftwareAppJsonLd({ name: title, description, href, categorySlug: "url-shortener" }),
+          toolSoftwareAppJsonLd({ name: appName, description, href, categorySlug: "url-shortener" }),
           breadcrumbJsonLd([
             { name: "Home", href: "/" },
-            { name: title, href },
+            { name: appName, href },
           ]),
           faqJsonLd(faqs)
         )}
       />
       <h1 style={{ fontSize: "28px", fontWeight: 700, color: colors.text, marginBottom: "12px" }}>
-        URL Shortener
+        Free URL Shortener
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
         Paste a long URL to get a short link. Click counts shown below are for links created in

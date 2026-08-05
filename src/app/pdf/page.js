@@ -3,20 +3,13 @@ import HubHeader from "@/components/HubHeader";
 import JsonLd from "@/components/JsonLd";
 import { categories } from "@/lib/tools";
 import { jsonLdGraph, collectionPageJsonLd, breadcrumbJsonLd } from "@/lib/jsonLd";
+import { pageMetadata } from "@/lib/pageMetadata";
 
-const title = "Free PDF Tools";
+const title = "Free PDF Tools — Merge, Split, Compress";
 const description =
-  "Merge, split, compress, rotate, and reorder PDF files for free. Everything runs in your browser — your files never leave your device.";
+  "Free online PDF tools to merge, split, compress, rotate, and reorder PDF files. No sign-up, no watermarks — everything runs in your browser.";
 
-export const metadata = {
-  title,
-  description,
-  alternates: {
-    canonical: "/pdf",
-  },
-  openGraph: { title: `${title} — WaryTools`, description },
-  twitter: { title: `${title} — WaryTools`, description },
-};
+export const metadata = pageMetadata({ title, description, path: "/pdf" });
 
 export default function PdfHubPage() {
   const category = categories.find((c) => c.slug === "pdf");

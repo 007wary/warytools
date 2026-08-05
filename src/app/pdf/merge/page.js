@@ -5,18 +5,23 @@ import RelatedTools from "@/components/RelatedTools";
 import { categories } from "@/lib/tools";
 import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
+import { pageMetadata } from "@/lib/pageMetadata";
 
-const title = "Merge PDF";
-const description = "Combine multiple PDFs into one file, right in your browser. No uploads, 100% private.";
+// Title carries the modifiers people actually search with ("free", "online")
+// alongside the head term, and the layout template appends " — WaryTools".
+// Descriptions aim for ~120-155 chars so the SERP snippet isn't padded by
+// Google from body copy, and lead with the action rather than the brand.
+const title = "Merge PDF Files Online Free";
+const description =
+  "Combine multiple PDF files into one document online, free and without sign-up. Merging runs in your browser — your files are never uploaded.";
+const appName = "Merge PDF";
 const href = "/pdf/merge";
 
-export const metadata = {
+export const metadata = pageMetadata({
   title,
   description,
-  alternates: { canonical: href },
-  openGraph: { title: `${title} — WaryTools`, description },
-  twitter: { title: `${title} — WaryTools`, description },
-};
+  path: href,
+});
 
 const faqs = [
   {
@@ -42,21 +47,25 @@ export default function MergePdfPage() {
     <section style={{ maxWidth: "800px", margin: "0 auto", padding: "48px 20px 80px" }}>
       <JsonLd
         data={jsonLdGraph(
-          toolSoftwareAppJsonLd({ name: title, description, href, categorySlug: "pdf" }),
+          // `name` stays the plain product name ("Merge PDF"), not the
+          // keyword-bearing <title> — SoftwareApplication.name and the
+          // breadcrumb leaf should read as labels, not search snippets.
+          toolSoftwareAppJsonLd({ name: appName, description, href, categorySlug: "pdf" }),
           breadcrumbJsonLd([
             { name: "Home", href: "/" },
             { name: "PDF Tools", href: "/pdf" },
-            { name: title, href },
+            { name: appName, href },
           ]),
           faqJsonLd(faqs)
         )}
       />
       <h1 style={{ fontSize: "28px", fontWeight: 700, color: colors.text, marginBottom: "12px" }}>
-        Merge PDF
+        Merge PDF Files Online
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Combine multiple PDFs into one file. Reorder them however you like before merging.
-        Everything happens in your browser — files are never uploaded anywhere.
+        Combine multiple PDF files into a single document — free, with no sign-up and no
+        watermark. Reorder them however you like before merging. Everything happens in your
+        browser, so files are never uploaded anywhere.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
         Drop in as many PDFs as you need, drag them into the order you want, and download a

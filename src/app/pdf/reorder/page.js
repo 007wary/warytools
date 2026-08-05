@@ -5,18 +5,21 @@ import RelatedTools from "@/components/RelatedTools";
 import { categories } from "@/lib/tools";
 import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
+import { pageMetadata } from "@/lib/pageMetadata";
 
-const title = "Reorder PDF Pages";
-const description = "Drag and drop to reorder or delete PDF pages, right in your browser.";
+// "Rearrange" and "delete pages" are the phrasings people actually search for
+// more often than "reorder", so both appear in the description and body copy.
+const title = "Reorder & Delete PDF Pages Online Free";
+const description =
+  "Rearrange, reorder, or delete pages in a PDF by drag and drop — free, no sign-up. Runs in your browser, so your file is never uploaded.";
+const appName = "Reorder PDF Pages";
 const href = "/pdf/reorder";
 
-export const metadata = {
+export const metadata = pageMetadata({
   title,
   description,
-  alternates: { canonical: href },
-  openGraph: { title: `${title} — WaryTools`, description },
-  twitter: { title: `${title} — WaryTools`, description },
-};
+  path: href,
+});
 
 const faqs = [
   {
@@ -41,17 +44,17 @@ export default function ReorderPdfPage() {
     <section style={{ maxWidth: "900px", margin: "0 auto", padding: "48px 20px 80px" }}>
       <JsonLd
         data={jsonLdGraph(
-          toolSoftwareAppJsonLd({ name: title, description, href, categorySlug: "pdf" }),
+          toolSoftwareAppJsonLd({ name: appName, description, href, categorySlug: "pdf" }),
           breadcrumbJsonLd([
             { name: "Home", href: "/" },
             { name: "PDF Tools", href: "/pdf" },
-            { name: title, href },
+            { name: appName, href },
           ]),
           faqJsonLd(faqs)
         )}
       />
       <h1 style={{ fontSize: "28px", fontWeight: 700, color: colors.text, marginBottom: "12px" }}>
-        Reorder PDF Pages
+        Reorder &amp; Delete PDF Pages Online
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
         Drag and drop to reorder pages, or delete the ones you don&apos;t need. Everything

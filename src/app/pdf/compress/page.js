@@ -5,18 +5,19 @@ import RelatedTools from "@/components/RelatedTools";
 import { categories } from "@/lib/tools";
 import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
+import { pageMetadata } from "@/lib/pageMetadata";
 
-const title = "Compress PDF";
-const description = "Reduce PDF file size, right in your browser.";
+const title = "Compress PDF Online Free";
+const description =
+  "Reduce PDF file size online, free and without sign-up or watermarks. Compression runs in your browser — your file is never uploaded to a server.";
+const appName = "Compress PDF";
 const href = "/pdf/compress";
 
-export const metadata = {
+export const metadata = pageMetadata({
   title,
   description,
-  alternates: { canonical: href },
-  openGraph: { title: `${title} — WaryTools`, description },
-  twitter: { title: `${title} — WaryTools`, description },
-};
+  path: href,
+});
 
 const faqs = [
   {
@@ -42,17 +43,17 @@ export default function CompressPdfPage() {
     <section style={{ maxWidth: "800px", margin: "0 auto", padding: "48px 20px 80px" }}>
       <JsonLd
         data={jsonLdGraph(
-          toolSoftwareAppJsonLd({ name: title, description, href, categorySlug: "pdf" }),
+          toolSoftwareAppJsonLd({ name: appName, description, href, categorySlug: "pdf" }),
           breadcrumbJsonLd([
             { name: "Home", href: "/" },
             { name: "PDF Tools", href: "/pdf" },
-            { name: title, href },
+            { name: appName, href },
           ]),
           faqJsonLd(faqs)
         )}
       />
       <h1 style={{ fontSize: "28px", fontWeight: 700, color: colors.text, marginBottom: "12px" }}>
-        Compress PDF
+        Compress PDF Online
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
         Shrink your PDF&apos;s file size. Everything happens in your browser — files are never

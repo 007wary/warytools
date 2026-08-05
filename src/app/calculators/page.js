@@ -3,20 +3,13 @@ import HubHeader from "@/components/HubHeader";
 import JsonLd from "@/components/JsonLd";
 import { categories } from "@/lib/tools";
 import { jsonLdGraph, collectionPageJsonLd, breadcrumbJsonLd } from "@/lib/jsonLd";
+import { pageMetadata } from "@/lib/pageMetadata";
 
-const title = "Free Online Calculators";
+const title = "Free Online Calculators — Age, Percentage, GST";
 const description =
-  "Age, percentage, GST, interest, unit conversion, and date difference calculators. Fast, free, and instant results.";
+  "Free online calculators for age, percentage, GST, simple and compound interest, unit conversion, and date differences. Instant results, no sign-up.";
 
-export const metadata = {
-  title,
-  description,
-  alternates: {
-    canonical: "/calculators",
-  },
-  openGraph: { title: `${title} — WaryTools`, description },
-  twitter: { title: `${title} — WaryTools`, description },
-};
+export const metadata = pageMetadata({ title, description, path: "/calculators" });
 
 export default function CalculatorsHubPage() {
   const category = categories.find((c) => c.slug === "calculators");

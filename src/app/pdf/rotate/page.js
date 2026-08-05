@@ -5,18 +5,19 @@ import RelatedTools from "@/components/RelatedTools";
 import { categories } from "@/lib/tools";
 import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
+import { pageMetadata } from "@/lib/pageMetadata";
 
-const title = "Rotate PDF";
-const description = "Rotate specific pages or the entire PDF document, right in your browser.";
+const title = "Rotate PDF Pages Online Free";
+const description =
+  "Rotate individual pages or an entire PDF online, free and without sign-up. Runs in your browser, so your document is never uploaded anywhere.";
+const appName = "Rotate PDF";
 const href = "/pdf/rotate";
 
-export const metadata = {
+export const metadata = pageMetadata({
   title,
   description,
-  alternates: { canonical: href },
-  openGraph: { title: `${title} — WaryTools`, description },
-  twitter: { title: `${title} — WaryTools`, description },
-};
+  path: href,
+});
 
 const faqs = [
   {
@@ -40,17 +41,17 @@ export default function RotatePdfPage() {
     <section style={{ maxWidth: "800px", margin: "0 auto", padding: "48px 20px 80px" }}>
       <JsonLd
         data={jsonLdGraph(
-          toolSoftwareAppJsonLd({ name: title, description, href, categorySlug: "pdf" }),
+          toolSoftwareAppJsonLd({ name: appName, description, href, categorySlug: "pdf" }),
           breadcrumbJsonLd([
             { name: "Home", href: "/" },
             { name: "PDF Tools", href: "/pdf" },
-            { name: title, href },
+            { name: appName, href },
           ]),
           faqJsonLd(faqs)
         )}
       />
       <h1 style={{ fontSize: "28px", fontWeight: 700, color: colors.text, marginBottom: "12px" }}>
-        Rotate PDF
+        Rotate PDF Pages Online
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
         Rotate individual pages or the whole document in 90° steps. Everything happens in your

@@ -5,18 +5,19 @@ import RelatedTools from "@/components/RelatedTools";
 import { categories } from "@/lib/tools";
 import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
+import { pageMetadata } from "@/lib/pageMetadata";
 
-const title = "Age Calculator";
-const description = "Calculate exact age from a date of birth.";
+const title = "Age Calculator — Age from Date of Birth";
+const description =
+  "Free online age calculator: find your exact age in years, months, and days from a date of birth. Handles leap years and any target date. No sign-up.";
+const appName = "Age Calculator";
 const href = "/calculators/age";
 
-export const metadata = {
+export const metadata = pageMetadata({
   title,
   description,
-  alternates: { canonical: href },
-  openGraph: { title: `${title} — WaryTools`, description },
-  twitter: { title: `${title} — WaryTools`, description },
-};
+  path: href,
+});
 
 const faqs = [
   {
@@ -41,11 +42,11 @@ export default function AgeCalculatorPage() {
     <section style={{ maxWidth: "600px", margin: "0 auto", padding: "48px 20px 80px" }}>
       <JsonLd
         data={jsonLdGraph(
-          toolSoftwareAppJsonLd({ name: title, description, href, categorySlug: "calculators" }),
+          toolSoftwareAppJsonLd({ name: appName, description, href, categorySlug: "calculators" }),
           breadcrumbJsonLd([
             { name: "Home", href: "/" },
             { name: "Calculators", href: "/calculators" },
-            { name: title, href },
+            { name: appName, href },
           ]),
           faqJsonLd(faqs)
         )}

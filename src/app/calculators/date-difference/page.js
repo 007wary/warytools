@@ -5,18 +5,19 @@ import RelatedTools from "@/components/RelatedTools";
 import { categories } from "@/lib/tools";
 import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
+import { pageMetadata } from "@/lib/pageMetadata";
 
-const title = "Date Difference Calculator";
-const description = "Days, months, and years between two dates.";
+const title = "Date Difference Calculator — Days Between";
+const description =
+  "Free online date calculator: find how many days, months, and years are between two dates. Accounts for leap years. No sign-up required.";
+const appName = "Date Difference Calculator";
 const href = "/calculators/date-difference";
 
-export const metadata = {
+export const metadata = pageMetadata({
   title,
   description,
-  alternates: { canonical: href },
-  openGraph: { title: `${title} — WaryTools`, description },
-  twitter: { title: `${title} — WaryTools`, description },
-};
+  path: href,
+});
 
 const faqs = [
   {
@@ -40,11 +41,11 @@ export default function DateDifferencePage() {
     <section style={{ maxWidth: "600px", margin: "0 auto", padding: "48px 20px 80px" }}>
       <JsonLd
         data={jsonLdGraph(
-          toolSoftwareAppJsonLd({ name: title, description, href, categorySlug: "calculators" }),
+          toolSoftwareAppJsonLd({ name: appName, description, href, categorySlug: "calculators" }),
           breadcrumbJsonLd([
             { name: "Home", href: "/" },
             { name: "Calculators", href: "/calculators" },
-            { name: title, href },
+            { name: appName, href },
           ]),
           faqJsonLd(faqs)
         )}

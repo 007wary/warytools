@@ -5,18 +5,19 @@ import RelatedTools from "@/components/RelatedTools";
 import { categories } from "@/lib/tools";
 import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
+import { pageMetadata } from "@/lib/pageMetadata";
 
-const title = "GST Calculator";
-const description = "Add or remove GST using common Indian GST slabs.";
+const title = "GST Calculator — Add or Remove GST Online";
+const description =
+  "Free GST calculator for Indian tax slabs (5%, 12%, 18%, 28%). Add GST to a base price or extract GST from an inclusive amount instantly.";
+const appName = "GST Calculator";
 const href = "/calculators/gst";
 
-export const metadata = {
+export const metadata = pageMetadata({
   title,
   description,
-  alternates: { canonical: href },
-  openGraph: { title: `${title} — WaryTools`, description },
-  twitter: { title: `${title} — WaryTools`, description },
-};
+  path: href,
+});
 
 const faqs = [
   {
@@ -40,11 +41,11 @@ export default function GstCalculatorPage() {
     <section style={{ maxWidth: "600px", margin: "0 auto", padding: "48px 20px 80px" }}>
       <JsonLd
         data={jsonLdGraph(
-          toolSoftwareAppJsonLd({ name: title, description, href, categorySlug: "calculators" }),
+          toolSoftwareAppJsonLd({ name: appName, description, href, categorySlug: "calculators" }),
           breadcrumbJsonLd([
             { name: "Home", href: "/" },
             { name: "Calculators", href: "/calculators" },
-            { name: title, href },
+            { name: appName, href },
           ]),
           faqJsonLd(faqs)
         )}

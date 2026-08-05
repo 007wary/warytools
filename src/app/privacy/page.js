@@ -1,16 +1,19 @@
 import { colors } from "@/lib/theme";
+import JsonLd from "@/components/JsonLd";
+import { jsonLdGraph, breadcrumbJsonLd } from "@/lib/jsonLd";
+import { pageMetadata } from "@/lib/pageMetadata";
 
 const privacyTitle = "Privacy Policy";
+// Trimmed to ~155 chars: the previous 220-char version was cut off mid-clause
+// in search results, hiding the part that actually matters to readers.
 const privacyDescription =
-  "How WaryTools handles your data: PDF and image files are processed entirely in your browser and never uploaded. Learn what the URL shortener, analytics, advertising, and error tracking store, and how the site is secured.";
+  "How WaryTools handles your data: PDF and image files are processed entirely in your browser and never uploaded. What we do and don't store, explained.";
 
-export const metadata = {
+export const metadata = pageMetadata({
   title: privacyTitle,
   description: privacyDescription,
-  alternates: { canonical: "/privacy" },
-  openGraph: { title: `${privacyTitle} — WaryTools`, description: privacyDescription },
-  twitter: { title: `${privacyTitle} — WaryTools`, description: privacyDescription },
-};
+  path: "/privacy",
+});
 
 const LAST_UPDATED = "August 2, 2026";
 
@@ -30,6 +33,14 @@ function Section({ id, title, children }) {
 export default function PrivacyPage() {
   return (
     <div>
+      <JsonLd
+        data={jsonLdGraph(
+          breadcrumbJsonLd([
+            { name: "Home", href: "/" },
+            { name: "Privacy Policy", href: "/privacy" },
+          ])
+        )}
+      />
       {/* Hero */}
       <section
         style={{
