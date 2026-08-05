@@ -29,6 +29,11 @@ const faqs = [
       "Yes. Every tool on WaryTools is free to use with no sign-up, no account, no watermarks, and no usage limits.",
   },
   {
+    question: "What free online PDF and image tools are available?",
+    answer:
+      "You can merge, split, compress, rotate, and reorder PDF files, and compress, resize, or convert images between PNG, JPG, and WebP. There are also calculators for age, percentage, GST, interest, unit conversion, and date differences, plus a free URL shortener.",
+  },
+  {
     question: "Are my files uploaded to a server?",
     answer:
       "No. All PDF and image tools run entirely in your browser using JavaScript. Your files never leave your device and are never sent to or stored on any server.",
@@ -144,7 +149,7 @@ export default function HomePage() {
               marginBottom: "14px",
             }}
           >
-            Free browser-based tools that respect your privacy
+            Free online tools that run in your browser, not on a server
           </h2>
           <p
             style={{

@@ -5,6 +5,14 @@
 // `icon` names map to lucide-react components via ToolIcon (see
 // src/components/ToolIcon.js) — kept as strings so this file stays
 // plain data, importable from server components without pulling in JSX.
+//
+// `description` is user-facing copy AND indexable text: it renders in every
+// ToolCard (homepage grid + hub pages) and feeds the CollectionPage ItemList
+// JSON-LD, so it is the bulk of the homepage's crawlable prose. Keep them
+// ~70-95 chars — long enough to carry the intent keywords people search with
+// ("free", "online", the file formats), short enough to stay scannable at the
+// 13.5px card size. Per-page <title>/description live in each page.js and are
+// tuned separately for SERP truncation limits.
 
 export const categories = [
   {
@@ -16,35 +24,35 @@ export const categories = [
       {
         slug: "merge",
         title: "Merge PDF",
-        description: "Combine multiple PDFs into one file.",
+        description: "Combine multiple PDF files into one document online, free and private.",
         href: "/pdf/merge",
         icon: "Combine",
       },
       {
         slug: "split",
         title: "Split PDF",
-        description: "Split a PDF into separate files or extract a page range.",
+        description: "Split a PDF into separate files or extract a page range — free, no upload.",
         href: "/pdf/split",
         icon: "Scissors",
       },
       {
         slug: "compress",
         title: "Compress PDF",
-        description: "Reduce the file size of a PDF.",
+        description: "Reduce PDF file size online for free, without watermarks or sign-up.",
         href: "/pdf/compress",
         icon: "Minimize2",
       },
       {
         slug: "rotate",
         title: "Rotate PDF",
-        description: "Rotate specific pages or the entire document.",
+        description: "Rotate individual pages or an entire PDF online, free and in your browser.",
         href: "/pdf/rotate",
         icon: "RotateCw",
       },
       {
         slug: "reorder",
         title: "Reorder PDF Pages",
-        description: "Drag and drop to reorder or delete pages.",
+        description: "Rearrange or delete PDF pages by drag and drop — free, nothing uploaded.",
         href: "/pdf/reorder",
         icon: "ListOrdered",
       },
@@ -59,21 +67,21 @@ export const categories = [
       {
         slug: "compress",
         title: "Compress Image",
-        description: "Reduce image file size with a quality slider.",
+        description: "Compress JPG, PNG, and WebP images free with a live quality slider.",
         href: "/image/compress",
         icon: "Minimize2",
       },
       {
         slug: "resize",
         title: "Resize Image",
-        description: "Resize by exact dimensions or percentage.",
+        description: "Resize images online by exact pixel dimensions or percentage, for free.",
         href: "/image/resize",
         icon: "Expand",
       },
       {
         slug: "convert",
         title: "Convert Image",
-        description: "Convert between PNG, JPG, and WebP.",
+        description: "Convert images free — PNG to JPG, JPG to WebP, WebP to PNG, and more.",
         href: "/image/convert",
         icon: "RefreshCw",
       },
@@ -88,42 +96,42 @@ export const categories = [
       {
         slug: "age",
         title: "Age Calculator",
-        description: "Calculate exact age from a date of birth.",
+        description: "Calculate exact age from a date of birth in years, months, and days.",
         href: "/calculators/age",
         icon: "Cake",
       },
       {
         slug: "percentage",
         title: "Percentage Calculator",
-        description: "Percentage of a number, percentage change, and more.",
+        description: "Free percentage calculator: percent of a number, increase, and decrease.",
         href: "/calculators/percentage",
         icon: "Percent",
       },
       {
         slug: "gst",
         title: "GST Calculator",
-        description: "Add or remove GST using common Indian GST slabs.",
+        description: "Add or remove GST free using Indian slabs — 5%, 12%, 18%, and 28%.",
         href: "/calculators/gst",
         icon: "Receipt",
       },
       {
         slug: "interest",
         title: "Interest Calculator",
-        description: "Simple interest or compound interest.",
+        description: "Free simple and compound interest calculator with interest and totals.",
         href: "/calculators/interest",
         icon: "TrendingUp",
       },
       {
         slug: "unit-converter",
         title: "Unit Converter",
-        description: "Convert length, weight, and temperature units.",
+        description: "Convert length, weight, and temperature — cm to inches, kg to lb, °C to °F.",
         href: "/calculators/unit-converter",
         icon: "Ruler",
       },
       {
         slug: "date-difference",
         title: "Date Difference Calculator",
-        description: "Days, months, and years between two dates.",
+        description: "Count the days, months, and years between two dates, leap years included.",
         href: "/calculators/date-difference",
         icon: "CalendarDays",
       },
@@ -138,7 +146,7 @@ export const categories = [
       {
         slug: "url-shortener",
         title: "URL Shortener",
-        description: "Shorten a long URL and track clicks.",
+        description: "Shorten long URLs into free short links and track clicks — no account.",
         href: "/url-shortener",
         icon: "Link2",
       },
