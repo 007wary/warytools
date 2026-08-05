@@ -40,6 +40,13 @@ COPY server.mjs ./
 # LibreOffice needs a writable HOME for its user profile. Without this it tries
 # to write to / and every conversion fails with an opaque error.
 ENV HOME=/home/converter
+
+# Without JAVA_HOME, LibreOffice logs "failed to launch javaldx - java may not
+# function correctly" on every run and falls back to a degraded path for the
+# filters that rely on the JVM. The JRE is installed above; this just points
+# LibreOffice at it. Uses the stable `default-java` symlink rather than a
+# versioned path so a base-image JDK bump doesn't silently break it.
+ENV JAVA_HOME=/usr/lib/jvm/default-java
 RUN mkdir -p /home/converter && chown -R converter:converter /home/converter /app
 
 USER converter

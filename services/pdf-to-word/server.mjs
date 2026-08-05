@@ -152,10 +152,16 @@ function runSoffice(inputPath, outDir) {
         // profile across concurrent conversions is what causes LibreOffice to
         // silently refuse the second one ("another instance is running").
         `-env:UserInstallation=file://${path.join(outDir, "profile")}`,
+        // The PDF import filter must be its own --infilter flag. Appending it
+        // as a third colon-separated field on --convert-to (a shape that shows
+        // up in a lot of copy-pasted advice) makes LibreOffice fail every
+        // conversion with "source file could not be loaded" — it reads the
+        // whole string as an output filter name and never engages the PDF
+        // importer at all. Verified against LibreOffice 7.4 on the deployed
+        // image; without this the tool returns convert_failed for every file.
+        "--infilter=writer_pdf_import",
         "--convert-to",
-        // The writer_pdf_import filter is what makes PDF input work at all;
-        // a bare "docx" target opens the PDF as an unparsed blob.
-        "docx:MS Word 2007 XML:writer_pdf_import",
+        "docx:MS Word 2007 XML",
         "--outdir",
         outDir,
         inputPath,
