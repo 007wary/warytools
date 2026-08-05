@@ -50,8 +50,9 @@ export default function UrlShortenerPage() {
         Free URL Shortener
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Paste a long URL to get a short link. Click counts shown below are for links created in
-        this browser session.
+        Paste a long URL to get a short link. This free online URL shortener needs no account —
+        create links instantly and track how many clicks each one gets. Click counts shown below
+        are for links created in this browser session.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
         Turn a long, unwieldy link into a short one that&apos;s easier to share, paste, or print —

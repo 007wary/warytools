@@ -86,7 +86,9 @@ export default function AboutPage() {
             lineHeight: 1.15,
           }}
         >
-          Tools that respect
+          {/* Trailing space before the <br>: without it the accessible name
+              and the text crawlers extract read "respectyour time". */}
+          Tools that respect{" "}
           <br />
           <span
             style={{

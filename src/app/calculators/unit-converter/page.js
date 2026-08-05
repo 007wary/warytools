@@ -54,7 +54,8 @@ export default function UnitConverterPage() {
         Unit Converter
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Convert between length, weight, and temperature units.
+        Convert between length, weight, and temperature units — cm to inches, kg to pounds,
+        Celsius to Fahrenheit. A free online unit converter that runs instantly in your browser.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
         Pick a category, choose your source and target units, and get the converted value

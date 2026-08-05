@@ -54,7 +54,8 @@ export default function PercentageCalculatorPage() {
         Percentage Calculator
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Percentage of a number, what percent one number is of another, or percentage change.
+        Percentage of a number, what percent one number is of another, or percentage change. A
+        free online percentage calculator that works instantly in your browser, with no sign-up.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
         Covers the three percentage calculations people actually need — finding a percentage of

@@ -54,7 +54,8 @@ export default function GstCalculatorPage() {
         GST Calculator
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Add or remove GST using the common Indian slabs — 5%, 12%, 18%, and 28%.
+        Add or remove GST using the common Indian slabs — 5%, 12%, 18%, and 28%. This free online
+        GST calculator gives you the base amount, GST, and total instantly, with no sign-up.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
         Enter a base price to add GST and see the final amount, or enter a GST-inclusive price

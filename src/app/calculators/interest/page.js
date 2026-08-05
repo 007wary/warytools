@@ -55,7 +55,8 @@ export default function InterestCalculatorPage() {
         Interest Calculator
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Calculate simple or compound interest on a principal amount.
+        Calculate simple or compound interest on a principal amount. A free online interest
+        calculator showing the interest earned and the total, with no sign-up required.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
         Enter a principal, rate, and time period to see interest earned either way — useful for

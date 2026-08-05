@@ -28,7 +28,7 @@ export default function CalculatorsHubPage() {
       <HubHeader
         categorySlug="calculators"
         icon={category.icon}
-        title="Calculators"
+        title="Free Online Calculators"
         description="Quick, free calculators for everyday math — no ads, no clutter."
       />
 

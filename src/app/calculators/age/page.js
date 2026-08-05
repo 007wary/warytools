@@ -55,7 +55,8 @@ export default function AgeCalculatorPage() {
         Age Calculator
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Find your exact age in years, months, and days from your date of birth.
+        Find your exact age in years, months, and days from your date of birth. This free online
+        age calculator runs entirely in your browser — nothing you enter is sent anywhere.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
         Enter a date of birth to get the precise age breakdown instantly — useful for forms,

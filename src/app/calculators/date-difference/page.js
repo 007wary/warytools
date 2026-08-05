@@ -54,7 +54,8 @@ export default function DateDifferencePage() {
         Date Difference Calculator
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Find the number of days, months, and years between two dates.
+        Find the number of days, months, and years between two dates. A free online date
+        calculator that handles leap years automatically — no sign-up, nothing uploaded.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
         Pick a start and end date to see exactly how much time separates them — useful for

@@ -28,7 +28,7 @@ export default function PdfHubPage() {
       <HubHeader
         categorySlug="pdf"
         icon={category.icon}
-        title="PDF Tools"
+        title="Free PDF Tools"
         description="All PDF tools run 100% in your browser. Files are never uploaded to a server."
       />
 

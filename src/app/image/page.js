@@ -28,7 +28,7 @@ export default function ImageHubPage() {
       <HubHeader
         categorySlug="image"
         icon={category.icon}
-        title="Image Tools"
+        title="Free Image Tools"
         description="All image tools run 100% in your browser using the Canvas API. Files are never uploaded to a server."
       />
 
