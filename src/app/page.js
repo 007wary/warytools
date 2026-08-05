@@ -1,28 +1,47 @@
+import Link from "next/link";
 import { categories, allTools } from "@/lib/tools";
 import { colors, categoryColors } from "@/lib/theme";
 import { ToolSearchProvider, ToolSearchBox, ToolSearchGrid } from "@/components/ToolSearch";
 import JsonLd from "@/components/JsonLd";
-import { jsonLdGraph, collectionPageJsonLd } from "@/lib/jsonLd";
+import { jsonLdGraph, collectionPageJsonLd, faqJsonLd } from "@/lib/jsonLd";
+import { pageMetadata } from "@/lib/pageMetadata";
 
 const title = "Free Online PDF, Image & Calculator Tools";
 const description =
   "Free PDF, image, calculator, and URL shortener tools that run entirely in your browser — no uploads, no sign-up, no ads.";
 
-export const metadata = {
-  title,
-  description,
-  alternates: {
-    canonical: "/",
+// Next normalizes the canonical and strips the trailing slash, so this emits
+// "https://wary.tools" regardless of the form written here; the sitemap is the
+// side that has to match it (see sitemapRoutes.js).
+export const metadata = pageMetadata({ title, description, path: "/" });
+
+const faqs = [
+  {
+    question: "Are these tools really free?",
+    answer:
+      "Yes. Every tool on WaryTools is free to use with no sign-up, no account, no watermarks, and no usage limits.",
   },
-  openGraph: {
-    title: `WaryTools — ${title}`,
-    description,
+  {
+    question: "Are my files uploaded to a server?",
+    answer:
+      "No. All PDF and image tools run entirely in your browser using JavaScript. Your files never leave your device and are never sent to or stored on any server.",
   },
-  twitter: {
-    title: `WaryTools — ${title}`,
-    description,
+  {
+    question: "Do I need to install anything?",
+    answer:
+      "No installation is required. WaryTools runs in any modern browser on desktop, tablet, or phone — there is nothing to download.",
   },
-};
+  {
+    question: "Is there a file size limit?",
+    answer:
+      "There is no server-imposed limit, since processing happens locally. The practical ceiling is your device's available memory, so very large PDFs or images may be slow on older hardware.",
+  },
+  {
+    question: "Does the URL shortener require an account?",
+    answer:
+      "No. You can shorten a link instantly without signing up. Links you create are remembered in your browser so you do not lose them on refresh.",
+  },
+];
 
 export default function HomePage() {
   return (
@@ -35,7 +54,8 @@ export default function HomePage() {
               description,
               href: "/",
               tools: allTools,
-            })
+            }),
+            faqJsonLd(faqs)
           )}
         />
         {/* Hero */}
@@ -88,6 +108,118 @@ export default function HomePage() {
 
         {/* Tool grid grouped by category, filtered by the search box above */}
         <ToolSearchGrid categories={categories} />
+
+        {/* Static, server-rendered content below the grid. Deliberately outside
+            the client search island: the grid's category headings and cards are
+            the homepage's only other text, and they disappear while a search is
+            active. These sections keep the page's indexable copy and its
+            FAQPage structured data present in the HTML unconditionally. */}
+        <section
+          style={{
+            maxWidth: "900px",
+            margin: "0 auto",
+            padding: "0 20px 72px",
+          }}
+        >
+          <h2
+            style={{
+              fontSize: "22px",
+              fontWeight: 700,
+              color: colors.text,
+              marginBottom: "14px",
+            }}
+          >
+            Free browser-based tools that respect your privacy
+          </h2>
+          <p
+            style={{
+              fontSize: "15px",
+              color: colors.textSecondary,
+              lineHeight: 1.7,
+              marginBottom: "14px",
+            }}
+          >
+            WaryTools is a collection of {allTools.length} everyday utilities for working with PDFs,
+            images, numbers, and links. You can{" "}
+            <Link href="/pdf/merge" className="prose-link">merge PDF files</Link>,{" "}
+            <Link href="/pdf/split" className="prose-link">split a PDF</Link>,{" "}
+            <Link href="/image/compress" className="prose-link">compress an image</Link>,{" "}
+            <Link href="/image/convert" className="prose-link">
+              convert between PNG, JPG, and WebP
+            </Link>
+            , work out a{" "}
+            <Link href="/calculators/percentage" className="prose-link">percentage</Link> or{" "}
+            <Link href="/calculators/gst" className="prose-link">GST amount</Link>, and{" "}
+            <Link href="/url-shortener" className="prose-link">shorten a long URL</Link> — without
+            creating an account or installing software.
+          </p>
+          <p
+            style={{
+              fontSize: "15px",
+              color: colors.textSecondary,
+              lineHeight: 1.7,
+              margin: 0,
+            }}
+          >
+            Every <Link href="/pdf" className="prose-link">PDF tool</Link> and{" "}
+            <Link href="/image" className="prose-link">image tool</Link> runs fully client-side: the
+            file you pick is processed by your own browser and never uploaded, so documents stay
+            private by construction rather than by policy. The{" "}
+            <Link href="/calculators" className="prose-link">calculators</Link> work the same way —
+            nothing you type is sent anywhere.
+          </p>
+        </section>
+
+        <section
+          style={{
+            maxWidth: "900px",
+            margin: "0 auto",
+            padding: "0 20px 88px",
+          }}
+        >
+          <h2
+            style={{
+              fontSize: "22px",
+              fontWeight: 700,
+              color: colors.text,
+              marginBottom: "20px",
+            }}
+          >
+            Frequently asked questions
+          </h2>
+          <dl style={{ margin: 0 }}>
+            {faqs.map((faq) => (
+              <div
+                key={faq.question}
+                style={{
+                  borderTop: `1px solid ${colors.border}`,
+                  padding: "18px 0",
+                }}
+              >
+                <dt
+                  style={{
+                    fontSize: "15px",
+                    fontWeight: 600,
+                    color: colors.text,
+                    marginBottom: "6px",
+                  }}
+                >
+                  {faq.question}
+                </dt>
+                <dd
+                  style={{
+                    fontSize: "14.5px",
+                    color: colors.textMuted,
+                    lineHeight: 1.65,
+                    margin: 0,
+                  }}
+                >
+                  {faq.answer}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
       </div>
     </ToolSearchProvider>
   );
