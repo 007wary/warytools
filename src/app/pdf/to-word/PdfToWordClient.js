@@ -62,7 +62,15 @@ export default function PdfToWordClient() {
     // evaluation, which doesn't exist in Node, and these pages are statically
     // prerendered. A top-level import fails the build outright.
     const pdfjsLib = (await import("@/lib/pdfjs")).default;
-    const doc = await pdfjsLib.getDocument({ data: bytes }).promise;
+
+    // Keep the loading task, not just the document. In pdf.js v6 the document
+    // proxy has no destroy() — teardown lives on the task, and calling
+    // doc.destroy() threw "o.destroy is not a function" on every run. Because
+    // that threw from a finally block, the cleanup never happened at all and
+    // each file the user tried leaked a worker for the lifetime of the tab.
+    const loadingTask = pdfjsLib.getDocument({ data: bytes });
+    const doc = await loadingTask.promise;
+
     try {
       const limit = Math.min(SCAN_SAMPLE_PAGES, doc.numPages);
       const texts = [];
@@ -75,9 +83,13 @@ export default function PdfToWordClient() {
 
       return texts;
     } finally {
-      // pdf.js holds a worker and transferred buffers per document; without
-      // this a user checking several files leaks one per attempt.
-      await doc.destroy();
+      // Releases the worker and the transferred buffer. Guarded because a
+      // teardown failure must not mask a real error from the loop above.
+      try {
+        await loadingTask.destroy();
+      } catch (teardownError) {
+        console.warn("pdf.js teardown failed:", teardownError);
+      }
     }
   }
 

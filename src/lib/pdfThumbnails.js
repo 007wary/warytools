@@ -21,6 +21,21 @@ import { canvasToBlob } from "./imageFile";
 const THUMBNAIL_WIDTH = 300;
 
 /**
+ * Tears down a pdf.js loading task, releasing its worker and page cache.
+ *
+ * Teardown belongs to the loading task, not the document: PDFDocumentProxy
+ * has no destroy() in pdf.js v6. Fire-and-forget with a caught rejection,
+ * because callers run it from cleanup paths where there is nothing sensible
+ * to do with a failure and an unhandled rejection would surface as a console
+ * error on an otherwise healthy page.
+ *
+ * @param {object|null} task A pdf.js PDFDocumentLoadingTask, or null.
+ */
+function destroyTask(task) {
+  task?.destroy?.().catch(() => {});
+}
+
+/**
  * Loads a PDF for rendering and exposes lazily-rendered page thumbnails.
  *
  * @param {ArrayBuffer|null} bytes Document bytes, or null to tear down.
@@ -35,6 +50,9 @@ export function usePdfThumbnails(bytes) {
   const [, setVersion] = useState(0);
 
   const docRef = useRef(null);
+  // Held separately from docRef because destroy() lives on the loading task,
+  // not on the document proxy it resolves to.
+  const taskRef = useRef(null);
   const urlsRef = useRef(new Map());
   const pendingRef = useRef(new Set());
   // Incremented on every new document. Async work captures the value it
@@ -62,7 +80,8 @@ export function usePdfThumbnails(bytes) {
     releaseAll();
 
     if (!bytes) {
-      docRef.current?.destroy?.();
+      destroyTask(taskRef.current);
+      taskRef.current = null;
       docRef.current = null;
       return undefined;
     }
@@ -84,14 +103,22 @@ export function usePdfThumbnails(bytes) {
         const pdfjsLib = (await import("./pdfjs")).default;
         // pdf.js takes ownership of the buffer it's handed, so it gets a copy
         // and the caller keeps its original for pdf-lib to use.
-        const doc = await pdfjsLib.getDocument({ data: bytes.slice(0) }).promise;
+        //
+        // The loading task is kept alongside the document because teardown
+        // lives on the task: PDFDocumentProxy has no destroy() in pdf.js v6.
+        // The old code called doc.destroy() and doc.destroy?.() — the first
+        // threw, the second silently did nothing — so the worker and its page
+        // cache were never released and every file opened leaked one.
+        const task = pdfjsLib.getDocument({ data: bytes.slice(0) });
+        const doc = await task.promise;
 
         if (cancelled || generationRef.current !== generation) {
-          doc.destroy();
+          destroyTask(task);
           return;
         }
 
-        docRef.current?.destroy?.();
+        destroyTask(taskRef.current);
+        taskRef.current = task;
         docRef.current = doc;
 
         if (mountedRef.current) {
@@ -117,7 +144,8 @@ export function usePdfThumbnails(bytes) {
   useEffect(() => {
     return () => {
       releaseAll();
-      docRef.current?.destroy?.();
+      destroyTask(taskRef.current);
+      taskRef.current = null;
       docRef.current = null;
     };
   }, [releaseAll]);
