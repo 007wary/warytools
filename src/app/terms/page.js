@@ -1,15 +1,16 @@
 import { colors } from "@/lib/theme";
+import JsonLd from "@/components/JsonLd";
+import { jsonLdGraph, breadcrumbJsonLd } from "@/lib/jsonLd";
+import { pageMetadata } from "@/lib/pageMetadata";
 
 const termsTitle = "Terms of Use";
 const termsDescription = "The terms for using WaryTools' free PDF, image, calculator, and URL shortener tools.";
 
-export const metadata = {
+export const metadata = pageMetadata({
   title: termsTitle,
   description: termsDescription,
-  alternates: { canonical: "/terms" },
-  openGraph: { title: `${termsTitle} — WaryTools`, description: termsDescription },
-  twitter: { title: `${termsTitle} — WaryTools`, description: termsDescription },
-};
+  path: "/terms",
+});
 
 const LAST_UPDATED = "August 2, 2026";
 
@@ -29,6 +30,14 @@ function Section({ id, title, children }) {
 export default function TermsPage() {
   return (
     <div>
+      <JsonLd
+        data={jsonLdGraph(
+          breadcrumbJsonLd([
+            { name: "Home", href: "/" },
+            { name: "Terms of Use", href: "/terms" },
+          ])
+        )}
+      />
       <section
         style={{
           textAlign: "center",

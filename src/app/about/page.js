@@ -5,19 +5,20 @@ import ToolIcon from "@/components/ToolIcon";
 import JsonLd from "@/components/JsonLd";
 import { categories, allTools } from "@/lib/tools";
 import { colors, categoryColors } from "@/lib/theme";
-import { jsonLdGraph, organizationJsonLd, breadcrumbJsonLd } from "@/lib/jsonLd";
+import { jsonLdGraph, breadcrumbJsonLd } from "@/lib/jsonLd";
+import { pageMetadata } from "@/lib/pageMetadata";
 
+// The layout template appends " — WaryTools", so this must not repeat the
+// brand or the rendered title reads "About WaryTools — … — WaryTools".
 const aboutTitle = "About";
 const aboutDescription =
   "WaryTools is a free collection of PDF, image, calculator, and URL tools that run entirely in your browser. No uploads, no accounts, no ads slowing you down.";
 
-export const metadata = {
+export const metadata = pageMetadata({
   title: aboutTitle,
   description: aboutDescription,
-  alternates: { canonical: "/about" },
-  openGraph: { title: `${aboutTitle} — WaryTools`, description: aboutDescription },
-  twitter: { title: `${aboutTitle} — WaryTools`, description: aboutDescription },
-};
+  path: "/about",
+});
 
 const principles = [
   {
@@ -55,7 +56,9 @@ export default function AboutPage() {
     <div>
       <JsonLd
         data={jsonLdGraph(
-          organizationJsonLd(),
+          // No organizationJsonLd() here — the root layout already emits the
+          // Organization node on every page, so repeating it produced two
+          // nodes with the same @id in the graph.
           breadcrumbJsonLd([
             { name: "Home", href: "/" },
             { name: "About", href: "/about" },

@@ -1,16 +1,17 @@
 import { Mail, MessageSquareText, Bug } from "lucide-react";
 import { colors, categoryColors } from "@/lib/theme";
+import JsonLd from "@/components/JsonLd";
+import { jsonLdGraph, breadcrumbJsonLd } from "@/lib/jsonLd";
+import { pageMetadata } from "@/lib/pageMetadata";
 
 const contactTitle = "Contact";
 const contactDescription = "Get in touch with WaryTools — report a bug, suggest a tool, or ask a question.";
 
-export const metadata = {
+export const metadata = pageMetadata({
   title: contactTitle,
   description: contactDescription,
-  alternates: { canonical: "/contact" },
-  openGraph: { title: `${contactTitle} — WaryTools`, description: contactDescription },
-  twitter: { title: `${contactTitle} — WaryTools`, description: contactDescription },
-};
+  path: "/contact",
+});
 
 const CONTACT_EMAIL = "007mwnswrangwary@gmail.com";
 
@@ -38,6 +39,14 @@ const reasons = [
 export default function ContactPage() {
   return (
     <div>
+      <JsonLd
+        data={jsonLdGraph(
+          breadcrumbJsonLd([
+            { name: "Home", href: "/" },
+            { name: "Contact", href: "/contact" },
+          ])
+        )}
+      />
       {/* Hero */}
       <section
         style={{

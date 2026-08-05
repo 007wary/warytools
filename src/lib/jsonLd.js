@@ -60,11 +60,18 @@ export function toolSoftwareAppJsonLd({ name, description, href, categorySlug })
 
   return {
     "@type": "SoftwareApplication",
+    "@id": `${absoluteUrl(href)}#software`,
     name,
     description,
     url: absoluteUrl(href),
     applicationCategory,
     operatingSystem: "Any (runs in browser)",
+    // Ties each tool back to the Organization and WebSite nodes the root
+    // layout emits. Without these the SoftwareApplication is an orphan in the
+    // graph — valid, but nothing tells a crawler the tool and the publisher
+    // are the same entity.
+    publisher: { "@id": `${SITE_URL}/#organization` },
+    isPartOf: { "@id": `${SITE_URL}/#website` },
     offers: {
       "@type": "Offer",
       price: "0",
@@ -77,11 +84,14 @@ export function toolSoftwareAppJsonLd({ name, description, href, categorySlug })
 export function collectionPageJsonLd({ name, description, href, tools }) {
   return {
     "@type": "CollectionPage",
+    "@id": `${absoluteUrl(href)}#collection`,
     name,
     description,
     url: absoluteUrl(href),
+    isPartOf: { "@id": `${SITE_URL}/#website` },
     mainEntity: {
       "@type": "ItemList",
+      numberOfItems: tools.length,
       itemListElement: tools.map((tool, index) => ({
         "@type": "ListItem",
         position: index + 1,

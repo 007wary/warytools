@@ -47,11 +47,25 @@ export const metadata = {
     siteName: "WaryTools",
     type: "website",
     locale: "en_US",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "WaryTools — free PDF, image and calculator tools that run in your browser",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title,
     description,
+    images: [
+      {
+        url: "/opengraph-image",
+        alt: "WaryTools — free PDF, image and calculator tools that run in your browser",
+      },
+    ],
   },
 };
 
