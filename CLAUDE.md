@@ -15,7 +15,7 @@ npm run start    # run the production build
 npm run lint     # ESLint (flat config, eslint-config-next)
 ```
 
-`npm test` runs the vitest suite (`npm run test:watch` for watch mode) — 109 tests across ten files, covering the pure-logic helpers in `src/lib/` (`calculatorMath`, `unitConversions`, `dateMath`, `imageFile`, `formatBytes`, `pdfPageRange`, `urlShortenerValidation`, `siteUrl`, `sitemapRoutes`) plus `src/app/robots`. There are no component or end-to-end tests; UI and file-processing behaviour is only verified by `npm run build` and manual checks.
+`npm test` runs the vitest suite (`npm run test:watch` for watch mode) — 209 tests across thirteen files, covering the pure-logic helpers in `src/lib/` (`calculatorMath`, `unitConversions`, `dateMath`, `imageFile`, `formatBytes`, `pdfPageRange`, `pdfFile`, `pdfWorkerProtocol`, `urlShortenerValidation`, `siteUrl`, `sitemapRoutes`) plus `src/app/robots`. There are no component or end-to-end tests; UI and file-processing behaviour is only verified by `npm run build` and manual checks.
 
 Because there is no component-level coverage, **logic that guards a user input belongs in a `src/lib/` module, not inline in a client component** — that's the only way it can be tested at all. `pdfPageRange.js` exists for exactly this reason.
 
@@ -47,6 +47,18 @@ PDF and image tools do all processing in the browser — no file ever hits a ser
 - Shared UI across these tools: [FileDropzone](src/components/FileDropzone.js) (drag/drop + click-to-browse), [DownloadButton](src/components/DownloadButton.js) (triggers a client-side blob download), [WarningBanner](src/components/WarningBanner.js) (non-blocking caveats).
 
 **Numeric `<input>` gotcha:** `Number("")` is `0`, so storing a number input's value as a number makes a *cleared field* indistinguishable from a deliberate zero. Hold the raw string in state and validate on submit. The `min`/`max` attributes only constrain the spinner arrows — they validate nothing. This caused real bugs in both Split PDF and Resize Image.
+
+### The PDF pipeline
+
+All five PDF tools share one pipeline. Adding or changing a PDF tool means working through these modules rather than hand-rolling logic in the client:
+
+- **Accepting a file** — [src/lib/pdfFile.js](src/lib/pdfFile.js). Never check `file.type === "application/pdf"`: Windows without a PDF handler and most Android file providers report an *empty* type for a valid PDF, and that check rejected all of them. `validatePdfFile()` / `validatePdfFiles()` sniff the `%PDF-` magic bytes from a `Blob.slice` (cheap — a wrong file never gets fully read), enforce `MAX_PDF_BYTES`, and flag `isLarge` for a warning. `describePdfError()` maps a pdf-lib failure onto an actionable message — encrypted, out-of-memory, and damaged all need different responses from the user.
+- **Doing the work** — [src/workers/pdf.worker.js](src/workers/pdf.worker.js), driven by `usePdfWorker()` in [src/lib/pdfWorkerClient.js](src/lib/pdfWorkerClient.js) with the message contract in [src/lib/pdfWorkerProtocol.js](src/lib/pdfWorkerProtocol.js). pdf-lib's parse/save are synchronous and CPU-bound; on the main thread they froze the tab (no scrolling, no spinner, no cancel) for the seconds a large merge takes. **Any new pdf-lib operation belongs in the worker as a new `op`**, not inline in a client. The worker is instantiated via `new Worker(new URL("../workers/pdf.worker.js", import.meta.url), { type: "module" })` — that exact shape is load-bearing, since it's what lets the bundler find and split the worker chunk (a string path works in dev and 404s in production). It also keeps pdf-lib out of the page bundle entirely.
+- **Buffer ownership** — bytes are *transferred* to the worker, not copied, so the sender's `ArrayBuffer` is detached afterwards. Tools keep the document in a `bytesRef` and pass `bytes.slice(0)` when they need to run a second operation on the same file; passing the original would leave the next run with a zero-length buffer.
+- **Page previews** — `usePdfThumbnails()` in [src/lib/pdfThumbnails.js](src/lib/pdfThumbnails.js) plus [PdfPageThumbnail](src/components/PdfPageThumbnail.js). Renders lazily via `IntersectionObserver` as pages scroll in, and ties every async render to a generation token so switching files mid-render cancels the old loop instead of racing it. Rendering a whole document up front is what made the old Reorder tool unusable on large PDFs.
+- **Shared tool UI** — [PdfFileHeader](src/components/PdfFileHeader.js), [ProgressBar](src/components/ProgressBar.js), [ErrorBanner](src/components/ErrorBanner.js) (`role="alert"`, so errors are actually announced), and the button styles in [ToolButton.js](src/components/ToolButton.js).
+
+**Reordering gotcha:** apply a drag reorder on `drop`, never on `dragover`. Mutating the list on every `dragover` event makes the dragged item jump out from under the pointer and the list flicker through orders the user never chose. Any reorderable list also needs the keyboard path (space to grab, arrows to move, escape to cancel) — drag-and-drop alone is unusable with a keyboard or screen reader.
 
 ### URL shortener (the one server-touching tool)
 

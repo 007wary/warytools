@@ -1,233 +1,269 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Scissors } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
-import { validatePageRange } from "@/lib/pdfPageRange";
+import ProgressBar from "@/components/ProgressBar";
+import ErrorBanner from "@/components/ErrorBanner";
+import PdfFileHeader from "@/components/PdfFileHeader";
+import { PrimaryButton, SecondaryButton } from "@/components/ToolButton";
+import { parsePageSelection, formatPageSelection } from "@/lib/pdfPageRange";
+import { validatePdfFile, describePdfError } from "@/lib/pdfFile";
+import { usePdfWorker, ops } from "@/lib/pdfWorkerClient";
 import { colors } from "@/lib/theme";
 import { events, trackEvent } from "@/lib/analytics";
 
-// mode: "range" extracts pages [from, to] into one PDF.
+// mode: "select" pulls a chosen set of pages into one PDF.
 // mode: "all" splits every page into its own PDF, bundled as a zip.
 export default function SplitPdfClient() {
   const [file, setFile] = useState(null);
   const [pageCount, setPageCount] = useState(null);
-  const [mode, setMode] = useState("range");
-  // Held as strings, not numbers: Number("") is 0, so storing these as
-  // numbers made a cleared field indistinguishable from a deliberate 0 and
-  // silently clamped to page 1 — extracting the wrong range instead of
-  // reporting an empty input. The <input min/max> attributes only constrain
-  // the spinner arrows, so validation has to happen here.
-  const [fromPage, setFromPage] = useState("1");
-  const [toPage, setToPage] = useState("1");
-  const [isWorking, setIsWorking] = useState(false);
+  const [mode, setMode] = useState("select");
+  // Held as raw text and validated on submit — see parsePageSelection. The
+  // input's own attributes constrain nothing.
+  const [selection, setSelection] = useState("");
   const [error, setError] = useState("");
-  const [resultBlob, setResultBlob] = useState(null);
-  const [resultFilename, setResultFilename] = useState("");
+  const [warning, setWarning] = useState("");
+  const [result, setResult] = useState(null);
+  const [isZipping, setIsZipping] = useState(false);
+
+  const { run, cancel, progress, isRunning } = usePdfWorker();
+
+  // The loaded document's bytes, read once. The old tool called
+  // file.arrayBuffer() again for every operation, re-reading a 40 MB file
+  // from disk each time the user adjusted a range and re-ran.
+  const bytesRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      bytesRef.current = null;
+    };
+  }, []);
+
+  const resetState = useCallback(() => {
+    setFile(null);
+    setPageCount(null);
+    setResult(null);
+    setError("");
+    setWarning("");
+    setSelection("");
+    bytesRef.current = null;
+  }, []);
 
   async function handleFiles(fileList) {
-    const selected = fileList[0];
-    if (!selected || selected.type !== "application/pdf") {
-      setError("Please choose a PDF file.");
+    setError("");
+    setWarning("");
+    setResult(null);
+
+    const check = await validatePdfFile(fileList[0]);
+    if (!check.ok) {
+      setError(check.error);
+      return;
+    }
+
+    if (check.isLarge) {
+      setWarning(
+        `This is a large PDF (${Math.round(check.file.size / (1024 * 1024))} MB). Processing runs on your device, so it may take a moment.`
+      );
+    }
+
+    try {
+      const bytes = await check.file.arrayBuffer();
+      // The worker takes ownership of a transferred buffer, so keep a copy
+      // for subsequent runs — otherwise the second operation on the same file
+      // would find a detached, zero-length buffer.
+      bytesRef.current = bytes;
+
+      const info = await run(ops.INSPECT, { bytes: bytes.slice(0) }, { transfer: [] });
+
+      setFile(check.file);
+      setPageCount(info.pageCount);
+      setSelection(info.pageCount === 1 ? "1" : `1-${info.pageCount}`);
+    } catch (err) {
+      console.error(err);
+      trackEvent(events.TOOL_ERROR, { reason: "split_read_failed" });
+      setError(describePdfError(err, "Could not read this PDF."));
+      resetState();
+    }
+  }
+
+  async function handleExtract() {
+    const parsed = parsePageSelection(selection, pageCount);
+    if (!parsed.ok) {
+      setError(parsed.error);
       return;
     }
 
     setError("");
-    setResultBlob(null);
-    setFile(selected);
+    setResult(null);
 
     try {
-      const { PDFDocument } = await import("pdf-lib");
-      const bytes = await selected.arrayBuffer();
-      const pdf = await PDFDocument.load(bytes);
-      const count = pdf.getPageCount();
-      setPageCount(count);
-      setFromPage("1");
-      setToPage(String(count));
-    } catch (err) {
-      console.error(err);
-      setError("Could not read this PDF. Make sure it's valid and unencrypted.");
-      setFile(null);
-    }
-  }
+      const extracted = await run(
+        ops.EXTRACT_RANGE,
+        { bytes: bytesRef.current.slice(0), pages: parsed.pages },
+        { transfer: [] }
+      );
 
-  async function handleExtractRange() {
-    setError("");
-    setIsWorking(true);
-
-    try {
-      // Rejects blanks and out-of-range values rather than clamping them, so
-      // an empty box reads as an empty box instead of silently becoming
-      // page 1. See src/lib/pdfPageRange.js.
-      const range = validatePageRange(fromPage, toPage, pageCount);
-      if (!range.ok) {
-        setError(range.error);
-        setIsWorking(false);
-        return;
-      }
-      const { from, to } = range;
-
-      const { PDFDocument } = await import("pdf-lib");
-      const bytes = await file.arrayBuffer();
-      const sourcePdf = await PDFDocument.load(bytes);
-      const newPdf = await PDFDocument.create();
-
-      const indices = [];
-      for (let i = from - 1; i <= to - 1; i++) indices.push(i);
-
-      const copiedPages = await newPdf.copyPages(sourcePdf, indices);
-      copiedPages.forEach((page) => newPdf.addPage(page));
-
-      const outBytes = await newPdf.save();
-      setResultBlob(new Blob([outBytes], { type: "application/pdf" }));
-      setResultFilename(`pages-${from}-${to}.pdf`);
+      setResult({
+        blob: new Blob([extracted.bytes], { type: "application/pdf" }),
+        filename: `pages-${formatPageSelection(parsed.pages).replace(/[,\s]+/g, "_")}.pdf`,
+      });
       trackEvent(events.TOOL_RUN, {
-        mode: "range",
-        page_count: to - from + 1,
+        mode: "select",
+        page_count: parsed.pages.length,
         source_page_count: pageCount,
       });
     } catch (err) {
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "split_range_failed" });
-      setError("Something went wrong extracting those pages.");
-    } finally {
-      setIsWorking(false);
+      setError(describePdfError(err, "Something went wrong extracting those pages."));
     }
   }
 
   async function handleSplitAll() {
     setError("");
-    setIsWorking(true);
+    setResult(null);
 
     try {
-      const [{ default: JSZip }, { PDFDocument }] = await Promise.all([
-        import("jszip"),
-        import("pdf-lib"),
-      ]);
-      const bytes = await file.arrayBuffer();
-      const sourcePdf = await PDFDocument.load(bytes);
+      const split = await run(
+        ops.SPLIT_ALL,
+        { bytes: bytesRef.current.slice(0) },
+        { transfer: [] }
+      );
+
+      // Zipping stays on the main thread: JSZip's generateAsync already
+      // yields between chunks, so it doesn't block, and keeping it here means
+      // the worker bundle doesn't carry a second heavy dependency.
+      setIsZipping(true);
+      const { default: JSZip } = await import("jszip");
       const zip = new JSZip();
-
-      for (let i = 0; i < pageCount; i++) {
-        const newPdf = await PDFDocument.create();
-        const [copiedPage] = await newPdf.copyPages(sourcePdf, [i]);
-        newPdf.addPage(copiedPage);
-        const pageBytes = await newPdf.save();
-        zip.file(`page-${i + 1}.pdf`, pageBytes);
-      }
-
+      split.documents.forEach((doc) => zip.file(doc.name, doc.bytes));
       const zipBlob = await zip.generateAsync({ type: "blob" });
-      setResultBlob(zipBlob);
-      setResultFilename("split-pages.zip");
-      trackEvent(events.TOOL_RUN, { mode: "split_all", page_count: pageCount });
+
+      setResult({ blob: zipBlob, filename: "split-pages.zip" });
+      trackEvent(events.TOOL_RUN, { mode: "split_all", page_count: split.pageCount });
     } catch (err) {
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "split_all_failed" });
-      setError("Something went wrong splitting this PDF.");
+      setError(describePdfError(err, "Something went wrong splitting this PDF."));
     } finally {
-      setIsWorking(false);
+      setIsZipping(false);
     }
   }
 
-  function handleReset() {
-    setFile(null);
-    setPageCount(null);
-    setResultBlob(null);
-    setError("");
-  }
+  const preview = (() => {
+    if (mode !== "select" || !pageCount) return null;
+    const parsed = parsePageSelection(selection, pageCount);
+    if (!parsed.ok) return null;
+    return parsed.pages;
+  })();
+
+  const busy = isRunning || isZipping;
 
   return (
     <div>
       {!file && (
         <FileDropzone
           onFiles={handleFiles}
-          accept="application/pdf"
+          accept="application/pdf,.pdf"
           label="Drag & drop a PDF here, or click to browse"
         />
       )}
 
-      {error && (
-        <p style={{ color: colors.danger, fontSize: "14px", marginTop: "12px" }}>{error}</p>
+      <ErrorBanner>{error}</ErrorBanner>
+
+      {warning && (
+        <p role="status" style={{ fontSize: "13px", color: colors.warningText, marginTop: "12px" }}>
+          {warning}
+        </p>
       )}
 
       {file && pageCount && (
-        <div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              flexWrap: "wrap",
-              gap: "8px",
-              border: `1px solid ${colors.border}`,
-              borderRadius: "8px",
-              padding: "10px 12px",
-              marginBottom: "20px",
-            }}
-          >
-            <span
-              style={{
-                fontSize: "14px",
-                color: colors.textSecondary,
-                minWidth: 0,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {file.name} · {pageCount} page{pageCount === 1 ? "" : "s"}
-            </span>
-            <button
-              onClick={handleReset}
-              style={{
-                background: "none",
-                border: `1px solid ${colors.border}`,
-                borderRadius: "6px",
-                padding: "4px 10px",
-                fontSize: "13px",
-                color: colors.textSecondary,
-                cursor: "pointer",
-                flexShrink: 0,
-              }}
-            >
-              Choose another file
-            </button>
-          </div>
+        <div style={{ marginTop: "20px" }}>
+          <PdfFileHeader
+            file={file}
+            pageCount={pageCount}
+            onReset={resetState}
+            disabled={busy}
+          />
 
-          {/* Mode toggle */}
           <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
-            <ModeButton active={mode === "range"} onClick={() => setMode("range")}>
-              Extract a page range
+            <ModeButton active={mode === "select"} onClick={() => setMode("select")}>
+              Extract pages
             </ModeButton>
             <ModeButton active={mode === "all"} onClick={() => setMode("all")}>
               Split into individual pages
             </ModeButton>
           </div>
 
-          {mode === "range" && (
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px", flexWrap: "wrap" }}>
-              <label style={{ fontSize: "14px", color: colors.textSecondary }}>
-                From page{" "}
-                <input
-                  type="number"
-                  min={1}
-                  max={pageCount}
-                  value={fromPage}
-                  onChange={(e) => setFromPage(e.target.value)}
-                  style={numberInputStyle}
-                />
+          {mode === "select" && (
+            <div style={{ marginBottom: "20px" }}>
+              <label
+                htmlFor="page-selection"
+                style={{
+                  display: "block",
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  color: colors.textSecondary,
+                  marginBottom: "6px",
+                }}
+              >
+                Pages to extract
               </label>
-              <label style={{ fontSize: "14px", color: colors.textSecondary }}>
-                To page{" "}
-                <input
-                  type="number"
-                  min={1}
-                  max={pageCount}
-                  value={toPage}
-                  onChange={(e) => setToPage(e.target.value)}
-                  style={numberInputStyle}
-                />
-              </label>
+              <input
+                id="page-selection"
+                type="text"
+                inputMode="numeric"
+                value={selection}
+                onChange={(e) => {
+                  setSelection(e.target.value);
+                  setError("");
+                  setResult(null);
+                }}
+                placeholder="e.g. 1-3, 7, 12-15"
+                aria-describedby="page-selection-help"
+                style={{
+                  width: "100%",
+                  maxWidth: "360px",
+                  padding: "9px 12px",
+                  fontSize: "14px",
+                  border: `1px solid ${colors.borderInput}`,
+                  borderRadius: "8px",
+                  backgroundColor: colors.surface,
+                  color: colors.text,
+                }}
+              />
+              <p
+                id="page-selection-help"
+                style={{ fontSize: "13px", color: colors.textFaint, margin: "8px 0 0" }}
+              >
+                Single pages, ranges, or both — this PDF has {pageCount} page
+                {pageCount === 1 ? "" : "s"}.
+                {preview && (
+                  <span style={{ color: colors.textMuted }}>
+                    {" "}
+                    Selecting {preview.length} page{preview.length === 1 ? "" : "s"}:{" "}
+                    {formatPageSelection(preview)}.
+                  </span>
+                )}
+              </p>
+
+              <div style={{ display: "flex", gap: "8px", marginTop: "10px", flexWrap: "wrap" }}>
+                <PresetButton onClick={() => setSelection(`1-${pageCount}`)}>All pages</PresetButton>
+                <PresetButton
+                  onClick={() => setSelection(`1-${Math.ceil(pageCount / 2)}`)}
+                  disabled={pageCount < 2}
+                >
+                  First half
+                </PresetButton>
+                <PresetButton
+                  onClick={() => setSelection(`${Math.ceil(pageCount / 2) + 1}-${pageCount}`)}
+                  disabled={pageCount < 2}
+                >
+                  Second half
+                </PresetButton>
+              </div>
             </div>
           )}
 
@@ -237,27 +273,28 @@ export default function SplitPdfClient() {
             </p>
           )}
 
-          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-            <button
-              onClick={mode === "range" ? handleExtractRange : handleSplitAll}
-              disabled={isWorking}
-              style={{
-                backgroundColor: isWorking ? colors.primaryDisabled : colors.primary,
-                color: colors.primaryContrast,
-                border: "none",
-                borderRadius: "8px",
-                padding: "10px 20px",
-                fontSize: "14px",
-                fontWeight: 600,
-                cursor: isWorking ? "not-allowed" : "pointer",
-              }}
-            >
-              {isWorking ? "Working…" : mode === "range" ? "Extract Pages" : "Split PDF"}
-            </button>
+          {busy && (
+            <ProgressBar
+              progress={progress}
+              indeterminate={isZipping || !progress?.total}
+              label={isZipping ? "Building zip file…" : undefined}
+            />
+          )}
 
-            {resultBlob && (
-              <DownloadButton getBlob={() => resultBlob} filename={resultFilename}>
-                Download {resultFilename}
+          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginTop: "20px" }}>
+            <PrimaryButton
+              onClick={mode === "select" ? handleExtract : handleSplitAll}
+              disabled={busy}
+            >
+              <Scissors size={16} />
+              {busy ? "Working…" : mode === "select" ? "Extract pages" : "Split PDF"}
+            </PrimaryButton>
+
+            {isRunning && <SecondaryButton onClick={cancel}>Cancel</SecondaryButton>}
+
+            {result && !busy && (
+              <DownloadButton getBlob={() => result.blob} filename={result.filename}>
+                Download {result.filename}
               </DownloadButton>
             )}
           </div>
@@ -271,12 +308,13 @@ function ModeButton({ active, onClick, children }) {
   return (
     <button
       onClick={onClick}
+      aria-pressed={active}
       style={{
         border: `1px solid ${active ? colors.primary : colors.border}`,
         backgroundColor: active ? colors.primarySoft : colors.surface,
         color: active ? colors.primary : colors.textSecondary,
         borderRadius: "8px",
-        padding: "8px 14px",
+        padding: "9px 14px",
         fontSize: "14px",
         fontWeight: 500,
         cursor: "pointer",
@@ -287,11 +325,22 @@ function ModeButton({ active, onClick, children }) {
   );
 }
 
-const numberInputStyle = {
-  width: "70px",
-  padding: "6px 8px",
-  fontSize: "14px",
-  border: `1px solid ${colors.borderInput}`,
-  borderRadius: "6px",
-  marginLeft: "4px",
-};
+function PresetButton({ onClick, disabled, children }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        border: `1px solid ${colors.border}`,
+        backgroundColor: colors.surfaceMuted,
+        color: disabled ? colors.textFaint : colors.textSecondary,
+        borderRadius: "999px",
+        padding: "5px 12px",
+        fontSize: "13px",
+        cursor: disabled ? "not-allowed" : "pointer",
+      }}
+    >
+      {children}
+    </button>
+  );
+}

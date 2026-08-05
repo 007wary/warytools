@@ -1,0 +1,55 @@
+"use client";
+
+import { useRef } from "react";
+import { colors } from "@/lib/theme";
+import { useNearViewport } from "@/lib/pdfThumbnails";
+
+// One page preview. Requests its bitmap only once it's near the viewport, so
+// opening a 400-page PDF renders a screenful rather than all 400 pages.
+export default function PdfPageThumbnail({ pageNumber, getThumbnail, rotation = 0, alt }) {
+  const containerRef = useRef(null);
+  const isNear = useNearViewport(containerRef);
+
+  const url = isNear ? getThumbnail(pageNumber) : null;
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        // A fixed aspect box reserves the space before the image arrives.
+        // Without it, every completed thumbnail would reflow the grid and
+        // shift the pages the user was aiming at — the classic layout-shift
+        // failure, and genuinely disruptive in a drag-to-reorder UI.
+        aspectRatio: "1 / 1.414",
+        backgroundColor: colors.surfaceMuted,
+        borderRadius: "6px",
+        overflow: "hidden",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {url ? (
+        <img
+          src={url}
+          alt={alt || `Page ${pageNumber}`}
+          style={{
+            maxWidth: "100%",
+            maxHeight: "100%",
+            display: "block",
+            // Previewing the rotation with a CSS transform rather than
+            // re-rendering the page: it's instant, and the actual rotation is
+            // applied to the real document by pdf-lib on export.
+            transform: `rotate(${rotation}deg)`,
+            transition: "transform 0.2s ease",
+          }}
+          draggable={false}
+        />
+      ) : (
+        <span style={{ fontSize: "12px", color: colors.textFaint }} aria-hidden="true">
+          {pageNumber}
+        </span>
+      )}
+    </div>
+  );
+}

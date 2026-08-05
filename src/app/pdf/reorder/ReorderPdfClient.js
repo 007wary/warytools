@@ -1,158 +1,156 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import { X, ChevronLeft, ChevronRight, Save, RotateCcw } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
-import { canvasToBlob } from "@/lib/imageFile";
+import ProgressBar from "@/components/ProgressBar";
+import ErrorBanner from "@/components/ErrorBanner";
+import PdfFileHeader from "@/components/PdfFileHeader";
+import PdfPageThumbnail from "@/components/PdfPageThumbnail";
+import { PrimaryButton, SecondaryButton, iconButtonStyle } from "@/components/ToolButton";
+import { validatePdfFile, describePdfError } from "@/lib/pdfFile";
+import { usePdfThumbnails } from "@/lib/pdfThumbnails";
+import { usePdfWorker, ops } from "@/lib/pdfWorkerClient";
 import { colors } from "@/lib/theme";
 import { events, trackEvent } from "@/lib/analytics";
 
-// Each page is { id, originalIndex, thumbnail } — id is stable across
-// reorders/deletes, originalIndex maps back to the source PDF for export.
-let nextId = 0;
-
+// Each entry is { id, originalIndex } — id is stable across reorders and
+// deletes, originalIndex maps back to the source PDF for export.
 export default function ReorderPdfClient() {
   const [file, setFile] = useState(null);
+  const [bytes, setBytes] = useState(null);
   const [pages, setPages] = useState([]);
-  const [isLoadingThumbs, setIsLoadingThumbs] = useState(false);
-  const [isWorking, setIsWorking] = useState(false);
   const [error, setError] = useState("");
   const [resultBlob, setResultBlob] = useState(null);
   const [dragIndex, setDragIndex] = useState(null);
+  // Index of the page "picked up" by keyboard. The whole reason this exists:
+  // the old tool was drag-and-drop only, so reordering was impossible with a
+  // keyboard or a screen reader.
+  const [grabbedIndex, setGrabbedIndex] = useState(null);
+  const [status, setStatus] = useState("");
+  // The document `pages` was built from. Kept in state rather than a ref so
+  // the rebuild below is a state comparison during render — React's
+  // documented "adjusting state when a prop changes" pattern — instead of a
+  // ref read, which isn't allowed during render.
+  const [builtFor, setBuiltFor] = useState(null);
 
-  // Every thumbnail object URL currently alive. Kept in a ref rather than
-  // derived from `pages` so unmount cleanup doesn't have to re-run on every
-  // reorder — the set of live URLs is what matters, not their order.
-  const thumbnailUrls = useRef(new Set());
+  const { pageCount, getThumbnail, isReady, error: renderError } = usePdfThumbnails(bytes);
+  const { run, cancel, progress, isRunning } = usePdfWorker();
 
-  function releaseThumbnail(url) {
-    if (!url) return;
-    URL.revokeObjectURL(url);
-    thumbnailUrls.current.delete(url);
+  const bytesRef = useRef(null);
+
+  // Built during render, once per document. It can't key off the list length
+  // the way Rotate does, because removing a page is a legitimate user edit
+  // that must not trigger a rebuild — so the source document is the identity.
+  // Doing this inline rather than in an effect avoids an intermediate render
+  // where the document is ready but the grid is still empty.
+  if (isReady && pageCount > 0 && builtFor !== bytes) {
+    setBuiltFor(bytes);
+    setPages(Array.from({ length: pageCount }, (_, i) => ({ id: i, originalIndex: i })));
   }
 
-  function releaseAllThumbnails() {
-    thumbnailUrls.current.forEach((url) => URL.revokeObjectURL(url));
-    thumbnailUrls.current.clear();
-  }
-
-  // Revoke on unmount. Without this, navigating away from a large PDF left
-  // every thumbnail blob alive for the lifetime of the tab.
-  useEffect(() => releaseAllThumbnails, []);
+  const resetState = useCallback(() => {
+    setFile(null);
+    setBytes(null);
+    setPages([]);
+    setResultBlob(null);
+    setError("");
+    setGrabbedIndex(null);
+    setStatus("");
+    setBuiltFor(null);
+    bytesRef.current = null;
+  }, []);
 
   async function handleFiles(fileList) {
-    const selected = fileList[0];
-    if (!selected || selected.type !== "application/pdf") {
-      setError("Please choose a PDF file.");
-      return;
-    }
-
     setError("");
     setResultBlob(null);
-    setFile(selected);
-    setIsLoadingThumbs(true);
 
-    let doc;
-    try {
-      const pdfjsLib = (await import("@/lib/pdfjs")).default;
-      const bytes = await selected.arrayBuffer();
-      doc = await pdfjsLib.getDocument({ data: bytes.slice(0) }).promise;
-    } catch (err) {
-      console.error(err);
-      setError("Could not read this PDF. Make sure it's valid and unencrypted.");
-      setFile(null);
-      setIsLoadingThumbs(false);
+    const check = await validatePdfFile(fileList[0]);
+    if (!check.ok) {
+      setError(check.error);
       return;
     }
 
     try {
-      // Drop the previous file's thumbnails before replacing the list —
-      // clearing state alone leaks every blob from the prior document.
-      releaseAllThumbnails();
-      setPages([]);
-
-      for (let i = 1; i <= doc.numPages; i++) {
-        const page = await doc.getPage(i);
-        const viewport = page.getViewport({ scale: 0.3 });
-        const canvas = document.createElement("canvas");
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        const ctx = canvas.getContext("2d");
-        await page.render({ canvasContext: ctx, viewport }).promise;
-
-        // canvasToBlob rejects on a null blob instead of letting
-        // URL.createObjectURL(null) throw — encoding can fail on very large
-        // pages, which is exactly when the raw callback returns null.
-        const blob = await canvasToBlob(canvas, "image/png");
-        const thumbnail = URL.createObjectURL(blob);
-        thumbnailUrls.current.add(thumbnail);
-
-        const newPage = { id: nextId++, originalIndex: i - 1, thumbnail };
-        setPages((prev) => [...prev, newPage]);
-
-        // Yield to the event loop between pages so the UI stays responsive
-        // (progress is visible, and taps/scrolls aren't blocked) on large PDFs.
-        await new Promise((resolve) => setTimeout(resolve, 0));
-      }
+      const buffer = await check.file.arrayBuffer();
+      bytesRef.current = buffer;
+      setFile(check.file);
+      // Drives the thumbnail hook, which owns cancellation of any previous
+      // document's in-flight renders.
+      setBytes(buffer);
     } catch (err) {
-      // The PDF itself parsed fine — this is a page-render/encode failure,
-      // typically memory pressure on a very large page. Say so, and drop the
-      // partial thumbnails rather than leaving them orphaned.
       console.error(err);
-      trackEvent(events.TOOL_ERROR, { reason: "reorder_thumbnail_failed" });
-      releaseAllThumbnails();
-      setPages([]);
-      setError("Could not render this PDF's pages. It may be too large for this device.");
-      setFile(null);
-    } finally {
-      setIsLoadingThumbs(false);
+      setError(describePdfError(err, "Could not read this PDF."));
+      resetState();
     }
   }
 
   function removePage(id) {
     setResultBlob(null);
-    // Revoked outside the updater — React may run updaters more than once,
-    // and revoking twice would break the surviving <img> if it re-ran after
-    // a re-render.
-    const removed = pages.find((p) => p.id === id);
-    if (removed) releaseThumbnail(removed.thumbnail);
     setPages((prev) => prev.filter((p) => p.id !== id));
+    setGrabbedIndex(null);
   }
 
-  function handleDragStart(index) {
-    setDragIndex(index);
-  }
-
-  function handleDragOver(e, index) {
-    e.preventDefault();
-    if (dragIndex === null || dragIndex === index) return;
-
+  const movePage = useCallback((from, to) => {
+    if (to < 0) return;
+    setResultBlob(null);
     setPages((prev) => {
+      if (to >= prev.length) return prev;
       const next = [...prev];
-      const [moved] = next.splice(dragIndex, 1);
-      next.splice(index, 0, moved);
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
       return next;
     });
-    setDragIndex(index);
-    setResultBlob(null);
-  }
+  }, []);
 
-  function handleDragEnd() {
-    setDragIndex(null);
-  }
+  // Keyboard reordering: Space picks a page up and puts it down, arrows move
+  // it, Escape cancels. This is the standard the WAI-ARIA authoring practices
+  // describe for a reorderable list, and it makes the tool usable without a
+  // mouse for the first time.
+  function handleKeyDown(event, index) {
+    const { key } = event;
 
-  function movePage(index, direction) {
-    const target = index + direction;
+    if (key === " " || key === "Enter") {
+      event.preventDefault();
+      if (grabbedIndex === index) {
+        setGrabbedIndex(null);
+        setStatus(`Page dropped at position ${index + 1}.`);
+      } else {
+        setGrabbedIndex(index);
+        setStatus(`Page ${index + 1} grabbed. Use the arrow keys to move it, then press space.`);
+      }
+      return;
+    }
+
+    if (key === "Escape" && grabbedIndex !== null) {
+      event.preventDefault();
+      setGrabbedIndex(null);
+      setStatus("Move cancelled.");
+      return;
+    }
+
+    if (key !== "ArrowLeft" && key !== "ArrowRight") return;
+
+    event.preventDefault();
+    const delta = key === "ArrowLeft" ? -1 : 1;
+    const target = index + delta;
     if (target < 0 || target >= pages.length) return;
 
-    setPages((prev) => {
-      const next = [...prev];
-      const [moved] = next.splice(index, 1);
-      next.splice(target, 0, moved);
-      return next;
-    });
-    setResultBlob(null);
+    if (grabbedIndex === index) {
+      // Captured before the move: after it, `index` points at whichever page
+      // shifted into the vacated slot, so focusing by position would follow
+      // the wrong card and the next arrow press would move a different page.
+      const movedId = pages[index].id;
+      movePage(index, target);
+      setGrabbedIndex(target);
+      setStatus(`Moved to position ${target + 1} of ${pages.length}.`);
+      requestAnimationFrame(() => {
+        document.getElementById(`page-card-${movedId}`)?.focus();
+      });
+    } else {
+      document.getElementById(`page-card-${pages[target].id}`)?.focus();
+    }
   }
 
   async function handleApply() {
@@ -162,128 +160,149 @@ export default function ReorderPdfClient() {
     }
 
     setError("");
-    setIsWorking(true);
+    setResultBlob(null);
 
     try {
-      const { PDFDocument } = await import("pdf-lib");
-      const bytes = await file.arrayBuffer();
-      const sourcePdf = await PDFDocument.load(bytes);
-      const newPdf = await PDFDocument.create();
+      const result = await run(
+        ops.REORDER,
+        { bytes: bytesRef.current.slice(0), order: pages.map((p) => p.originalIndex) },
+        { transfer: [] }
+      );
 
-      const indices = pages.map((p) => p.originalIndex);
-      const copiedPages = await newPdf.copyPages(sourcePdf, indices);
-      copiedPages.forEach((page) => newPdf.addPage(page));
-
-      const outBytes = await newPdf.save();
-      setResultBlob(new Blob([outBytes], { type: "application/pdf" }));
+      setResultBlob(new Blob([result.bytes], { type: "application/pdf" }));
       trackEvent(events.TOOL_RUN, { page_count: pages.length });
     } catch (err) {
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "reorder_failed" });
-      setError("Could not save the reordered PDF.");
-    } finally {
-      setIsWorking(false);
+      setError(describePdfError(err, "Could not save the reordered PDF."));
     }
   }
 
-  function handleReset() {
-    setFile(null);
-    releaseAllThumbnails();
-    setPages([]);
+  function handleRevert() {
+    setPages((prev) => [...prev].sort((a, b) => a.originalIndex - b.originalIndex));
     setResultBlob(null);
-    setError("");
+    setStatus("Original page order restored.");
   }
+
+  const removedCount = pageCount - pages.length;
+  const isModified =
+    removedCount > 0 || pages.some((page, index) => page.originalIndex !== index);
 
   return (
     <div>
       {!file && (
         <FileDropzone
           onFiles={handleFiles}
-          accept="application/pdf"
+          accept="application/pdf,.pdf"
           label="Drag & drop a PDF here, or click to browse"
         />
       )}
 
-      {error && (
-        <p style={{ color: colors.danger, fontSize: "14px", marginTop: "12px" }}>{error}</p>
-      )}
+      <ErrorBanner>{error || renderError}</ErrorBanner>
 
-      {isLoadingThumbs && (
-        <p style={{ fontSize: "14px", color: colors.textMuted, marginTop: "12px" }}>
-          Loading pages…
+      {file && !isReady && !renderError && (
+        <p style={{ fontSize: "14px", color: colors.textMuted, marginTop: "16px" }}>
+          Opening PDF…
         </p>
       )}
 
-      {file && pages.length > 0 && !isLoadingThumbs && (
-        <div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              flexWrap: "wrap",
-              gap: "8px",
-              border: `1px solid ${colors.border}`,
-              borderRadius: "8px",
-              padding: "10px 12px",
-              margin: "20px 0",
-            }}
-          >
-            <span
-              style={{
-                fontSize: "14px",
-                color: colors.textSecondary,
-                minWidth: 0,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {file.name} · {pages.length} page{pages.length === 1 ? "" : "s"}
-            </span>
-            <button onClick={handleReset} style={{ ...smallButtonStyle, flexShrink: 0 }}>
-              Choose another file
-            </button>
-          </div>
+      {file && isReady && (
+        <div style={{ marginTop: "20px" }}>
+          <PdfFileHeader
+            file={file}
+            pageCount={pages.length}
+            onReset={resetState}
+            disabled={isRunning}
+          />
 
-          <p style={{ fontSize: "13px", color: colors.textFaint, marginBottom: "16px" }}>
-            Drag pages to reorder them (or use the arrows on touch devices), and use the remove
-            button to delete a page.
+          <p style={{ fontSize: "13px", color: colors.textFaint, margin: "0 0 16px" }}>
+            Drag a page to move it, or focus one and press space to pick it up and the arrow keys
+            to move it. Remove a page with the ✕ button.
           </p>
 
-          <div
+          {/* Announces reorder outcomes to screen readers, which otherwise
+              get no feedback at all from a purely visual rearrangement. */}
+          <p
+            aria-live="polite"
             style={{
+              position: "absolute",
+              width: "1px",
+              height: "1px",
+              overflow: "hidden",
+              clip: "rect(0 0 0 0)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {status}
+          </p>
+
+          {removedCount > 0 && (
+            <p style={{ fontSize: "13px", color: colors.warningText, margin: "0 0 16px" }}>
+              {removedCount} page{removedCount === 1 ? "" : "s"} will be removed from the saved
+              file.
+            </p>
+          )}
+
+          <ul
+            style={{
+              listStyle: "none",
+              padding: 0,
+              margin: "0 0 24px",
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
               gap: "14px",
-              marginBottom: "24px",
             }}
           >
             {pages.map((page, index) => (
-              <div
+              <li
                 key={page.id}
-                draggable
-                onDragStart={() => handleDragStart(index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDragEnd={handleDragEnd}
+                id={`page-card-${page.id}`}
+                tabIndex={0}
+                role="button"
+                aria-label={`Page ${index + 1} of ${pages.length}${
+                  grabbedIndex === index ? ", grabbed" : ""
+                }`}
+                aria-grabbed={grabbedIndex === index}
+                draggable={!isRunning}
+                onKeyDown={(e) => handleKeyDown(e, index)}
+                onDragStart={() => setDragIndex(index)}
+                onDragOver={(e) => e.preventDefault()}
+                // Applied on drop, not dragover. Reordering on every dragover
+                // made the card jump out from under the pointer and the grid
+                // shuffle through orders the user never chose.
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (dragIndex !== null) movePage(dragIndex, index);
+                  setDragIndex(null);
+                }}
+                onDragEnd={() => setDragIndex(null)}
                 style={{
                   position: "relative",
-                  border: `1px solid ${dragIndex === index ? colors.primary : colors.border}`,
-                  borderRadius: "8px",
+                  border: `2px solid ${
+                    grabbedIndex === index
+                      ? colors.primary
+                      : dragIndex === index
+                        ? colors.primarySoftBorder
+                        : colors.border
+                  }`,
+                  borderRadius: "10px",
                   padding: "8px",
-                  cursor: "grab",
                   backgroundColor: colors.surface,
+                  cursor: isRunning ? "default" : "grab",
+                  boxShadow: grabbedIndex === index ? "var(--shadow-float)" : "none",
                 }}
               >
                 <button
                   onClick={() => removePage(page.id)}
-                  aria-label={`Delete page ${index + 1}`}
+                  disabled={isRunning}
+                  aria-label={`Remove page ${index + 1}`}
                   style={{
                     position: "absolute",
-                    top: "4px",
-                    right: "4px",
-                    width: "32px",
-                    height: "32px",
+                    top: "6px",
+                    right: "6px",
+                    zIndex: 1,
+                    width: "30px",
+                    height: "30px",
                     borderRadius: "50%",
                     border: "none",
                     backgroundColor: colors.surface,
@@ -291,68 +310,76 @@ export default function ReorderPdfClient() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    cursor: "pointer",
+                    cursor: isRunning ? "not-allowed" : "pointer",
                     boxShadow: "var(--shadow-float)",
                   }}
                 >
                   <X size={15} />
                 </button>
-                <img
-                  src={page.thumbnail}
+
+                <PdfPageThumbnail
+                  pageNumber={page.originalIndex + 1}
+                  getThumbnail={getThumbnail}
                   alt={`Page ${index + 1}`}
-                  style={{ width: "100%", borderRadius: "4px", display: "block" }}
                 />
+
                 <div
                   style={{
                     textAlign: "center",
                     fontSize: "12px",
                     color: colors.textMuted,
-                    margin: "6px 0 8px",
+                    margin: "8px 0",
                   }}
                 >
                   Page {index + 1}
+                  {page.originalIndex !== index && (
+                    <span style={{ color: colors.textFaint }}> (was {page.originalIndex + 1})</span>
+                  )}
                 </div>
+
                 <div style={{ display: "flex", gap: "6px" }}>
                   <button
-                    onClick={() => movePage(index, -1)}
-                    disabled={index === 0}
+                    onClick={() => movePage(index, index - 1)}
+                    disabled={index === 0 || isRunning}
                     aria-label={`Move page ${index + 1} earlier`}
-                    style={moveButtonStyle(index === 0)}
+                    style={{ ...iconButtonStyle(index === 0 || isRunning), flex: 1, width: "auto" }}
                   >
                     <ChevronLeft size={16} />
                   </button>
                   <button
-                    onClick={() => movePage(index, 1)}
-                    disabled={index === pages.length - 1}
+                    onClick={() => movePage(index, index + 1)}
+                    disabled={index === pages.length - 1 || isRunning}
                     aria-label={`Move page ${index + 1} later`}
-                    style={moveButtonStyle(index === pages.length - 1)}
+                    style={{
+                      ...iconButtonStyle(index === pages.length - 1 || isRunning),
+                      flex: 1,
+                      width: "auto",
+                    }}
                   >
                     <ChevronRight size={16} />
                   </button>
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
 
-          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-            <button
-              onClick={handleApply}
-              disabled={isWorking}
-              style={{
-                backgroundColor: isWorking ? colors.primaryDisabled : colors.primary,
-                color: colors.primaryContrast,
-                border: "none",
-                borderRadius: "8px",
-                padding: "10px 20px",
-                fontSize: "14px",
-                fontWeight: 600,
-                cursor: isWorking ? "not-allowed" : "pointer",
-              }}
-            >
-              {isWorking ? "Saving…" : "Save PDF"}
-            </button>
+          {isRunning && <ProgressBar progress={progress} indeterminate label="Saving PDF…" />}
 
-            {resultBlob && (
+          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginTop: "20px" }}>
+            <PrimaryButton onClick={handleApply} disabled={isRunning || pages.length === 0}>
+              <Save size={16} />
+              {isRunning ? "Saving…" : "Save PDF"}
+            </PrimaryButton>
+
+            {isModified && !isRunning && (
+              <SecondaryButton onClick={handleRevert}>
+                <RotateCcw size={15} /> Reset order
+              </SecondaryButton>
+            )}
+
+            {isRunning && <SecondaryButton onClick={cancel}>Cancel</SecondaryButton>}
+
+            {resultBlob && !isRunning && (
               <DownloadButton getBlob={() => resultBlob} filename="reordered.pdf">
                 Download reordered.pdf
               </DownloadButton>
@@ -362,30 +389,4 @@ export default function ReorderPdfClient() {
       )}
     </div>
   );
-}
-
-const smallButtonStyle = {
-  background: "none",
-  border: `1px solid ${colors.border}`,
-  borderRadius: "6px",
-  padding: "4px 10px",
-  fontSize: "13px",
-  color: colors.textSecondary,
-  cursor: "pointer",
-};
-
-function moveButtonStyle(disabled) {
-  return {
-    flex: 1,
-    height: "34px",
-    borderRadius: "6px",
-    border: `1px solid ${colors.border}`,
-    backgroundColor: colors.surface,
-    color: disabled ? colors.textFaint : colors.textSecondary,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: disabled ? "not-allowed" : "pointer",
-    opacity: disabled ? 0.5 : 1,
-  };
 }

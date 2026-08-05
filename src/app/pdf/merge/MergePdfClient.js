@@ -1,49 +1,86 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowUp, ArrowDown, X } from "lucide-react";
+import { useCallback, useId, useRef, useState } from "react";
+import { ArrowUp, ArrowDown, X, GripVertical, Merge } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
+import ProgressBar from "@/components/ProgressBar";
+import ErrorBanner from "@/components/ErrorBanner";
+import { PrimaryButton, SecondaryButton, iconButtonStyle } from "@/components/ToolButton";
 import { colors } from "@/lib/theme";
+import { formatBytes } from "@/lib/formatBytes";
+import { validatePdfFiles, describeRejections, describePdfError } from "@/lib/pdfFile";
+import { usePdfWorker, ops } from "@/lib/pdfWorkerClient";
 import { events, trackEvent } from "@/lib/analytics";
-
-// Each item in the list is { id, file } — id lets us reorder/remove
-// reliably even if two files share the same name.
-let nextId = 0;
 
 export default function MergePdfClient() {
   const [items, setItems] = useState([]);
-  const [isMerging, setIsMerging] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [mergedBlob, setMergedBlob] = useState(null);
 
-  function handleFiles(fileList) {
-    const newItems = Array.from(fileList)
-      .filter((file) => file.type === "application/pdf")
-      .map((file) => ({ id: nextId++, file }));
+  const { run, cancel, progress, isRunning } = usePdfWorker();
 
-    if (newItems.length === 0) {
-      setError("Please choose PDF files only.");
+  // Ids are per-instance rather than module-global. A module-level counter is
+  // shared by every mount in the tab, so ids kept climbing across navigations
+  // and two components could never be reasoned about independently.
+  const nextId = useRef(0);
+  const dragIndex = useRef(null);
+  const listLabelId = useId();
+
+  const clearResult = useCallback(() => setMergedBlob(null), []);
+
+  async function handleFiles(fileList) {
+    setError("");
+    setNotice("");
+    clearResult();
+
+    // Validated by magic bytes, not File.type — several platforms report an
+    // empty type for a perfectly good PDF, and the old check rejected those.
+    const { accepted, rejected } = await validatePdfFiles(fileList);
+
+    if (accepted.length === 0) {
+      setError(
+        rejected.length > 0
+          ? describeRejections(rejected)
+          : "Please choose PDF files to merge."
+      );
       return;
     }
 
-    setError("");
-    setMergedBlob(null);
-    setItems((prev) => [...prev, ...newItems]);
+    // Partial acceptance: keep the good files and say what was skipped,
+    // rather than discarding the whole drop over one bad item.
+    if (rejected.length > 0) setNotice(describeRejections(rejected));
+
+    setItems((prev) => [
+      ...prev,
+      ...accepted.map((file) => ({ id: nextId.current++, file })),
+    ]);
   }
 
   function removeItem(id) {
-    setMergedBlob(null);
+    clearResult();
     setItems((prev) => prev.filter((item) => item.id !== id));
   }
 
   function moveItem(index, direction) {
-    setMergedBlob(null);
+    const target = index + direction;
+    if (target < 0 || target >= items.length) return;
+    clearResult();
     setItems((prev) => {
       const next = [...prev];
-      const targetIndex = index + direction;
-      if (targetIndex < 0 || targetIndex >= next.length) return prev;
-      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  }
+
+  function reorder(from, to) {
+    if (from === to || from == null || to == null) return;
+    clearResult();
+    setItems((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
       return next;
     });
   }
@@ -55,128 +92,201 @@ export default function MergePdfClient() {
     }
 
     setError("");
-    setIsMerging(true);
+    clearResult();
 
     try {
-      const { PDFDocument } = await import("pdf-lib");
-      const mergedPdf = await PDFDocument.create();
+      // Read every file up front so the worker receives plain ArrayBuffers it
+      // can take ownership of. Transferring rather than cloning matters here:
+      // a ten-file merge would otherwise duplicate every byte across the
+      // thread boundary.
+      const buffers = await Promise.all(items.map((item) => item.file.arrayBuffer()));
 
-      for (const item of items) {
-        const bytes = await item.file.arrayBuffer();
-        const sourcePdf = await PDFDocument.load(bytes);
-        const copiedPages = await mergedPdf.copyPages(
-          sourcePdf,
-          sourcePdf.getPageIndices()
-        );
-        copiedPages.forEach((page) => mergedPdf.addPage(page));
-      }
+      const result = await run(
+        ops.MERGE,
+        { files: buffers },
+        { transfer: buffers }
+      );
 
-      const mergedBytes = await mergedPdf.save();
-      setMergedBlob(new Blob([mergedBytes], { type: "application/pdf" }));
+      setMergedBlob(new Blob([result.bytes], { type: "application/pdf" }));
       trackEvent(events.TOOL_RUN, {
         file_count: items.length,
-        page_count: mergedPdf.getPageCount(),
+        page_count: result.pageCount,
       });
     } catch (err) {
-      setError("Could not merge these PDFs. Make sure each file is a valid, unencrypted PDF.");
-      trackEvent(events.TOOL_ERROR, { reason: "merge_failed" });
       console.error(err);
-    } finally {
-      setIsMerging(false);
+      trackEvent(events.TOOL_ERROR, { reason: "merge_failed" });
+      setError(
+        describePdfError(err, "Could not merge these PDFs. One of them may be damaged.")
+      );
     }
   }
+
+  function handleClearAll() {
+    setItems([]);
+    clearResult();
+    setError("");
+    setNotice("");
+  }
+
+  const totalBytes = items.reduce((sum, item) => sum + item.file.size, 0);
 
   return (
     <div>
       <FileDropzone
         onFiles={handleFiles}
-        accept="application/pdf"
+        accept="application/pdf,.pdf"
         multiple
         label="Drag & drop PDF files here, or click to browse"
       />
 
-      {error && (
-        <p style={{ color: colors.danger, fontSize: "14px", marginTop: "12px" }}>{error}</p>
+      <ErrorBanner>{error}</ErrorBanner>
+
+      {notice && (
+        <p
+          role="status"
+          style={{ fontSize: "13px", color: colors.warningText, marginTop: "12px" }}
+        >
+          {notice}
+        </p>
       )}
 
       {items.length > 0 && (
-        <ul style={{ listStyle: "none", padding: 0, margin: "20px 0 0" }}>
-          {items.map((item, index) => (
-            <li
-              key={item.id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                border: `1px solid ${colors.border}`,
-                borderRadius: "8px",
-                padding: "10px 12px",
-                marginBottom: "8px",
-              }}
-            >
-              <span style={{ fontSize: "13px", color: colors.textFaint, width: "20px", flexShrink: 0 }}>
-                {index + 1}
-              </span>
-              <span
+        <>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "12px",
+              flexWrap: "wrap",
+              margin: "24px 0 10px",
+            }}
+          >
+            <span id={listLabelId} style={{ fontSize: "14px", fontWeight: 600, color: colors.text }}>
+              {items.length} file{items.length === 1 ? "" : "s"} · {formatBytes(totalBytes)}
+            </span>
+            <SecondaryButton onClick={handleClearAll} disabled={isRunning}>
+              Clear all
+            </SecondaryButton>
+          </div>
+
+          <p style={{ fontSize: "13px", color: colors.textFaint, margin: "0 0 12px" }}>
+            Pages are combined top to bottom. Drag a row to reorder, or use the arrow buttons.
+          </p>
+
+          <ul
+            aria-labelledby={listLabelId}
+            style={{ listStyle: "none", padding: 0, margin: 0 }}
+          >
+            {items.map((item, index) => (
+              <li
+                key={item.id}
+                draggable={!isRunning}
+                onDragStart={() => {
+                  dragIndex.current = index;
+                }}
+                onDragOver={(e) => e.preventDefault()}
+                // Reordering on drop rather than on dragover. The old code
+                // mutated the list on every dragover event, so the row moved
+                // out from under the cursor mid-drag and the list flickered
+                // through intermediate orders the user never asked for.
+                onDrop={(e) => {
+                  e.preventDefault();
+                  reorder(dragIndex.current, index);
+                  dragIndex.current = null;
+                }}
+                onDragEnd={() => {
+                  dragIndex.current = null;
+                }}
                 style={{
-                  flex: 1,
-                  minWidth: 0,
-                  fontSize: "14px",
-                  color: colors.textSecondary,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: "10px",
+                  padding: "10px 12px",
+                  marginBottom: "8px",
+                  backgroundColor: colors.surface,
+                  cursor: isRunning ? "default" : "grab",
                 }}
               >
-                {item.file.name}
-              </span>
-              <button
-                onClick={() => moveItem(index, -1)}
-                disabled={index === 0}
-                style={iconButtonStyle(index === 0)}
-                aria-label="Move up"
-              >
-                <ArrowUp size={14} />
-              </button>
-              <button
-                onClick={() => moveItem(index, 1)}
-                disabled={index === items.length - 1}
-                style={iconButtonStyle(index === items.length - 1)}
-                aria-label="Move down"
-              >
-                <ArrowDown size={14} />
-              </button>
-              <button
-                onClick={() => removeItem(item.id)}
-                style={iconButtonStyle(false, colors.danger)}
-                aria-label="Remove"
-              >
-                <X size={14} />
-              </button>
-            </li>
-          ))}
-        </ul>
+                <GripVertical
+                  size={16}
+                  style={{ color: colors.textFaint, flexShrink: 0 }}
+                  aria-hidden="true"
+                />
+                <span
+                  style={{
+                    fontSize: "13px",
+                    color: colors.textFaint,
+                    width: "20px",
+                    flexShrink: 0,
+                  }}
+                >
+                  {index + 1}
+                </span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span
+                    style={{
+                      display: "block",
+                      fontSize: "14px",
+                      color: colors.textSecondary,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {item.file.name}
+                  </span>
+                  <span style={{ display: "block", fontSize: "12px", color: colors.textFaint }}>
+                    {formatBytes(item.file.size)}
+                  </span>
+                </span>
+
+                <button
+                  onClick={() => moveItem(index, -1)}
+                  disabled={index === 0 || isRunning}
+                  style={iconButtonStyle(index === 0 || isRunning)}
+                  aria-label={`Move ${item.file.name} up`}
+                >
+                  <ArrowUp size={14} />
+                </button>
+                <button
+                  onClick={() => moveItem(index, 1)}
+                  disabled={index === items.length - 1 || isRunning}
+                  style={iconButtonStyle(index === items.length - 1 || isRunning)}
+                  aria-label={`Move ${item.file.name} down`}
+                >
+                  <ArrowDown size={14} />
+                </button>
+                <button
+                  onClick={() => removeItem(item.id)}
+                  disabled={isRunning}
+                  style={iconButtonStyle(isRunning, colors.danger)}
+                  aria-label={`Remove ${item.file.name}`}
+                >
+                  <X size={14} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
 
-      <div style={{ display: "flex", gap: "12px", marginTop: "20px", flexWrap: "wrap" }}>
-        <button
-          onClick={handleMerge}
-          disabled={items.length < 2 || isMerging}
-          style={{
-            backgroundColor: items.length < 2 || isMerging ? colors.primaryDisabled : colors.primary,
-            color: colors.primaryContrast,
-            border: "none",
-            borderRadius: "8px",
-            padding: "10px 20px",
-            fontSize: "14px",
-            fontWeight: 600,
-            cursor: items.length < 2 || isMerging ? "not-allowed" : "pointer",
-          }}
-        >
-          {isMerging ? "Merging…" : "Merge PDFs"}
-        </button>
+      {isRunning && <ProgressBar progress={progress} />}
 
-        {mergedBlob && (
+      <div style={{ display: "flex", gap: "12px", marginTop: "20px", flexWrap: "wrap" }}>
+        <PrimaryButton onClick={handleMerge} disabled={items.length < 2 || isRunning}>
+          <Merge size={16} />
+          {isRunning ? "Merging…" : "Merge PDFs"}
+        </PrimaryButton>
+
+        {/* Cancel is only meaningful while work is in flight, and it's the
+            reason the worker exists — on the main thread this button could
+            not have been clicked. */}
+        {isRunning && <SecondaryButton onClick={cancel}>Cancel</SecondaryButton>}
+
+        {mergedBlob && !isRunning && (
           <DownloadButton getBlob={() => mergedBlob} filename="merged.pdf">
             Download merged.pdf
           </DownloadButton>
@@ -184,20 +294,4 @@ export default function MergePdfClient() {
       </div>
     </div>
   );
-}
-
-function iconButtonStyle(disabled, color = colors.textSecondary) {
-  return {
-    background: "none",
-    border: `1px solid ${colors.border}`,
-    borderRadius: "7px",
-    width: "36px",
-    height: "36px",
-    flexShrink: 0,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: disabled ? colors.borderInput : color,
-    cursor: disabled ? "not-allowed" : "pointer",
-  };
 }

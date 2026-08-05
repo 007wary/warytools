@@ -258,3 +258,31 @@ input[type="range"]::-moz-range-track {
   border-radius: 2px;
   background: var(--border-input);
 }
+
+/* Indeterminate progress track for operations whose total isn't known up
+   front (PDF parse/save). Slides a partial fill back and forth to show the
+   job is alive — the determinate case sets an explicit width instead. */
+@keyframes wt-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(340%);
+  }
+}
+
+/* Respect a reduced-motion preference: the looping progress fill is exactly
+   the kind of continuous animation that triggers discomfort for motion-
+   sensitive users. Held at a static partial fill, it still reads as "busy"
+   without moving. Transitions are shortened rather than removed so state
+   changes stay perceptible. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

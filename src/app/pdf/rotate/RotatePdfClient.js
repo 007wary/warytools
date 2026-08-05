@@ -1,62 +1,86 @@
 "use client";
 
-import { useState } from "react";
-import { RotateCcw, RotateCw } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import { RotateCcw, RotateCw, Check } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
+import ProgressBar from "@/components/ProgressBar";
+import ErrorBanner from "@/components/ErrorBanner";
+import PdfFileHeader from "@/components/PdfFileHeader";
+import PdfPageThumbnail from "@/components/PdfPageThumbnail";
+import { PrimaryButton, SecondaryButton, iconButtonStyle } from "@/components/ToolButton";
+import { validatePdfFile, describePdfError } from "@/lib/pdfFile";
+import { usePdfThumbnails } from "@/lib/pdfThumbnails";
+import { usePdfWorker, ops } from "@/lib/pdfWorkerClient";
 import { colors } from "@/lib/theme";
 import { events, trackEvent } from "@/lib/analytics";
 
-// rotations[i] is the extra rotation (0/90/180/270) to apply to page i,
-// on top of whatever rotation the page already has.
+// rotations[i] is the extra rotation (0/90/180/270) to apply to page i, on
+// top of whatever rotation the page already has.
+//
+// The old version listed pages as text rows with a degree readout and no
+// preview, so you rotated blind and only found out whether a scan came out
+// upright by downloading it. Every page now shows a live preview that turns
+// with the buttons.
 export default function RotatePdfClient() {
   const [file, setFile] = useState(null);
-  const [pageCount, setPageCount] = useState(null);
+  const [bytes, setBytes] = useState(null);
   const [rotations, setRotations] = useState([]);
-  const [isWorking, setIsWorking] = useState(false);
   const [error, setError] = useState("");
   const [resultBlob, setResultBlob] = useState(null);
 
+  const { pageCount, getThumbnail, isReady, error: renderError } = usePdfThumbnails(bytes);
+  const { run, cancel, progress, isRunning } = usePdfWorker();
+
+  const bytesRef = useRef(null);
+
+  // Derived during render rather than synced by an effect. The page count
+  // arrives asynchronously, and setting state from an effect on its arrival
+  // costs an extra render pass in which the grid is present but its rotation
+  // array is still empty — React 19's lint flags exactly this. Adjusting the
+  // array inline means the first render that knows the page count already has
+  // a correctly-sized array.
+  if (isReady && pageCount > 0 && rotations.length !== pageCount) {
+    setRotations(new Array(pageCount).fill(0));
+  }
+
+  const resetState = useCallback(() => {
+    setFile(null);
+    setBytes(null);
+    setRotations([]);
+    setResultBlob(null);
+    setError("");
+    bytesRef.current = null;
+  }, []);
+
   async function handleFiles(fileList) {
-    const selected = fileList[0];
-    if (!selected || selected.type !== "application/pdf") {
-      setError("Please choose a PDF file.");
+    setError("");
+    setResultBlob(null);
+
+    const check = await validatePdfFile(fileList[0]);
+    if (!check.ok) {
+      setError(check.error);
       return;
     }
 
-    setError("");
-    setResultBlob(null);
-    setFile(selected);
-
     try {
-      const { PDFDocument } = await import("pdf-lib");
-      const bytes = await selected.arrayBuffer();
-      const pdf = await PDFDocument.load(bytes);
-      const count = pdf.getPageCount();
-      setPageCount(count);
-      setRotations(new Array(count).fill(0));
+      const buffer = await check.file.arrayBuffer();
+      bytesRef.current = buffer;
+      setFile(check.file);
+      setBytes(buffer);
     } catch (err) {
       console.error(err);
-      setError("Could not read this PDF. Make sure it's valid and unencrypted.");
-      setFile(null);
+      setError(describePdfError(err, "Could not read this PDF."));
+      resetState();
     }
   }
 
-  // Discarding a stale result on every rotation used to strand the user when
-  // rotations summed back to 0 (e.g. four right-turns): the download was
-  // cleared but "Apply Rotation" was disabled for having no changes, leaving
-  // no way to produce output. Only clear the result when the new rotation
-  // state is actually applicable.
-  // Computed outside the state updater: updaters must stay pure, since React
-  // may run them more than once.
-  function applyRotations(updater) {
-    const next = updater(rotations);
-    setRotations(next);
-    if (next.some((r) => r !== 0)) setResultBlob(null);
-  }
-
+  // Any rotation change invalidates a previously generated file. Clearing it
+  // unconditionally is safe here because "Apply" is gated on hasChanges, and
+  // a rotation set that sums back to 0 legitimately has nothing to apply.
   function rotatePage(index, delta) {
-    applyRotations((prev) => {
+    setResultBlob(null);
+    setRotations((prev) => {
       const next = [...prev];
       next[index] = (next[index] + delta + 360) % 360;
       return next;
@@ -64,176 +88,172 @@ export default function RotatePdfClient() {
   }
 
   function rotateAll(delta) {
-    applyRotations((prev) => prev.map((r) => (r + delta + 360) % 360));
+    setResultBlob(null);
+    setRotations((prev) => prev.map((r) => (r + delta + 360) % 360));
+  }
+
+  function resetRotations() {
+    setResultBlob(null);
+    setRotations((prev) => prev.map(() => 0));
   }
 
   async function handleApply() {
     setError("");
-    setIsWorking(true);
+    setResultBlob(null);
 
     try {
-      const { PDFDocument, degrees } = await import("pdf-lib");
-      const bytes = await file.arrayBuffer();
-      const pdf = await PDFDocument.load(bytes);
-      const pages = pdf.getPages();
+      const result = await run(
+        ops.ROTATE,
+        { bytes: bytesRef.current.slice(0), rotations },
+        { transfer: [] }
+      );
 
-      pages.forEach((page, index) => {
-        const extra = rotations[index] || 0;
-        if (extra === 0) return;
-        const current = page.getRotation().angle;
-        page.setRotation(degrees((current + extra) % 360));
-      });
-
-      const outBytes = await pdf.save();
-      setResultBlob(new Blob([outBytes], { type: "application/pdf" }));
+      setResultBlob(new Blob([result.bytes], { type: "application/pdf" }));
       trackEvent(events.TOOL_RUN, {
-        page_count: pages.length,
+        page_count: result.pageCount,
         rotated_pages: rotations.filter((r) => r).length,
       });
     } catch (err) {
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "rotate_failed" });
-      setError("Could not rotate this PDF.");
-    } finally {
-      setIsWorking(false);
+      setError(describePdfError(err, "Could not rotate this PDF."));
     }
   }
 
-  function handleReset() {
-    setFile(null);
-    setPageCount(null);
-    setRotations([]);
-    setResultBlob(null);
-    setError("");
-  }
-
-  const hasChanges = rotations.some((r) => r !== 0);
+  const rotatedCount = rotations.filter((r) => r !== 0).length;
+  const hasChanges = rotatedCount > 0;
 
   return (
     <div>
       {!file && (
         <FileDropzone
           onFiles={handleFiles}
-          accept="application/pdf"
+          accept="application/pdf,.pdf"
           label="Drag & drop a PDF here, or click to browse"
         />
       )}
 
-      {error && (
-        <p style={{ color: colors.danger, fontSize: "14px", marginTop: "12px" }}>{error}</p>
+      <ErrorBanner>{error || renderError}</ErrorBanner>
+
+      {file && !isReady && !renderError && (
+        <p style={{ fontSize: "14px", color: colors.textMuted, marginTop: "16px" }}>
+          Opening PDF…
+        </p>
       )}
 
-      {file && pageCount && (
-        <div>
+      {file && isReady && rotations.length > 0 && (
+        <div style={{ marginTop: "20px" }}>
+          <PdfFileHeader
+            file={file}
+            pageCount={pageCount}
+            onReset={resetState}
+            disabled={isRunning}
+          />
+
           <div
             style={{
               display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              flexWrap: "wrap",
               gap: "8px",
-              border: `1px solid ${colors.border}`,
-              borderRadius: "8px",
-              padding: "10px 12px",
-              marginBottom: "20px",
+              marginBottom: "8px",
+              flexWrap: "wrap",
+              alignItems: "center",
             }}
           >
-            <span
-              style={{
-                fontSize: "14px",
-                color: colors.textSecondary,
-                minWidth: 0,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {file.name} · {pageCount} page{pageCount === 1 ? "" : "s"}
-            </span>
-            <button
-              onClick={handleReset}
-              style={{
-                background: "none",
-                border: `1px solid ${colors.border}`,
-                borderRadius: "6px",
-                padding: "4px 10px",
-                fontSize: "13px",
-                color: colors.textSecondary,
-                cursor: "pointer",
-                flexShrink: 0,
-              }}
-            >
-              Choose another file
-            </button>
-          </div>
-
-          <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
-            <button onClick={() => rotateAll(-90)} style={secondaryButtonStyle}>
+            <SecondaryButton onClick={() => rotateAll(-90)} disabled={isRunning}>
               <RotateCcw size={15} /> Rotate all left
-            </button>
-            <button onClick={() => rotateAll(90)} style={secondaryButtonStyle}>
+            </SecondaryButton>
+            <SecondaryButton onClick={() => rotateAll(90)} disabled={isRunning}>
               <RotateCw size={15} /> Rotate all right
-            </button>
+            </SecondaryButton>
+            {hasChanges && (
+              <SecondaryButton onClick={resetRotations} disabled={isRunning}>
+                Reset all
+              </SecondaryButton>
+            )}
           </div>
 
-          <ul style={{ listStyle: "none", padding: 0, margin: "0 0 20px" }}>
+          <p style={{ fontSize: "13px", color: colors.textFaint, margin: "0 0 16px" }}>
+            {hasChanges
+              ? `${rotatedCount} of ${pageCount} page${pageCount === 1 ? "" : "s"} rotated. Previews show how each page will be saved.`
+              : "Rotate individual pages with the buttons under each preview, or use the controls above for all pages at once."}
+          </p>
+
+          <ul
+            style={{
+              listStyle: "none",
+              padding: 0,
+              margin: "0 0 24px",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
+              gap: "14px",
+            }}
+          >
             {rotations.map((rotation, index) => (
               <li
                 key={index}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  gap: "12px",
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: "8px",
-                  padding: "10px 12px",
-                  marginBottom: "8px",
+                  border: `1px solid ${rotation ? colors.primarySoftBorder : colors.border}`,
+                  borderRadius: "10px",
+                  padding: "8px",
+                  backgroundColor: rotation ? colors.primarySoft : colors.surface,
                 }}
               >
-                <span style={{ fontSize: "14px", color: colors.textSecondary, flex: 1, minWidth: 0 }}>
-                  Page {index + 1}
-                </span>
-                <span style={{ fontSize: "13px", color: colors.textFaint, width: "50px", flexShrink: 0 }}>
-                  {rotation}°
-                </span>
-                <button
-                  onClick={() => rotatePage(index, -90)}
-                  style={iconButtonStyle}
-                  aria-label={`Rotate page ${index + 1} left`}
+                <PdfPageThumbnail
+                  pageNumber={index + 1}
+                  getThumbnail={getThumbnail}
+                  rotation={rotation}
+                  alt={`Page ${index + 1}${rotation ? `, rotated ${rotation} degrees` : ""}`}
+                />
+
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    fontSize: "12px",
+                    color: colors.textMuted,
+                    margin: "8px 2px",
+                  }}
                 >
-                  <RotateCcw size={14} />
-                </button>
-                <button
-                  onClick={() => rotatePage(index, 90)}
-                  style={iconButtonStyle}
-                  aria-label={`Rotate page ${index + 1} right`}
-                >
-                  <RotateCw size={14} />
-                </button>
+                  <span>Page {index + 1}</span>
+                  <span style={{ color: rotation ? colors.primary : colors.textFaint }}>
+                    {rotation}°
+                  </span>
+                </div>
+
+                <div style={{ display: "flex", gap: "6px" }}>
+                  <button
+                    onClick={() => rotatePage(index, -90)}
+                    disabled={isRunning}
+                    style={{ ...iconButtonStyle(isRunning), flex: 1, width: "auto" }}
+                    aria-label={`Rotate page ${index + 1} left`}
+                  >
+                    <RotateCcw size={15} />
+                  </button>
+                  <button
+                    onClick={() => rotatePage(index, 90)}
+                    disabled={isRunning}
+                    style={{ ...iconButtonStyle(isRunning), flex: 1, width: "auto" }}
+                    aria-label={`Rotate page ${index + 1} right`}
+                  >
+                    <RotateCw size={15} />
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
 
-          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-            <button
-              onClick={handleApply}
-              disabled={!hasChanges || isWorking}
-              style={{
-                backgroundColor: !hasChanges || isWorking ? colors.primaryDisabled : colors.primary,
-                color: colors.primaryContrast,
-                border: "none",
-                borderRadius: "8px",
-                padding: "10px 20px",
-                fontSize: "14px",
-                fontWeight: 600,
-                cursor: !hasChanges || isWorking ? "not-allowed" : "pointer",
-              }}
-            >
-              {isWorking ? "Applying…" : "Apply Rotation"}
-            </button>
+          {isRunning && <ProgressBar progress={progress} indeterminate label="Applying rotation…" />}
 
-            {resultBlob && (
+          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginTop: "20px" }}>
+            <PrimaryButton onClick={handleApply} disabled={!hasChanges || isRunning}>
+              <Check size={16} />
+              {isRunning ? "Applying…" : "Apply rotation"}
+            </PrimaryButton>
+
+            {isRunning && <SecondaryButton onClick={cancel}>Cancel</SecondaryButton>}
+
+            {resultBlob && !isRunning && (
               <DownloadButton getBlob={() => resultBlob} filename="rotated.pdf">
                 Download rotated.pdf
               </DownloadButton>
@@ -244,31 +264,3 @@ export default function RotatePdfClient() {
     </div>
   );
 }
-
-const iconButtonStyle = {
-  background: "none",
-  border: `1px solid ${colors.border}`,
-  borderRadius: "7px",
-  width: "38px",
-  height: "38px",
-  flexShrink: 0,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  color: colors.textSecondary,
-  cursor: "pointer",
-};
-
-const secondaryButtonStyle = {
-  border: `1px solid ${colors.border}`,
-  backgroundColor: colors.surface,
-  color: colors.textSecondary,
-  borderRadius: "8px",
-  padding: "8px 14px",
-  fontSize: "14px",
-  fontWeight: 500,
-  cursor: "pointer",
-  display: "flex",
-  alignItems: "center",
-  gap: "6px",
-};
