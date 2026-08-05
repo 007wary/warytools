@@ -14,8 +14,11 @@ export default function ResizeImageClient() {
   const [originalHeight, setOriginalHeight] = useState(0);
 
   const [mode, setMode] = useState("dimensions"); // "dimensions" | "percentage"
-  const [width, setWidth] = useState(0);
-  const [height, setHeight] = useState(0);
+  // Strings, not numbers — see the same note in SplitPdfClient. Number("")
+  // is 0, so clearing one field used to drive the *other* to 0 through the
+  // aspect-ratio link, leaving both boxes reading 0.
+  const [width, setWidth] = useState("");
+  const [height, setHeight] = useState("");
   const [lockAspect, setLockAspect] = useState(true);
   const [percentage, setPercentage] = useState(50);
 
@@ -47,27 +50,31 @@ export default function ResizeImageClient() {
       const img = await loadImage(selected);
       setOriginalWidth(img.naturalWidth);
       setOriginalHeight(img.naturalHeight);
-      setWidth(img.naturalWidth);
-      setHeight(img.naturalHeight);
+      setWidth(String(img.naturalWidth));
+      setHeight(String(img.naturalHeight));
     } catch (err) {
       console.error(err);
       setError("Could not read this image.");
     }
   }
 
+  // A blank or non-numeric box is left alone rather than mirrored across the
+  // aspect-ratio link — otherwise clearing one field zeroes both.
   function handleWidthChange(value) {
+    setWidth(value);
     const newWidth = Number(value);
-    setWidth(newWidth);
+    if (value.trim() === "" || !Number.isFinite(newWidth) || newWidth <= 0) return;
     if (lockAspect && originalWidth > 0) {
-      setHeight(Math.round((newWidth / originalWidth) * originalHeight));
+      setHeight(String(Math.max(1, Math.round((newWidth / originalWidth) * originalHeight))));
     }
   }
 
   function handleHeightChange(value) {
+    setHeight(value);
     const newHeight = Number(value);
-    setHeight(newHeight);
+    if (value.trim() === "" || !Number.isFinite(newHeight) || newHeight <= 0) return;
     if (lockAspect && originalHeight > 0) {
-      setWidth(Math.round((newHeight / originalHeight) * originalWidth));
+      setWidth(String(Math.max(1, Math.round((newHeight / originalHeight) * originalWidth))));
     }
   }
 
@@ -75,9 +82,20 @@ export default function ResizeImageClient() {
     setError("");
 
     const targetWidth =
-      mode === "percentage" ? Math.round((originalWidth * percentage) / 100) : width;
+      mode === "percentage" ? Math.round((originalWidth * percentage) / 100) : Number(width);
     const targetHeight =
-      mode === "percentage" ? Math.round((originalHeight * percentage) / 100) : height;
+      mode === "percentage" ? Math.round((originalHeight * percentage) / 100) : Number(height);
+
+    if (
+      mode === "dimensions" &&
+      (width.trim() === "" ||
+        height.trim() === "" ||
+        !Number.isFinite(targetWidth) ||
+        !Number.isFinite(targetHeight))
+    ) {
+      setError("Enter both a width and a height in pixels.");
+      return;
+    }
 
     if (targetWidth < 1 || targetHeight < 1) {
       setError("Width and height must be at least 1 pixel.");
@@ -126,6 +144,12 @@ export default function ResizeImageClient() {
     setPreviewUrl(null);
     setResultBlob(null);
     setError("");
+    // Clear the dimensions too, so the next file doesn't briefly show the
+    // previous image's size before its own dimensions load.
+    setOriginalWidth(0);
+    setOriginalHeight(0);
+    setWidth("");
+    setHeight("");
   }
 
   const extension = file?.type === "image/png" ? "png" : "jpg";

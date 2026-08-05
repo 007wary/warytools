@@ -1,20 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { formatBytes, getCappedDimensions, MAX_CANVAS_EDGE } from "./imageFile";
+import { getCappedDimensions, MAX_CANVAS_EDGE } from "./imageFile";
 
-describe("formatBytes", () => {
-  it("formats bytes under 1KB as bytes", () => {
-    expect(formatBytes(500)).toBe("500 B");
-  });
-
-  it("formats bytes under 1MB as KB", () => {
-    expect(formatBytes(2048)).toBe("2.0 KB");
-  });
-
-  it("formats bytes at 1MB and above as MB", () => {
-    expect(formatBytes(1024 * 1024)).toBe("1.00 MB");
-    expect(formatBytes(5 * 1024 * 1024)).toBe("5.00 MB");
-  });
-});
+// formatBytes now lives in ./formatBytes (shared with the PDF compressor);
+// its tests moved to formatBytes.test.js alongside it.
 
 describe("getCappedDimensions", () => {
   it("leaves dimensions unchanged when under the cap", () => {

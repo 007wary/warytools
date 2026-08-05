@@ -227,7 +227,13 @@ export default function CompressImageClient() {
                   ({sizeChangePercent}% smaller)
                 </span>
               )}
-              {sizeChangePercent <= 0 && (
+              {/* Exactly 0 means the size didn't meaningfully move — calling
+                  that "0% larger" in red reads as a failure when nothing
+                  went wrong. Mirrors the PDF compressor's wording. */}
+              {sizeChangePercent === 0 && (
+                <span style={{ color: colors.textMuted }}> (already well optimized)</span>
+              )}
+              {sizeChangePercent < 0 && (
                 <span style={{ color: colors.danger, fontWeight: 600 }}>
                   {" "}
                   ({Math.abs(sizeChangePercent)}% larger — try JPG or WebP instead)

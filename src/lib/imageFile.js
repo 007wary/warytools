@@ -1,10 +1,9 @@
 // Shared helpers for client-side image tools (compress, resize, convert).
 
-export function formatBytes(bytes) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-}
+// Re-exported so the image tools can keep importing it from here alongside
+// loadImage/canvasToBlob; the implementation is shared with the PDF
+// compressor and lives in formatBytes.js.
+export { formatBytes } from "./formatBytes";
 
 // Loads a File/Blob into an HTMLImageElement.
 export function loadImage(file) {

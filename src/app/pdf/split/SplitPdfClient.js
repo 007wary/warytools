@@ -3,6 +3,7 @@
 import { useState } from "react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
+import { validatePageRange } from "@/lib/pdfPageRange";
 import { colors } from "@/lib/theme";
 import { events, trackEvent } from "@/lib/analytics";
 
@@ -12,8 +13,13 @@ export default function SplitPdfClient() {
   const [file, setFile] = useState(null);
   const [pageCount, setPageCount] = useState(null);
   const [mode, setMode] = useState("range");
-  const [fromPage, setFromPage] = useState(1);
-  const [toPage, setToPage] = useState(1);
+  // Held as strings, not numbers: Number("") is 0, so storing these as
+  // numbers made a cleared field indistinguishable from a deliberate 0 and
+  // silently clamped to page 1 — extracting the wrong range instead of
+  // reporting an empty input. The <input min/max> attributes only constrain
+  // the spinner arrows, so validation has to happen here.
+  const [fromPage, setFromPage] = useState("1");
+  const [toPage, setToPage] = useState("1");
   const [isWorking, setIsWorking] = useState(false);
   const [error, setError] = useState("");
   const [resultBlob, setResultBlob] = useState(null);
@@ -36,8 +42,8 @@ export default function SplitPdfClient() {
       const pdf = await PDFDocument.load(bytes);
       const count = pdf.getPageCount();
       setPageCount(count);
-      setFromPage(1);
-      setToPage(count);
+      setFromPage("1");
+      setToPage(String(count));
     } catch (err) {
       console.error(err);
       setError("Could not read this PDF. Make sure it's valid and unencrypted.");
@@ -50,13 +56,16 @@ export default function SplitPdfClient() {
     setIsWorking(true);
 
     try {
-      const from = Math.max(1, Math.min(fromPage, pageCount));
-      const to = Math.max(1, Math.min(toPage, pageCount));
-      if (from > to) {
-        setError("The starting page must be before the ending page.");
+      // Rejects blanks and out-of-range values rather than clamping them, so
+      // an empty box reads as an empty box instead of silently becoming
+      // page 1. See src/lib/pdfPageRange.js.
+      const range = validatePageRange(fromPage, toPage, pageCount);
+      if (!range.ok) {
+        setError(range.error);
         setIsWorking(false);
         return;
       }
+      const { from, to } = range;
 
       const { PDFDocument } = await import("pdf-lib");
       const bytes = await file.arrayBuffer();
@@ -204,7 +213,7 @@ export default function SplitPdfClient() {
                   min={1}
                   max={pageCount}
                   value={fromPage}
-                  onChange={(e) => setFromPage(Number(e.target.value))}
+                  onChange={(e) => setFromPage(e.target.value)}
                   style={numberInputStyle}
                 />
               </label>
@@ -215,7 +224,7 @@ export default function SplitPdfClient() {
                   min={1}
                   max={pageCount}
                   value={toPage}
-                  onChange={(e) => setToPage(Number(e.target.value))}
+                  onChange={(e) => setToPage(e.target.value)}
                   style={numberInputStyle}
                 />
               </label>

@@ -15,7 +15,9 @@ npm run start    # run the production build
 npm run lint     # ESLint (flat config, eslint-config-next)
 ```
 
-`npm test` runs the vitest suite (`npm run test:watch` for watch mode) — 51 tests across five files in `src/lib/`, covering the pure-logic helpers: `calculatorMath`, `unitConversions`, `dateMath`, `imageFile`, and `urlShortenerValidation`. There are no component or end-to-end tests; UI and file-processing behaviour is only verified by `npm run build` and manual checks.
+`npm test` runs the vitest suite (`npm run test:watch` for watch mode) — 109 tests across ten files, covering the pure-logic helpers in `src/lib/` (`calculatorMath`, `unitConversions`, `dateMath`, `imageFile`, `formatBytes`, `pdfPageRange`, `urlShortenerValidation`, `siteUrl`, `sitemapRoutes`) plus `src/app/robots`. There are no component or end-to-end tests; UI and file-processing behaviour is only verified by `npm run build` and manual checks.
+
+Because there is no component-level coverage, **logic that guards a user input belongs in a `src/lib/` module, not inline in a client component** — that's the only way it can be tested at all. `pdfPageRange.js` exists for exactly this reason.
 
 `postinstall` runs `scripts/copy-pdf-worker.mjs`, which copies `pdf.worker.min.mjs` from `node_modules/pdfjs-dist` into `public/` — re-run `npm install` (or the script directly) if that file goes missing after bumping `pdfjs-dist`.
 
@@ -39,8 +41,12 @@ Hub pages (`/pdf`, `/image`, `/calculators`) render `<HubHeader>` + a grid of `<
 
 PDF and image tools do all processing in the browser — no file ever hits a server:
 - PDF tools use `pdf-lib` for manipulation and `pdfjs-dist` (via [src/lib/pdfjs.js](src/lib/pdfjs.js)) for rendering/reading. The pdf.js worker is a static file at `public/pdf.worker.min.mjs`, kept in sync with `pdfjs-dist` by the `postinstall` script — never hand-edit or manually copy it.
-- Image tools use `<canvas>` for resize/compress/convert; shared helpers (`loadImage`, `canvasToBlob`, `formatBytes`, `outputFormats`) live in [src/lib/imageFile.js](src/lib/imageFile.js).
+- Image tools use `<canvas>` for resize/compress/convert; shared helpers (`loadImage`, `canvasToBlob`, `outputFormats`) live in [src/lib/imageFile.js](src/lib/imageFile.js). `formatBytes` lives in [src/lib/formatBytes.js](src/lib/formatBytes.js) — it's shared with the PDF compressor, so it isn't image-specific (`imageFile.js` re-exports it for convenience).
+- Always go through `canvasToBlob` rather than calling `canvas.toBlob` directly: the raw callback yields `null` when encoding fails (large pages, memory pressure), and `URL.createObjectURL(null)` throws. The helper rejects with a real error instead.
+- Any `URL.createObjectURL` needs a matching revoke on **unmount and on file re-select**, not just on explicit reset — otherwise blobs live for the lifetime of the tab.
 - Shared UI across these tools: [FileDropzone](src/components/FileDropzone.js) (drag/drop + click-to-browse), [DownloadButton](src/components/DownloadButton.js) (triggers a client-side blob download), [WarningBanner](src/components/WarningBanner.js) (non-blocking caveats).
+
+**Numeric `<input>` gotcha:** `Number("")` is `0`, so storing a number input's value as a number makes a *cleared field* indistinguishable from a deliberate zero. Hold the raw string in state and validate on submit. The `min`/`max` attributes only constrain the spinner arrows — they validate nothing. This caused real bugs in both Split PDF and Resize Image.
 
 ### URL shortener (the one server-touching tool)
 

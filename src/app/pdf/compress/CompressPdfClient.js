@@ -3,14 +3,9 @@
 import { useState } from "react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
+import { formatBytes } from "@/lib/formatBytes";
 import { colors } from "@/lib/theme";
 import { events, sizeBucket, trackEvent } from "@/lib/analytics";
-
-function formatBytes(bytes) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-}
 
 export default function CompressPdfClient() {
   const [file, setFile] = useState(null);

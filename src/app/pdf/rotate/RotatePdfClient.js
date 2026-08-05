@@ -42,9 +42,21 @@ export default function RotatePdfClient() {
     }
   }
 
+  // Discarding a stale result on every rotation used to strand the user when
+  // rotations summed back to 0 (e.g. four right-turns): the download was
+  // cleared but "Apply Rotation" was disabled for having no changes, leaving
+  // no way to produce output. Only clear the result when the new rotation
+  // state is actually applicable.
+  // Computed outside the state updater: updaters must stay pure, since React
+  // may run them more than once.
+  function applyRotations(updater) {
+    const next = updater(rotations);
+    setRotations(next);
+    if (next.some((r) => r !== 0)) setResultBlob(null);
+  }
+
   function rotatePage(index, delta) {
-    setResultBlob(null);
-    setRotations((prev) => {
+    applyRotations((prev) => {
       const next = [...prev];
       next[index] = (next[index] + delta + 360) % 360;
       return next;
@@ -52,8 +64,7 @@ export default function RotatePdfClient() {
   }
 
   function rotateAll(delta) {
-    setResultBlob(null);
-    setRotations((prev) => prev.map((r) => (r + delta + 360) % 360));
+    applyRotations((prev) => prev.map((r) => (r + delta + 360) % 360));
   }
 
   async function handleApply() {
