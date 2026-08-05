@@ -139,10 +139,13 @@ export default function UrlShortenerClient() {
 
     try {
       const codes = links.map((l) => l.shortCode);
-      const { data, error: fetchError } = await supabase
-        .from("short_urls")
-        .select("short_code, clicks")
-        .in("short_code", codes);
+      // Goes through an RPC rather than a table select: anon has no SELECT on
+      // short_urls, because `.in(...)` over a readable table also permits an
+      // unfiltered scan of everyone else's links. This returns only the codes
+      // the caller already holds.
+      const { data, error: fetchError } = await supabase.rpc("get_short_url_clicks", {
+        p_short_codes: codes,
+      });
 
       if (fetchError) {
         console.error(fetchError);
@@ -150,7 +153,12 @@ export default function UrlShortenerClient() {
         return;
       }
 
-      const clicksByCode = Object.fromEntries(data.map((row) => [row.short_code, row.clicks]));
+      // An RPC can resolve with a null body and no error (empty result, or a
+      // function returning void after a signature change) — indexing straight
+      // into it would throw inside the handler and leave the button spinning.
+      const clicksByCode = Object.fromEntries(
+        (Array.isArray(data) ? data : []).map((row) => [row.short_code, row.clicks])
+      );
       setLinks((prev) =>
         prev.map((l) => ({ ...l, clicks: clicksByCode[l.shortCode] ?? l.clicks }))
       );

@@ -56,11 +56,14 @@ export default async function ShortUrlRedirectPage({ params }) {
     return <NotFound />;
   }
 
-  const { data, error } = await supabase
-    .from("short_urls")
-    .select("id, long_url")
-    .eq("short_code", code)
-    .maybeSingle();
+  // Resolves the code and counts the click in one statement. anon has no
+  // direct SELECT on short_urls — a table read would return every link on the
+  // service, so the only way in is by naming a code you already have. The
+  // row's `id` never leaves the database, which is also what stops the click
+  // counter from being callable against an arbitrary row.
+  const { data: longUrl, error } = await supabase.rpc("lookup_short_url", {
+    p_short_code: code,
+  });
 
   // A lookup failure (Supabase outage, network error) is not the same as
   // "this code was never registered" — report it so an outage shows up in
@@ -70,21 +73,9 @@ export default async function ShortUrlRedirectPage({ params }) {
     return <NotFound />;
   }
 
-  if (!data || !isSafeRedirectTarget(data.long_url)) {
+  if (!longUrl || !isSafeRedirectTarget(longUrl)) {
     return <NotFound />;
   }
 
-  // Best-effort click tracking — don't block the redirect if this fails,
-  // but still report it so a Supabase write outage isn't invisible.
-  // Uses an atomic RPC (not select+update) so concurrent redirects on the
-  // same link can't race and lose increments.
-  const { error: updateError } = await supabase.rpc("increment_short_url_clicks", {
-    row_id: data.id,
-  });
-
-  if (updateError) {
-    Sentry.captureException(updateError, { extra: { code } });
-  }
-
-  redirect(data.long_url);
+  redirect(longUrl);
 }
