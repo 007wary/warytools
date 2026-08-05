@@ -29,7 +29,50 @@ is why the tool page and the privacy policy both say so explicitly.
 
 `200` with `{ ok, active, queued }`. Used by the platform health check.
 
-## Deploy (Fly.io)
+## Deploy (Hugging Face Spaces — free, no card)
+
+The current deployment target. Spaces gives free Docker hosting with 16 GB of
+RAM and never asks for a payment method, which matters here because LibreOffice
+needs real memory — Render's free 512 MB tier OOMs on ordinary documents.
+
+Two tradeoffs to know: a Space sleeps after roughly 48 hours idle and takes
+~30s to wake, and free Spaces are publicly listed. Neither is a problem for
+this service — the secret still gates `/convert`, so a stranger finding the
+Space cannot use it — but if the cold start becomes annoying, moving to Fly
+(below) is a one-line env var change on the site.
+
+1. Create a Space at <https://huggingface.co/new-space>:
+   - **SDK**: Docker → Blank
+   - **Hardware**: CPU basic (free)
+   - **Visibility**: Public (private Spaces need a paid plan; the secret is
+     what protects this, not obscurity)
+
+2. Push these files to the Space repo. `SPACE_README.md` must be renamed to
+   `README.md` — Spaces reads its YAML front-matter to find `app_port`:
+
+   ```bash
+   git clone https://huggingface.co/spaces/<user>/<space-name> hf-space
+   cd hf-space
+   cp ../Dockerfile ../server.mjs .
+   cp ../SPACE_README.md README.md
+   git add -A && git commit -m "Add PDF converter" && git push
+   ```
+
+3. Set the secret: Space → **Settings** → **Variables and secrets** →
+   **New secret**, named `CONVERTER_SECRET`. Use the same value you put in
+   Vercel as `PDF_CONVERTER_SECRET`.
+
+4. Wait for the build (first one takes several minutes — it installs
+   LibreOffice), then check it:
+
+   ```bash
+   curl https://<user>-<space-name>.hf.space/health
+   ```
+
+   `{"ok":true,"active":0,"queued":0}` means it's live. That hostname is your
+   `PDF_CONVERTER_URL`.
+
+## Deploy (Fly.io — paid, faster)
 
 ```bash
 cd services/pdf-to-word

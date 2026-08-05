@@ -25,7 +25,11 @@ import { mkdtemp, rm, writeFile, readFile, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-const PORT = Number(process.env.PORT) || 8080;
+// 7860 matches the Dockerfile default and what Hugging Face Spaces routes to.
+// Every platform we deploy on sets PORT explicitly, so this fallback only
+// applies when running the file directly — but it should still agree with the
+// image, or local testing checks a different port than production serves.
+const PORT = Number(process.env.PORT) || 7860;
 
 // Must match PDF_CONVERTER_SECRET on the Next.js side. Absent means the service
 // refuses to start rather than starting open — a converter that anyone can post

@@ -44,12 +44,17 @@ RUN mkdir -p /home/converter && chown -R converter:converter /home/converter /ap
 
 USER converter
 
-ENV PORT=8080
-EXPOSE 8080
+# 7860 is what Hugging Face Spaces expects and routes to; Fly and Railway read
+# the port from their own config, and server.mjs takes PORT from the
+# environment either way. Defaulting to 7860 means the image runs on HF with no
+# configuration at all, without preventing it running anywhere else.
+ENV PORT=7860
+EXPOSE 7860
 
-# Fly/Railway health checks hit this; it also warms the LibreOffice profile on
-# first call so the first real conversion isn't the one that pays for it.
+# Health endpoint, also used by Fly/Railway checks. Hitting it warms the
+# LibreOffice profile so the first real conversion isn't the one that pays for
+# it — worth more on a free tier that sleeps than on an always-on machine.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
-  CMD curl -fsS http://127.0.0.1:8080/health || exit 1
+  CMD curl -fsS http://127.0.0.1:${PORT}/health || exit 1
 
 CMD ["node", "server.mjs"]
