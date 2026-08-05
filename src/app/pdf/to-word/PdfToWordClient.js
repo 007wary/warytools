@@ -113,8 +113,20 @@ export default function PdfToWordClient() {
         return;
       }
 
-      const texts = await sampleText(bytes.slice(0));
-      if (looksScanned(texts)) {
+      // Scan detection is a courtesy, not a gate. If pdf.js can't read the
+      // text layer — an unusual encoding, a font it won't parse, a buffer it
+      // rejects — that says nothing about whether LibreOffice can convert the
+      // file, and it certainly isn't a reason to refuse it. A failure here
+      // used to propagate to the outer catch and surface as "Could not read
+      // this PDF" for documents that would have converted perfectly well.
+      let texts = null;
+      try {
+        texts = await sampleText(bytes.slice(0));
+      } catch (sampleError) {
+        console.warn("Scan detection skipped:", sampleError);
+      }
+
+      if (texts && looksScanned(texts)) {
         trackEvent(events.TOOL_ERROR, { reason: "pdf_to_word_scanned" });
         setError(rejectionMessage("scanned"));
         return;
@@ -125,7 +137,7 @@ export default function PdfToWordClient() {
       setPageCount(info.pageCount);
       setIsSlow(size.isSlow);
     } catch (err) {
-      console.error(err);
+      console.error("PDF to Word: failed to read file", err);
       trackEvent(events.TOOL_ERROR, { reason: "pdf_to_word_read_failed" });
 
       // Clear the file state WITHOUT going through resetState(): that helper
@@ -138,7 +150,18 @@ export default function PdfToWordClient() {
       setResultBlob(null);
       fileRef.current = null;
 
-      setError(describePdfError(err, "Could not read this PDF."));
+      // describePdfError only recognises encrypted/corrupt/out-of-memory. For
+      // anything else its fallback ("Could not read this PDF") tells the user
+      // nothing they can act on and tells us nothing we can debug, so the
+      // underlying message is appended when it isn't one of the known cases.
+      const described = describePdfError(err, "");
+      const detail = String(err?.message || err || "").trim();
+      setError(
+        described ||
+          (detail
+            ? `Could not read this PDF: ${detail}`
+            : "Could not read this PDF.")
+      );
     }
   }
 
