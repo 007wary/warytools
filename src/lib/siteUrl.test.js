@@ -60,8 +60,12 @@ describe("absoluteUrl", () => {
     expect(absoluteUrl("pdf/merge")).toBe(`${SITE_URL}/pdf/merge`);
   });
 
-  it("defaults to the site root", () => {
-    expect(absoluteUrl()).toBe(`${SITE_URL}/`);
+  // The bare origin, not "${SITE_URL}/": Next normalizes the homepage's
+  // canonical to a URL with no trailing slash and the sitemap emits the same,
+  // so JSON-LD must agree rather than declaring a second string for one page.
+  it("returns the bare origin for the site root", () => {
+    expect(absoluteUrl()).toBe(SITE_URL);
+    expect(absoluteUrl("/")).toBe(SITE_URL);
   });
 
   it("never produces a double slash", () => {

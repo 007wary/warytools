@@ -32,6 +32,13 @@ export function normalizeSiteUrl(value) {
 export const SITE_URL = normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL);
 
 // Builds an absolute URL from a root-relative path ("/pdf/merge").
+//
+// The root path is special-cased to the bare origin. Next normalizes the
+// homepage's `canonical: "/"` to "https://wary.tools" with no trailing slash,
+// and the sitemap emits the same bare form, so returning "https://wary.tools/"
+// here would make JSON-LD the odd one out — declaring a different URL string
+// than the canonical for the very same page.
 export function absoluteUrl(pathname = "/") {
-  return `${SITE_URL}${pathname.startsWith("/") ? pathname : `/${pathname}`}`;
+  const normalized = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  return normalized === "/" ? SITE_URL : `${SITE_URL}${normalized}`;
 }

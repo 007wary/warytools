@@ -13,7 +13,14 @@ const description =
 // Next normalizes the canonical and strips the trailing slash, so this emits
 // "https://wary.tools" regardless of the form written here; the sitemap is the
 // side that has to match it (see sitemapRoutes.js).
-export const metadata = pageMetadata({ title, description, path: "/" });
+export const metadata = pageMetadata({
+  title,
+  description,
+  path: "/",
+  // The layout's title template does not apply to the root segment, so
+  // without this the homepage is the only page whose <title> lacks the brand.
+  absoluteTitle: true,
+});
 
 const faqs = [
   {
@@ -50,7 +57,10 @@ export default function HomePage() {
         <JsonLd
           data={jsonLdGraph(
             collectionPageJsonLd({
-              name: "WaryTools",
+              // Describes the collection rather than just naming the site —
+              // "WaryTools" alone duplicates the Organization node's name and
+              // tells a crawler nothing about what this page lists.
+              name: title,
               description,
               href: "/",
               tools: allTools,
@@ -76,7 +86,12 @@ export default function HomePage() {
               lineHeight: 1.15,
             }}
           >
-            Free Online Tools,
+            {/* Trailing space before the <br> is deliberate: without it the
+                accessible name and the text crawlers extract run together as
+                "Free Online Tools,All in One Place". The H1 names the actual
+                categories rather than saying "tools" generically, so the
+                page's most important heading targets something specific. */}
+            Free Online PDF, Image &amp; Calculator Tools —{" "}
             <br />
             <span
               style={{
@@ -99,8 +114,8 @@ export default function HomePage() {
               lineHeight: 1.6,
             }}
           >
-            PDF, image, and calculator tools that run entirely in your browser. No uploads, no
-            sign-up, no waiting. {allTools.length} tools and counting.
+            Free PDF, image, calculator, and URL shortener tools that run entirely in your
+            browser. No uploads, no sign-up, no waiting. {allTools.length} tools and counting.
           </p>
 
           <ToolSearchBox />

@@ -25,15 +25,22 @@ const OG_IMAGE_ALT =
  * @param {string} args.description
  * @param {string} args.path     Root-relative canonical path ("/pdf/merge").
  * @param {"website"|"article"} [args.ogType]
+ * @param {boolean} [args.absoluteTitle]
+ *   Set for the root page only. The layout's `title.template` is applied to
+ *   CHILD segments, never to the segment that declares it, so the homepage
+ *   renders its bare title while every other page gets " — WaryTools". Passing
+ *   this emits `title.absolute` with the brand already included, so the
+ *   homepage matches the rest of the site instead of being the one page whose
+ *   <title> omits the brand entirely.
  */
-export function pageMetadata({ title, description, path, ogType = "website" }) {
+export function pageMetadata({ title, description, path, ogType = "website", absoluteTitle = false }) {
   // og:title has no template applied to it, so the brand is added explicitly
   // here to match the rendered <title>. Doing it in one place stops pages
   // drifting into "Title — WaryTools — WaryTools" or omitting the brand.
   const socialTitle = `${title} — ${SITE_NAME}`;
 
   return {
-    title,
+    title: absoluteTitle ? { absolute: socialTitle } : title,
     description,
     alternates: { canonical: path },
     openGraph: {
