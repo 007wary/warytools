@@ -11,6 +11,10 @@ primary_region = "bom"          # Mumbai — closest to the site's main audience
   dockerfile = "Dockerfile"
 
 [env]
+  # Set explicitly rather than relying on the image default. The Dockerfile
+  # defaults to 7860 (what Hugging Face Spaces routes to); server.mjs reads
+  # PORT either way, so the image runs unmodified on both — but internal_port
+  # below must match whatever this says, or Fly health-checks a dead port.
   PORT = "8080"
 
 [http_service]
