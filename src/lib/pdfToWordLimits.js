@@ -151,6 +151,10 @@ export function rejectionMessage(reason) {
       return "This PDF appears to be damaged and couldn't be read. Try re-exporting it from the app that created it.";
     case "scanned":
       return "This PDF is a scan — it contains page images, not text, so there's nothing to convert into editable Word content. You'd need OCR software to extract the text first.";
+    case "encrypted":
+      return "This PDF is password-protected. Open it in a PDF reader, remove the password, then try again.";
+    case "no_pages":
+      return "This PDF has no pages to convert. It may be damaged — try re-exporting it from the app that created it.";
     case "unavailable":
       return "The converter is temporarily unavailable. Please try again in a few minutes.";
     case "timeout":

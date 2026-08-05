@@ -10,8 +10,8 @@ import {
   rejectionMessage,
 } from "@/lib/pdfToWordLimits";
 
-// Proxies a PDF to the LibreOffice converter in services/pdf-to-word and
-// streams the .docx back.
+// Proxies a PDF to the pdf2docx converter in services/pdf-to-word and streams
+// the .docx back.
 //
 // This is the site's only route that accepts a user's file, which makes it
 // the only place where "nothing is uploaded" stops being true — the tool page
@@ -163,6 +163,14 @@ export async function POST(req) {
 
       if (response.status === 504 || code === "timeout") return reject("timeout", 504);
       if (response.status === 413) return reject("too_large", 413);
+
+      // The converter distinguishes a password-protected file from a damaged
+      // one and from an empty one. Passing those through rather than
+      // flattening them to "unreadable" is the difference between advice the
+      // user can act on and a dead end.
+      if (code === "encrypted") return reject("encrypted", 400);
+      if (code === "empty") return reject("no_pages", 400);
+
       if (response.status === 400) return reject("unreadable", 400);
 
       // A 401 means our own secret is wrong — an operator error the user can

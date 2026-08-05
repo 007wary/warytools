@@ -1,67 +1,58 @@
-# LibreOffice headless as a single-purpose PDF -> DOCX conversion service.
+# PDF -> DOCX conversion service, built on pdf2docx.
 #
-# Why a container rather than a Vercel function: LibreOffice is a several
-# hundred MB install with a Java runtime, far past the serverless bundle limit,
-# and a conversion routinely runs longer than a serverless execution window.
-# This is the same engine most commercial converters use, so output quality is
-# comparable rather than a compromise.
+# Why not LibreOffice, which this image used to run: its PDF import produces a
+# layout replica, not a document. Every text run lands in an absolutely
+# positioned textbox — measured on a real affidavit, the output had 9 textboxes
+# and zero flowing paragraphs. Blocks that shared vertical space in the
+# original rendered stacked on top of each other, and nothing reflowed when
+# edited, which defeats the point of converting to Word at all. That is a known
+# LibreOffice limitation, not a misconfiguration; it is a general office suite
+# doing PDF import as a side job.
 #
-# Debian slim over Alpine deliberately: LibreOffice on musl has long-standing
-# font and rendering quirks, and this service exists to produce documents that
-# look right.
-FROM debian:bookworm-slim
+# pdf2docx is purpose-built for this one conversion: it groups positioned
+# glyphs back into paragraphs, detects tables, and emits ordinary flowing
+# Word content. It is also what the open-source ecosystem converged on for
+# exactly this task. (The commercial sites license Solid Documents or ABBYY —
+# none of them use LibreOffice for PDF to Word either.)
+#
+# Bonus: no LibreOffice and no JVM means a far smaller image and a much faster
+# cold start, which matters on a scale-to-zero machine.
+FROM python:3.12-slim-bookworm
 
-# libreoffice-writer alone (not the full suite) — this service only ever opens
-# a PDF and writes a DOCX, so Calc/Impress/Base would be dead weight in the
-# image and a larger attack surface.
-#
-# The font packages are not optional. Without them LibreOffice falls back to a
-# single default face and every converted document comes out in the wrong font
-# with reflowed line breaks. liberation covers the Arial/Times/Courier metric
-# equivalents that most PDFs reference; dejavu covers broader Unicode.
+# PyMuPDF ships manylinux wheels, so no compiler is needed. opencv-python-headless
+# still wants libGL and libglib at runtime even in its headless build.
+# Node runs the HTTP server; the conversion itself is a Python subprocess.
 RUN apt-get update && apt-get install --no-install-recommends -y \
-      libreoffice-writer \
-      default-jre-headless \
-      fonts-liberation \
-      fonts-dejavu-core \
-      ca-certificates \
-      curl \
       nodejs \
+      curl \
+      libgl1 \
+      libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
+# Pinned rather than floating: a conversion engine changing under us silently
+# changes every user's output, and this one is the whole product.
+RUN pip install --no-cache-dir pdf2docx==0.5.13
+
 # Run as a non-root user. A converter is exactly the kind of service where an
-# untrusted file meets a large C++ codebase, so if LibreOffice is ever exploited
-# by a malformed PDF, it should not be exploited as root.
+# untrusted file meets a large parsing codebase, so if PyMuPDF is ever
+# exploited by a malformed PDF, it should not be exploited as root.
 RUN useradd --create-home --shell /usr/sbin/nologin converter
 
 WORKDIR /app
-COPY server.mjs ./
+COPY server.mjs convert.py ./
 
-# LibreOffice needs a writable HOME for its user profile. Without this it tries
-# to write to / and every conversion fails with an opaque error.
 ENV HOME=/home/converter
-
-# Without JAVA_HOME, LibreOffice logs "failed to launch javaldx - java may not
-# function correctly" on every run and falls back to a degraded path for the
-# filters that rely on the JVM. The JRE is installed above; this just points
-# LibreOffice at it. Uses the stable `default-java` symlink rather than a
-# versioned path so a base-image JDK bump doesn't silently break it.
-ENV JAVA_HOME=/usr/lib/jvm/default-java
 RUN mkdir -p /home/converter && chown -R converter:converter /home/converter /app
 
 USER converter
 
 # 7860 is what Hugging Face Spaces expects and routes to; Fly and Railway read
 # the port from their own config, and server.mjs takes PORT from the
-# environment either way. Defaulting to 7860 means the image runs on HF with no
-# configuration at all, without preventing it running anywhere else.
+# environment either way.
 ENV PORT=7860
 EXPOSE 7860
 
-# Health endpoint, also used by Fly/Railway checks. Hitting it warms the
-# LibreOffice profile so the first real conversion isn't the one that pays for
-# it — worth more on a free tier that sleeps than on an always-on machine.
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s \
   CMD curl -fsS http://127.0.0.1:${PORT}/health || exit 1
 
 CMD ["node", "server.mjs"]

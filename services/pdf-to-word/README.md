@@ -1,15 +1,23 @@
 # PDF to Word converter service
 
-LibreOffice headless behind a small HTTP API. Called only by the site's
-`/api/pdf-to-word` route — never exposed to browsers.
+pdf2docx behind a small HTTP API. Called only by the site's `/api/pdf-to-word`
+route — never exposed to browsers.
 
 ## Why this exists
 
-Every other tool on WaryTools runs in the browser. This one can't. Producing a
+Every other tool on WaryTools runs in the browser. This one cannot. Producing a
 real `.docx` means reconstructing paragraphs, headings, and tables from glyphs
 positioned at coordinates — PDFs have no concept of a paragraph — and no
-browser library does that analysis. LibreOffice does, and it's the same engine
-most commercial converters run.
+browser library does that analysis.
+
+**Why pdf2docx and not LibreOffice**, which this service originally used:
+LibreOffice's PDF import produces a layout replica, not a document. Every text
+run lands in an absolutely positioned textbox — measured on a real affidavit,
+its output had 9 textboxes and zero flowing paragraphs, so blocks that shared
+vertical space rendered stacked on top of each other and nothing reflowed when
+edited. That is a known LibreOffice limitation, not a misconfiguration. On the
+same file, pdf2docx produces 0 textboxes and 9 flowing paragraphs in correct
+reading order.
 
 That makes this tool the site's one exception to "nothing is uploaded", which
 is why the tool page and the privacy policy both say so explicitly.
@@ -22,8 +30,8 @@ is why the tool page and the privacy policy both say so explicitly.
 - Body: raw PDF bytes, max 20 MB.
 - Success: `200` with the `.docx` bytes.
 - Failure: JSON `{ error }` — `unauthorized` (401), `not_a_pdf` /
-  `bad_request` (400), `too_large` (413), `convert_failed` (500),
-  `timeout` (504).
+  `bad_request` / `encrypted` / `empty` (400), `too_large` (413),
+  `convert_failed` (500), `timeout` (504).
 
 ### `GET /health`
 
@@ -32,8 +40,8 @@ is why the tool page and the privacy policy both say so explicitly.
 ## Deploy (Hugging Face Spaces — free, no card)
 
 The current deployment target. Spaces gives free Docker hosting with 16 GB of
-RAM and never asks for a payment method, which matters here because LibreOffice
-needs real memory — Render's free 512 MB tier OOMs on ordinary documents.
+RAM and never asks for a payment method. Note this option was not usable in
+practice: Docker Spaces now require a paid plan.
 
 Two tradeoffs to know: a Space sleeps after roughly 48 hours idle and takes
 ~30s to wake, and free Spaces are publicly listed. Neither is a problem for
@@ -62,8 +70,7 @@ Space cannot use it — but if the cold start becomes annoying, moving to Fly
    **New secret**, named `CONVERTER_SECRET`. Use the same value you put in
    Vercel as `PDF_CONVERTER_SECRET`.
 
-4. Wait for the build (first one takes several minutes — it installs
-   LibreOffice), then check it:
+4. Wait for the build (first one takes a few minutes), then check it:
 
    ```bash
    curl https://<user>-<space-name>.hf.space/health
@@ -128,14 +135,14 @@ curl -sS -X POST http://localhost:8080/convert \
 ## Operational notes
 
 - **Scale to zero** is on. The first request after an idle period pays a cold
-  start (roughly 5–15s including the LibreOffice profile warm-up). The client
-  UI's timeout accounts for this; don't lower it without testing a cold start.
+  start of roughly 10–20s. The client UI's timeout accounts for this; don't
+  lower it without testing a cold start.
 - **Concurrency is capped at 2 per machine** (`MAX_CONCURRENT` in
-  `server.mjs`). LibreOffice is memory-hungry and parallel conversions are what
-  get the container OOM-killed. Raising it means raising the VM memory too.
-- **Fonts matter.** `fonts-liberation` and `fonts-dejavu-core` are not
-  optional — without them LibreOffice substitutes a default face and every
-  document converts with wrong fonts and reflowed line breaks.
+  `server.mjs`). PyMuPDF holds the whole document model in memory and parallel
+  conversions are what get the container OOM-killed. Raising it means raising
+  the VM memory too.
+- **The pdf2docx version is pinned.** A conversion engine changing under us
+  silently changes every user's output, and this one is the whole product.
 - **Nothing is persisted.** Each request gets its own temp directory, removed
   in a `finally` on every path including errors. Logs record failure codes
   only, never filenames or content.

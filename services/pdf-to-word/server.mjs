@@ -11,9 +11,9 @@
 //   - a shared secret, so only our site can spend our CPU
 //   - a hard byte cap enforced while streaming, so a huge body is dropped
 //     rather than buffered
-//   - a magic-byte check, so non-PDFs never reach LibreOffice at all
+//   - a magic-byte check, so non-PDFs never reach the parser at all
 //   - one isolated temp dir per request, removed in a finally
-//   - a kill timeout, since soffice can hang indefinitely on a malformed file
+//   - a kill timeout, since a malformed file can hang the parser indefinitely
 //   - a concurrency gate, since parallel conversions exhaust container memory
 //
 // Deploy notes are in README.md.
@@ -21,7 +21,7 @@
 import { createServer } from "node:http";
 import { execFile } from "node:child_process";
 import { randomUUID, timingSafeEqual } from "node:crypto";
-import { mkdtemp, rm, writeFile, readFile, readdir } from "node:fs/promises";
+import { mkdtemp, rm, writeFile, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -45,12 +45,12 @@ if (!SECRET) {
 // authoritative one, since the route's copy is only as trustworthy as the route.
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
-// soffice hangs rather than erroring on some malformed input. Slightly under
+// The converter can hang rather than error on some malformed input. Slightly under
 // the route's own timeout so the failure surfaces here, with the process
 // actually killed, instead of the route walking away from a live conversion.
 const CONVERT_TIMEOUT_MS = 55_000;
 
-// LibreOffice holds the whole document model in memory; a handful of large
+// The converter holds the whole document model in memory; a handful of large
 // conversions at once is what gets the container OOM-killed. Queueing is the
 // right answer over failing, since waiting briefly beats a 503.
 const MAX_CONCURRENT = 2;
@@ -141,31 +141,19 @@ function readBody(req, limit) {
   });
 }
 
-function runSoffice(inputPath, outDir) {
+// Failure tokens convert.py writes to stderr, mapped to the codes this
+// service reports. Anything unrecognised is a generic failure.
+const PYTHON_ERROR_CODES = {
+  encrypted: "encrypted",
+  empty: "empty",
+  failed: "convert_failed",
+};
+
+function runConverter(inputPath, outputPath) {
   return new Promise((resolve, reject) => {
     const child = execFile(
-      "soffice",
-      [
-        "--headless",
-        "--norestore",
-        // Each conversion gets a throwaway profile directory. Sharing one
-        // profile across concurrent conversions is what causes LibreOffice to
-        // silently refuse the second one ("another instance is running").
-        `-env:UserInstallation=file://${path.join(outDir, "profile")}`,
-        // The PDF import filter must be its own --infilter flag. Appending it
-        // as a third colon-separated field on --convert-to (a shape that shows
-        // up in a lot of copy-pasted advice) makes LibreOffice fail every
-        // conversion with "source file could not be loaded" — it reads the
-        // whole string as an output filter name and never engages the PDF
-        // importer at all. Verified against LibreOffice 7.4 on the deployed
-        // image; without this the tool returns convert_failed for every file.
-        "--infilter=writer_pdf_import",
-        "--convert-to",
-        "docx:MS Word 2007 XML",
-        "--outdir",
-        outDir,
-        inputPath,
-      ],
+      "python3",
+      [path.join("/app", "convert.py"), inputPath, outputPath],
       { timeout: CONVERT_TIMEOUT_MS, killSignal: "SIGKILL", maxBuffer: 1024 * 1024 },
       (error, stdout, stderr) => {
         if (error) {
@@ -174,7 +162,10 @@ function runSoffice(inputPath, outDir) {
             reject(Object.assign(new Error("timeout"), { code: "timeout" }));
             return;
           }
-          reject(Object.assign(new Error(stderr || error.message), { code: "convert_failed" }));
+
+          const token = String(stderr || "").trim().split("\n").pop();
+          const code = PYTHON_ERROR_CODES[token] || "convert_failed";
+          reject(Object.assign(new Error(token || error.message), { code }));
           return;
         }
         resolve(stdout);
@@ -198,19 +189,19 @@ async function convert(pdfBuffer) {
     const inputPath = path.join(workDir, `${randomUUID()}.pdf`);
     await writeFile(inputPath, pdfBuffer);
 
-    await runSoffice(inputPath, workDir);
+    // Output path is ours too, so there is no directory scan to do — unlike
+    // LibreOffice, which derived the name itself and changed how between
+    // versions, pdf2docx writes exactly where it is told.
+    const outputPath = path.join(workDir, `${randomUUID()}.docx`);
 
-    // Find the produced .docx rather than assuming its name. LibreOffice
-    // derives the output name from the input and has changed that derivation
-    // between versions; scanning the directory is version-independent.
-    const entries = await readdir(workDir);
-    const produced = entries.find((name) => name.toLowerCase().endsWith(".docx"));
+    await runConverter(inputPath, outputPath);
 
-    if (!produced) {
+    const docx = await readFile(outputPath).catch(() => null);
+    if (!docx || docx.length === 0) {
       throw Object.assign(new Error("no output produced"), { code: "convert_failed" });
     }
 
-    return await readFile(path.join(workDir, produced));
+    return docx;
   } finally {
     // Always, on every path. The whole privacy claim for this tool is that the
     // file does not outlive the request, and a leaked temp dir on an error path
@@ -256,7 +247,7 @@ const server = createServer(async (req, res) => {
     return;
   }
 
-  // Cheapest possible reject: a non-PDF never gets near LibreOffice. The route
+  // Cheapest possible reject: a non-PDF never gets near the parser. The route
   // checks this too, but this service must be safe on its own terms.
   if (body.length === 0 || !body.subarray(0, 1024).includes(PDF_MAGIC)) {
     sendJson(res, 400, { error: "not_a_pdf" });
@@ -275,11 +266,19 @@ const server = createServer(async (req, res) => {
     });
     res.end(docx);
   } catch (error) {
-    const code = error.code === "timeout" ? "timeout" : "convert_failed";
+    // encrypted/empty are facts about the user's file, not faults on our side,
+    // so they travel as 4xx with their own code. Flattening them into
+    // convert_failed would tell someone with a password-protected PDF that our
+    // converter broke, when what they need to hear is "remove the password".
+    const known = ["timeout", "encrypted", "empty"];
+    const code = known.includes(error.code) ? error.code : "convert_failed";
+
+    const status = { timeout: 504, encrypted: 400, empty: 400 }[code] ?? 500;
+
     // Logged without the filename or any document content — we have no reason
     // to know what people are converting, and a log is a place data leaks from.
     console.error(`Conversion failed: ${code}`);
-    sendJson(res, code === "timeout" ? 504 : 500, { error: code });
+    sendJson(res, status, { error: code });
   } finally {
     releaseSlot();
   }

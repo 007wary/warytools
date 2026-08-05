@@ -134,6 +134,8 @@ describe("rejectionMessage", () => {
       "too_many_pages",
       "unreadable",
       "scanned",
+      "encrypted",
+      "no_pages",
       "unavailable",
       "timeout",
       "rate_limited",
