@@ -7,7 +7,7 @@ import { pageMetadata } from "@/lib/pageMetadata";
 
 const title = "Free PDF Tools — Merge, Split, Compress";
 const description =
-  "Free online PDF tools to merge, split, compress, rotate, and reorder PDF files. No sign-up, no watermarks — everything runs in your browser.";
+  "Free online PDF tools to merge, split, compress, rotate, reorder, and convert PDF to Word. No sign-up, no watermarks, no file size games.";
 
 export const metadata = pageMetadata({ title, description, path: "/pdf" });
 
@@ -29,7 +29,7 @@ export default function PdfHubPage() {
         categorySlug="pdf"
         icon={category.icon}
         title="Free PDF Tools"
-        description="All PDF tools run 100% in your browser. Files are never uploaded to a server."
+        description="Every PDF tool here runs in your browser, with one exception — PDF to Word converts on our server and says so before you pick a file."
       />
 
       <div

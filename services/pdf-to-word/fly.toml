@@ -1,0 +1,44 @@
+# Fly.io deployment for the PDF -> DOCX converter.
+#
+# Sized for the workload rather than the defaults: LibreOffice holding a
+# document model plus a JVM does not fit in the 256 MB shared tier, and an
+# OOM-killed conversion looks to the user like a broken tool.
+
+app = "warytools-pdf-converter"
+primary_region = "bom"          # Mumbai — closest to the site's main audience.
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+
+  # Scale to zero when idle. This service is bursty — paying for an always-on
+  # machine to serve occasional conversions is the wrong trade. The cost is a
+  # cold start on the first request after a quiet spell, which the client UI
+  # accounts for by allowing a generous timeout.
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  # Each machine handles MAX_CONCURRENT=2 conversions; the soft limit starts a
+  # second machine before the first begins queueing.
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 2
+    hard_limit = 4
+
+[[http_service.checks]]
+  grace_period = "30s"
+  interval = "30s"
+  method = "GET"
+  path = "/health"
+  timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-2x"
+  memory = "2gb"

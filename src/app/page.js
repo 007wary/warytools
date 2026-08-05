@@ -11,7 +11,7 @@ import { rankTools } from "@/lib/toolRanking";
 
 const title = "Free Online PDF, Image & Calculator Tools";
 const description =
-  "Free PDF, image, calculator, and URL shortener tools that run entirely in your browser — no uploads, no sign-up, no ads.";
+  "Free PDF, image, calculator, and URL shortener tools. Almost everything runs in your browser — no sign-up, no ads, no watermarks.";
 
 // Next normalizes the canonical and strips the trailing slash, so this emits
 // "https://wary.tools" regardless of the form written here; the sitemap is the
@@ -39,7 +39,7 @@ const faqs = [
   {
     question: "Are my files uploaded to a server?",
     answer:
-      "No. All PDF and image tools run entirely in your browser using JavaScript. Your files never leave your device and are never sent to or stored on any server.",
+      "Almost never. Every PDF and image tool runs entirely in your browser using JavaScript, so your files never leave your device. The one exception is PDF to Word: rebuilding an editable Word document from a PDF cannot be done in a browser, so that file is sent to our converter and deleted immediately after converting. That tool says so clearly before you choose a file.",
   },
   {
     question: "Do I need to install anything?",
@@ -208,12 +208,14 @@ export default async function HomePage() {
               margin: 0,
             }}
           >
-            Every <Link href="/pdf" className="prose-link">PDF tool</Link> and{" "}
+            Nearly every <Link href="/pdf" className="prose-link">PDF tool</Link> and{" "}
             <Link href="/image" className="prose-link">image tool</Link> runs fully client-side: the
             file you pick is processed by your own browser and never uploaded, so documents stay
             private by construction rather than by policy. The{" "}
             <Link href="/calculators" className="prose-link">calculators</Link> work the same way —
-            nothing you type is sent anywhere.
+            nothing you type is sent anywhere. The lone exception is{" "}
+            <Link href="/pdf/to-word" className="prose-link">PDF to Word</Link>, which needs a
+            server to rebuild the document and says so up front.
           </p>
         </section>
 

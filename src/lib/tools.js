@@ -56,6 +56,18 @@ export const categories = [
         href: "/pdf/reorder",
         icon: "ListOrdered",
       },
+      {
+        slug: "to-word",
+        // The only tool description here that can't say "nothing uploaded" —
+        // this one converts on a server, because rebuilding a .docx from a
+        // PDF's positioned text isn't something a browser can do. The card
+        // copy stays honest about that rather than inheriting the site's
+        // usual privacy claim.
+        title: "PDF to Word",
+        description: "Convert PDF to an editable Word .docx online, free with no sign-up.",
+        href: "/pdf/to-word",
+        icon: "FileType2",
+      },
     ],
   },
   {

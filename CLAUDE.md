@@ -15,7 +15,7 @@ npm run start    # run the production build
 npm run lint     # ESLint (flat config, eslint-config-next)
 ```
 
-`npm test` runs the vitest suite (`npm run test:watch` for watch mode) — 387 tests across nineteen files, covering the pure-logic helpers in `src/lib/` (`calculatorMath`, `calculatorInput`, `calculatorFormat`, `calculatorUrlState`, `unitConversions`, `dateMath`, `imageFile`, `imageValidation`, `imageResampling`, `formatBytes`, `pdfPageRange`, `pdfFile`, `pdfWorkerProtocol`, `urlShortenerValidation`, `shortCode`, `siteUrl`, `sitemapRoutes`) plus `src/app/robots`. There are no component or end-to-end tests; UI and file-processing behaviour is only verified by `npm run build` and manual checks.
+`npm test` runs the vitest suite (`npm run test:watch` for watch mode) — 452 tests across twenty files, covering the pure-logic helpers in `src/lib/` (`calculatorMath`, `calculatorInput`, `calculatorFormat`, `calculatorUrlState`, `unitConversions`, `dateMath`, `imageFile`, `imageValidation`, `imageResampling`, `formatBytes`, `pdfPageRange`, `pdfFile`, `pdfToWordLimits`, `pdfWorkerProtocol`, `urlShortenerValidation`, `shortCode`, `siteUrl`, `sitemapRoutes`, `toolRanking`) plus `src/app/robots`. There are no component or end-to-end tests; UI and file-processing behaviour is only verified by `npm run build` and manual checks.
 
 Because there is no component-level coverage, **logic that guards a user input belongs in a `src/lib/` module, not inline in a client component** — that's the only way it can be tested at all. `pdfPageRange.js` exists for exactly this reason.
 
@@ -23,7 +23,7 @@ Because there is no component-level coverage, **logic that guards a user input b
 
 ## Architecture
 
-**WaryTools** is a Next.js App Router site (`next@16`, React 19, Turbopack) offering free, mostly client-side PDF/image/calculator/URL-shortener tools. No custom backend — the only server-side piece is Supabase, used solely by the URL shortener.
+**WaryTools** is a Next.js App Router site (`next@16`, React 19, Turbopack) offering free, mostly client-side PDF/image/calculator/URL-shortener tools. Two features touch a server: the URL shortener (Supabase) and PDF to Word (a LibreOffice container in `services/pdf-to-word/`). Everything else runs in the browser.
 
 ### Tool registry drives everything
 
@@ -40,7 +40,7 @@ Hub pages (`/pdf`, `/image`, `/calculators`) render `<HubHeader>` + a grid of `<
 
 ### Client-side file processing
 
-PDF and image tools do all processing in the browser — no file ever hits a server:
+PDF and image tools do all processing in the browser — no file hits a server, with the single documented exception of PDF to Word (see below):
 
 - PDF tools use `pdf-lib` for manipulation and `pdfjs-dist` (via [src/lib/pdfjs.js](src/lib/pdfjs.js)) for rendering/reading. The pdf.js worker is a static file at `public/pdf.worker.min.mjs`, kept in sync with `pdfjs-dist` by the `postinstall` script — never hand-edit or manually copy it.
 - Image tools use `<canvas>` for resize/compress/convert; shared helpers (`loadImage`, `canvasToBlob`, `outputFormats`) live in [src/lib/imageFile.js](src/lib/imageFile.js). `formatBytes` lives in [src/lib/formatBytes.js](src/lib/formatBytes.js) — it's shared with the PDF compressor, so it isn't image-specific (`imageFile.js` re-exports it for convenience).
@@ -90,9 +90,24 @@ The seven calculators share a pipeline in the same spirit as the PDF and image o
 
 **Results are live, not click-to-calculate.** Age and date-difference used to compute on a button press, which left a stale answer on screen whenever a date changed afterwards. Every calculator now recomputes as you type, which is also why `ResultPanel` is an `<output>` with `aria-live="polite"`: an answer that merely appears in the DOM is invisible to a screen reader.
 
-### URL shortener (the one server-touching tool)
+### PDF to Word (the one tool that uploads a file)
 
-The only feature with real backend state. [src/lib/supabaseClient.js](src/lib/supabaseClient.js) creates a public anon Supabase client (RLS-gated). Flow:
+`/pdf/to-word` is the deliberate exception to everything above. Producing a real `.docx` means reconstructing paragraphs, headings, and tables from glyphs positioned at coordinates — a PDF has no concept of a paragraph — and no browser library does that analysis. So the file goes to a LibreOffice headless container in [services/pdf-to-word/](services/pdf-to-word/), proxied by [src/app/api/pdf-to-word/route.js](src/app/api/pdf-to-word/route.js).
+
+**Because this breaks the site's core privacy promise, the copy is part of the feature, not decoration.** The tool page says it uploads *before* the file picker (not after), `/privacy` has a dedicated section, and the blanket "nothing is ever uploaded" claims on the homepage, `/about`, `/pdf`, and `llms.txt` were narrowed to stay accurate. Per-tool copy on the other tools was left alone — those claims are still true. If you add another server-touching tool, that copy audit is part of the work.
+
+Rules specific to this tool:
+
+- **Limits live in [src/lib/pdfToWordLimits.js](src/lib/pdfToWordLimits.js)** (20 MB, 200 pages, scan detection, error copy) and are tested. Both the client and the route import them, so the message a user sees is identical on both sides of the network. The client's copy is a courtesy; the route's is the one that counts.
+- **A scanned PDF is refused, not converted.** It has no text layer, so LibreOffice would return a `.docx` full of page images and zero editable words — worse than a refusal, because the user pays the upload and the wait to learn nothing. `looksScanned()` samples the first few pages' text client-side, so the check that saves the round trip happens *before* the round trip. Same principle as HEIC in `imageValidation.js`.
+- **Validation runs before the converter-availability check** in the route. The other order means a malformed request takes a different path depending on whether the container happens to be configured — so the validation would be untested in exactly the environment where it matters.
+- **Rate limiting is durable, in Postgres** (`consume_pdf_conversion_quota`, 5 per 10 minutes), not in-memory. A conversion costs real CPU on a container we pay for, and a serverless in-memory counter resets on every cold start. It fails *closed*: if the limiter is unreachable the request is refused, because an unreachable limiter can't tell an ordinary user from someone hammering the endpoint.
+- **`PDF_CONVERTER_URL` / `PDF_CONVERTER_SECRET` are server-only** — deliberately not `NEXT_PUBLIC_`. A converter secret in the browser bundle would be no secret at all. With them unset the route returns a clean "temporarily unavailable", so dev and previews work without the container.
+- **pdf.js must be imported dynamically** (`await import("@/lib/pdfjs")`), never at module scope. It touches `DOMMatrix` on evaluation, which doesn't exist in Node, and these pages are statically prerendered — a top-level import fails the build outright. `pdfThumbnails.js` does the same thing for the same reason.
+
+### URL shortener (the other server-touching tool)
+
+The only feature with *persistent* backend state (the converter above holds a file only for the length of a request). [src/lib/supabaseClient.js](src/lib/supabaseClient.js) creates a public anon Supabase client (RLS-gated). Flow:
 
 - `src/app/url-shortener/UrlShortenerClient.js` POSTs to `/api/shorten` and mirrors created links into `localStorage` for session history (not an account system — just avoids losing links on refresh). It reads click counts back through the `get_short_url_clicks` RPC, passing only the codes it already holds.
 - `src/app/api/shorten/route.js` validates, generates a code, and calls the `create_short_url` RPC.

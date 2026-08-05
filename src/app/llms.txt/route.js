@@ -29,8 +29,9 @@ export async function GET() {
 > Free, browser-based PDF, image, calculator, and URL-shortener tools —
 > ${allTools.length} tools total. PDF and image tools run entirely
 > client-side (pdf-lib, canvas): files are processed on-device and never
-> uploaded to a server. Every tool is free, has no ads, and requires no
-> account or sign-up.
+> uploaded to a server. The sole exception is PDF to Word, which converts
+> server-side because a browser cannot rebuild an editable document from a
+> PDF. Every tool is free and requires no account or sign-up.
 
 ${toolSections}
 
@@ -38,13 +39,14 @@ ${toolSections}
 
 - [Home](${link("/")}): Full tool directory and search.
 - [About](${link("/about")}): Why WaryTools exists and how it works.
-- [Privacy](${link("/privacy")}): What is (and isn't) collected — relevant since PDF/image tools never leave the browser.
+- [Privacy](${link("/privacy")}): What is (and isn't) collected — relevant since nearly all tools never leave the browser.
 - [Terms](${link("/terms")}): Terms of use.
 - [Contact](${link("/contact")}): Get in touch.
 
 ## Notes
 
-- The URL shortener is the only tool with server-side state (Supabase); it stores the short code, destination URL, and a click count.
+- The URL shortener is the only tool with persistent server-side state (Supabase); it stores the short code, destination URL, and a click count.
+- PDF to Word sends the file to a LibreOffice converter we run, which returns the .docx and deletes the file immediately. Nothing is stored.
 - All other tools have no backend: no file, image, or calculator input is ever transmitted off the user's device.
 `;
 

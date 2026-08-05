@@ -12,7 +12,7 @@ import { pageMetadata } from "@/lib/pageMetadata";
 // brand or the rendered title reads "About WaryTools — … — WaryTools".
 const aboutTitle = "About";
 const aboutDescription =
-  "WaryTools is a free collection of PDF, image, calculator, and URL tools that run entirely in your browser. No uploads, no accounts, no sign-up wall.";
+  "WaryTools is a free collection of PDF, image, calculator, and URL tools, nearly all running entirely in your browser. No accounts, no sign-up wall.";
 
 export const metadata = pageMetadata({
   title: aboutTitle,
@@ -25,7 +25,7 @@ const principles = [
     icon: EyeOff,
     title: "Private by default",
     body:
-      "PDF and image tools process files with pdf-lib and canvas, right in your browser tab. Nothing you drop into a tool is uploaded anywhere — close the tab and it's gone.",
+      "PDF and image tools process files with pdf-lib and canvas, right in your browser tab — close the tab and it's gone. Only PDF to Word needs a server, and it says so before you pick a file.",
     accent: categoryColors.image,
   },
   {
@@ -125,7 +125,7 @@ export default function AboutPage() {
           WaryTools is a focused set of PDF, image, calculator, and URL tools —{" "}
           {allTools.length}{" "}
           and counting — that do the job in your browser tab and nothing more. No account to
-          create, no file to upload, no waiting to reach the tool. Just the tool.
+          create, no waiting to reach the tool. Just the tool.
         </p>
       </section>
 
@@ -142,10 +142,12 @@ export default function AboutPage() {
         </p>
         <p style={{ fontSize: "15px", color: colors.textSecondary, lineHeight: 1.75 }}>
           The rule is simple: if the browser can do it, the browser does it — reading a PDF,
-          drawing to a canvas, running the math, all on your machine, none of it uploaded. The
-          URL shortener breaks that rule by necessity, since a short link is useless unless
-          something remembers where it points. That one piece runs on Supabase, nowhere else, and
-          exactly what it stores is on the{" "}
+          drawing to a canvas, running the math, all on your machine, none of it uploaded. Two
+          tools break that rule by necessity. The URL shortener does, since a short link is
+          useless unless something remembers where it points. PDF to Word does, because turning a
+          PDF back into an editable document means reconstructing its structure, and no browser
+          can. Both say so plainly where you use them, and exactly what each one handles is on
+          the{" "}
           <Link href="/privacy" style={{ color: colors.primary, textDecoration: "underline" }}>
             privacy page
           </Link>

@@ -7,7 +7,7 @@ const privacyTitle = "Privacy Policy";
 // Trimmed to ~155 chars: the previous 220-char version was cut off mid-clause
 // in search results, hiding the part that actually matters to readers.
 const privacyDescription =
-  "How WaryTools handles your data: PDF and image files are processed entirely in your browser and never uploaded. What we do and don't store, explained.";
+  "How WaryTools handles your data: nearly all files are processed in your browser and never uploaded. What we do and don't store, and the one tool that converts on a server.";
 
 export const metadata = pageMetadata({
   title: privacyTitle,
@@ -80,9 +80,41 @@ export default function PrivacyPage() {
             APIs. The file is read into memory, transformed, and handed back to you as a
             download — it is never sent to a WaryTools server or any third party.
           </p>
-          <p>
+          <p style={{ marginBottom: "10px" }}>
             Closing or refreshing the tab discards everything. We have no record of what you
             processed, because the file never reached us in the first place.
+          </p>
+          <p>
+            <strong>One tool is an exception: PDF to Word.</strong> It is covered separately
+            below.
+          </p>
+        </Section>
+
+        <Section id="pdf-to-word" title="PDF to Word (the one tool that uploads)">
+          <p style={{ marginBottom: "10px" }}>
+            Converting a PDF into an editable Word document means rebuilding paragraphs,
+            headings, and tables from text that a PDF stores only as characters placed at
+            coordinates. That analysis is not something a browser can do, so this tool — and
+            only this tool — sends your file to a server we operate.
+          </p>
+          <p style={{ marginBottom: "10px" }}>
+            What happens: your PDF is sent over an encrypted connection to our converter, which
+            runs LibreOffice to produce the .docx, returns it to you, and deletes the file. The
+            file is written to a temporary directory that is removed as soon as the conversion
+            finishes, including when it fails. Nothing is kept after your download, and no copy
+            is made anywhere else.
+          </p>
+          <p style={{ marginBottom: "10px" }}>
+            What we do not do: we do not store your document, read it, index it, log its
+            contents, log its filename, or pass it to any third party. Our converter logs record
+            only whether a conversion succeeded or failed. To limit abuse of a shared server we
+            keep a count of recent conversions against a one-way hash of your IP address — the
+            hash cannot be reversed to an IP, and it is discarded after a day.
+          </p>
+          <p>
+            The tool states all of this on the page before you choose a file. If a document is
+            confidential enough that sending it to any server is unacceptable, use desktop
+            software such as Word or LibreOffice, which convert locally.
           </p>
         </Section>
 
@@ -218,13 +250,16 @@ export default function PrivacyPage() {
             limit what a compromised or malicious script could do on the page.
           </p>
           <p style={{ marginBottom: "10px" }}>
-            Because PDF, image, and calculator processing happens entirely on your device, the
-            biggest category of risk in an online tool — your files sitting on someone else&rsquo;s
-            server — doesn&rsquo;t apply here. There is no upload endpoint for those tools to
-            secure, no file storage to breach, because the file never leaves your browser.
+            Because almost all PDF, image, and calculator processing happens entirely on your
+            device, the biggest category of risk in an online tool — your files sitting on
+            someone else&rsquo;s server — mostly doesn&rsquo;t apply here. For those tools there
+            is no upload endpoint to secure and no file storage to breach, because the file
+            never leaves your browser. The PDF to Word converter is the exception: it receives
+            files, so it holds each one only for the length of the conversion, deletes it
+            immediately afterwards, accepts requests only from this site, and stores nothing.
           </p>
           <p>
-            The one piece of real backend state, the URL shortener&rsquo;s database, is
+            The one piece of persistent backend state, the URL shortener&rsquo;s database, is
             access-controlled so it only accepts the exact, narrow operations the tool needs
             (creating a link, reading a redirect, incrementing a click count) — nothing broader.
             No system is unbreakable, and if we ever learn of a security issue that affects your
