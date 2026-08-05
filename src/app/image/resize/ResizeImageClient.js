@@ -1,213 +1,243 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Scaling } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
-import { formatBytes, loadImage, canvasToBlob } from "@/lib/imageFile";
+import ProgressBar from "@/components/ProgressBar";
+import ErrorBanner from "@/components/ErrorBanner";
+import WarningBanner from "@/components/WarningBanner";
+import ImageQueue, { BatchSummary } from "@/components/ImageQueue";
+import { PrimaryButton, SecondaryButton } from "@/components/ToolButton";
+import { useImageBatch } from "@/lib/useImageBatch";
+import { useSupportedFormats, findFormat } from "@/lib/imageFormats";
+import {
+  resolveTargetSize,
+  linkedDimension,
+  outputFilename,
+  clampQuality,
+} from "@/lib/imageResampling";
+import { checkPixelBudget } from "@/lib/imageValidation";
 import { colors } from "@/lib/theme";
-import { events, sizeBucket, trackEvent } from "@/lib/analytics";
 
 export default function ResizeImageClient() {
-  const [file, setFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const [originalWidth, setOriginalWidth] = useState(0);
-  const [originalHeight, setOriginalHeight] = useState(0);
-
-  const [mode, setMode] = useState("dimensions"); // "dimensions" | "percentage"
-  // Strings, not numbers — see the same note in SplitPdfClient. Number("")
-  // is 0, so clearing one field used to drive the *other* to 0 through the
-  // aspect-ratio link, leaving both boxes reading 0.
+  const [mode, setMode] = useState("dimensions"); // dimensions | percentage | maxEdge
+  // Strings, not numbers: Number("") is 0, so storing these as numbers made a
+  // cleared field indistinguishable from a deliberate zero and drove the
+  // partner field to 0 through the aspect link. Validated on submit.
   const [width, setWidth] = useState("");
   const [height, setHeight] = useState("");
   const [lockAspect, setLockAspect] = useState(true);
   const [percentage, setPercentage] = useState(50);
+  const [maxEdge, setMaxEdge] = useState(1920);
+  // Output format is now explicit. The old tool forced every non-PNG input to
+  // JPG, silently discarding a WebP source and its transparency.
+  const [format, setFormat] = useState("image/jpeg");
+  const [quality, setQuality] = useState(0.9);
+  const [source, setSource] = useState(null);
 
-  const [isWorking, setIsWorking] = useState(false);
-  const [error, setError] = useState("");
-  const [resultBlob, setResultBlob] = useState(null);
+  const supportedFormats = useSupportedFormats();
+  const batch = useImageBatch({
+    toolSlug: "image_resize",
+    errorFallback: "Could not resize these images.",
+  });
 
-  // Revoke the previous preview URL whenever it's replaced or the
-  // component unmounts, so switching files repeatedly doesn't leak blobs.
+  const { items, results, isRunning, progress } = batch;
+  const selectedFormat = findFormat(format);
+  const isBatch = items.length > 1;
+
+  // Read the first image's dimensions so the pixel inputs can be seeded and
+  // the aspect link has a ratio to work from.
+  //
+  // Keyed on the first item's id, not the whole `items` array: depending on
+  // the array re-runs this on every add or remove, which would stomp the
+  // width/height the user had just typed and reset their chosen format.
+  const firstItem = items[0];
+  const firstId = firstItem?.id ?? null;
+  const firstFile = firstItem?.file ?? null;
+  const firstType = firstItem?.type ?? null;
+
   useEffect(() => {
-    return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-    };
-  }, [previewUrl]);
+    // No synchronous reset for the empty case: `source` is only ever read
+    // alongside a non-empty queue (every consumer is inside the
+    // `items.length > 0` branch), so clearing it here would buy nothing and
+    // cost a cascading render.
+    if (!firstFile) return undefined;
 
-  async function handleFiles(fileList) {
-    const selected = fileList[0];
-    if (!selected || !selected.type.startsWith("image/")) {
-      setError("Please choose an image file.");
-      return;
-    }
+    let cancelled = false;
+    const url = URL.createObjectURL(firstFile);
+    const img = new Image();
 
-    setError("");
-    setResultBlob(null);
-    setFile(selected);
-    setPreviewUrl(URL.createObjectURL(selected));
-
-    try {
-      const img = await loadImage(selected);
-      setOriginalWidth(img.naturalWidth);
-      setOriginalHeight(img.naturalHeight);
+    img.onload = () => {
+      if (cancelled) return;
+      setSource({ width: img.naturalWidth, height: img.naturalHeight });
       setWidth(String(img.naturalWidth));
       setHeight(String(img.naturalHeight));
-    } catch (err) {
-      console.error(err);
-      setError("Could not read this image.");
-    }
-  }
+      // Default to keeping the source format rather than forcing JPG, which
+      // is what silently discarded WebP sources (and their transparency).
+      setFormat(firstType || "image/jpeg");
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => URL.revokeObjectURL(url);
+    img.src = url;
 
-  // A blank or non-numeric box is left alone rather than mirrored across the
-  // aspect-ratio link — otherwise clearing one field zeroes both.
+    return () => {
+      cancelled = true;
+      URL.revokeObjectURL(url);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firstId]);
+
   function handleWidthChange(value) {
     setWidth(value);
-    const newWidth = Number(value);
-    if (value.trim() === "" || !Number.isFinite(newWidth) || newWidth <= 0) return;
-    if (lockAspect && originalWidth > 0) {
-      setHeight(String(Math.max(1, Math.round((newWidth / originalWidth) * originalHeight))));
-    }
+    batch.clearResults();
+    if (!lockAspect || !source) return;
+    // Returns null for a blank/invalid entry rather than mirroring it, so
+    // clearing one box no longer zeroes the other.
+    const linked = linkedDimension(value, source.width, source.height);
+    if (linked !== null) setHeight(linked);
   }
 
   function handleHeightChange(value) {
     setHeight(value);
-    const newHeight = Number(value);
-    if (value.trim() === "" || !Number.isFinite(newHeight) || newHeight <= 0) return;
-    if (lockAspect && originalHeight > 0) {
-      setWidth(String(Math.max(1, Math.round((newHeight / originalHeight) * originalWidth))));
-    }
+    batch.clearResults();
+    if (!lockAspect || !source) return;
+    const linked = linkedDimension(value, source.height, source.width);
+    if (linked !== null) setWidth(linked);
   }
 
   async function handleResize() {
-    setError("");
-
-    const targetWidth =
-      mode === "percentage" ? Math.round((originalWidth * percentage) / 100) : Number(width);
-    const targetHeight =
-      mode === "percentage" ? Math.round((originalHeight * percentage) / 100) : Number(height);
-
-    if (
-      mode === "dimensions" &&
-      (width.trim() === "" ||
-        height.trim() === "" ||
-        !Number.isFinite(targetWidth) ||
-        !Number.isFinite(targetHeight))
-    ) {
-      setError("Enter both a width and a height in pixels.");
-      return;
-    }
-
-    if (targetWidth < 1 || targetHeight < 1) {
-      setError("Width and height must be at least 1 pixel.");
-      return;
-    }
-
-    setIsWorking(true);
-
-    try {
-      const img = await loadImage(file);
-      const canvas = document.createElement("canvas");
-      canvas.width = targetWidth;
-      canvas.height = targetHeight;
-      const ctx = canvas.getContext("2d");
-
-      const outputType = file.type === "image/png" ? "image/png" : "image/jpeg";
-
-      // JPG has no transparency — fill white behind the image first so
-      // transparent source images (e.g. WebP/GIF with alpha) don't turn black.
-      if (outputType === "image/jpeg") {
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      }
-      ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
-
-      const blob = await canvasToBlob(canvas, outputType, 0.92);
-      setResultBlob(blob);
-      // `mode` tells us whether people resize by exact pixels or by
-      // percentage — directly useful for which input to make the default.
-      trackEvent(events.TOOL_RUN, {
+    // Exact-pixel mode only makes sense for a single image; a batch of mixed
+    // sizes forced to identical dimensions would distort most of them. The UI
+    // hides the option for batches, and this is the matching guard.
+    if (mode === "dimensions" && !isBatch) {
+      const target = resolveTargetSize({
         mode,
-        output_format: outputType,
-        size_bucket: sizeBucket(file?.size),
+        width,
+        height,
+        percentage,
+        originalWidth: source?.width,
+        originalHeight: source?.height,
       });
-    } catch (err) {
-      console.error(err);
-      trackEvent(events.TOOL_ERROR, { reason: "image_resize_failed" });
-      setError("Could not resize this image.");
-    } finally {
-      setIsWorking(false);
+
+      if (!target.ok) {
+        batch.setError(target.error);
+        return;
+      }
+
+      const budget = checkPixelBudget(target.width, target.height);
+      if (!budget.ok) {
+        batch.setError(budget.error);
+        return;
+      }
+
+      await batch.process({
+        mode: "dimensions",
+        width: target.width,
+        height: target.height,
+        format,
+        quality: selectedFormat.lossy ? clampQuality(quality) : undefined,
+      });
+      return;
     }
+
+    await batch.process({
+      mode: mode === "dimensions" ? "maxEdge" : mode,
+      percentage,
+      maxEdge,
+      format,
+      quality: selectedFormat.lossy ? clampQuality(quality) : undefined,
+    });
   }
 
-  function handleReset() {
-    setFile(null);
-    setPreviewUrl(null);
-    setResultBlob(null);
-    setError("");
-    // Clear the dimensions too, so the next file doesn't briefly show the
-    // previous image's size before its own dimensions load.
-    setOriginalWidth(0);
-    setOriginalHeight(0);
-    setWidth("");
-    setHeight("");
-  }
+  const singleResult = items.length === 1 ? results.get(items[0]?.id) : null;
 
-  const extension = file?.type === "image/png" ? "png" : "jpg";
-  const previewTargetWidth =
-    mode === "percentage" ? Math.round((originalWidth * percentage) / 100) : width;
-  const previewTargetHeight =
-    mode === "percentage" ? Math.round((originalHeight * percentage) / 100) : height;
+  const preview =
+    source && mode === "percentage"
+      ? {
+          width: Math.round((source.width * percentage) / 100),
+          height: Math.round((source.height * percentage) / 100),
+        }
+      : null;
+
+  const isUpscale =
+    (mode === "percentage" && percentage > 100) ||
+    (mode === "dimensions" && source && Number(width) > source.width);
 
   return (
     <div>
-      {!file && (
-        <FileDropzone onFiles={handleFiles} accept="image/*" label="Drag & drop an image here, or click to browse" />
+      <FileDropzone
+        onFiles={batch.addFiles}
+        accept="image/*"
+        multiple
+        label="Drag & drop images here, or click to browse"
+      />
+
+      <ErrorBanner>{batch.error}</ErrorBanner>
+
+      {batch.notice && (
+        <p role="status" style={{ fontSize: "13px", color: colors.warningText, marginTop: "12px" }}>
+          {batch.notice}
+        </p>
       )}
 
-      {error && <p style={{ color: colors.danger, fontSize: "14px", marginTop: "12px" }}>{error}</p>}
-
-      {file && (
-        <div>
-          <div style={{ display: "flex", gap: "20px", alignItems: "flex-start", marginBottom: "20px", flexWrap: "wrap" }}>
-            <img
-              src={previewUrl}
-              alt="Preview"
-              style={{ width: "160px", height: "160px", objectFit: "contain", border: `1px solid ${colors.border}`, borderRadius: "8px", flexShrink: 0 }}
-            />
-            <div style={{ flex: 1, minWidth: "180px" }}>
-              <div
-                style={{
-                  fontSize: "14px",
-                  color: colors.textSecondary,
-                  marginBottom: "4px",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {file.name}
-              </div>
-              <div style={{ fontSize: "13px", color: colors.textFaint, marginBottom: "12px" }}>
-                {originalWidth} × {originalHeight}px · {formatBytes(file.size)}
-              </div>
-              <button onClick={handleReset} style={smallButtonStyle}>
-                Choose another file
-              </button>
-            </div>
+      {items.length > 0 && (
+        <div style={{ marginTop: "20px" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "12px",
+              flexWrap: "wrap",
+            }}
+          >
+            <span style={{ fontSize: "14px", fontWeight: 600, color: colors.text }}>
+              {items.length} image{items.length === 1 ? "" : "s"}
+              {source && !isBatch && (
+                <span style={{ fontWeight: 400, color: colors.textMuted }}>
+                  {" "}
+                  · {source.width} × {source.height}px
+                </span>
+              )}
+            </span>
+            <SecondaryButton onClick={batch.clearAll} disabled={isRunning}>
+              Clear all
+            </SecondaryButton>
           </div>
 
-          <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
-            <ModeButton active={mode === "dimensions"} onClick={() => setMode("dimensions")}>
-              By dimensions
-            </ModeButton>
+          <ImageQueue
+            items={items}
+            results={results}
+            onRemove={batch.removeItem}
+            disabled={isRunning}
+          />
+
+          <div style={{ display: "flex", gap: "8px", margin: "24px 0 20px", flexWrap: "wrap" }}>
+            {!isBatch && (
+              <ModeButton active={mode === "dimensions"} onClick={() => setMode("dimensions")}>
+                Exact size
+              </ModeButton>
+            )}
             <ModeButton active={mode === "percentage"} onClick={() => setMode("percentage")}>
               By percentage
             </ModeButton>
+            <ModeButton active={mode === "maxEdge"} onClick={() => setMode("maxEdge")}>
+              Fit within
+            </ModeButton>
           </div>
 
-          {mode === "dimensions" && (
-            <div style={{ marginBottom: "16px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px", flexWrap: "wrap" }}>
+          {mode === "dimensions" && !isBatch && (
+            <div style={{ marginBottom: "20px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  marginBottom: "12px",
+                  flexWrap: "wrap",
+                }}
+              >
                 <label style={{ fontSize: "14px", color: colors.textSecondary }}>
                   Width{" "}
                   <input
@@ -231,7 +261,16 @@ export default function ResizeImageClient() {
                   px
                 </label>
               </div>
-              <label style={{ fontSize: "13px", color: colors.textMuted, display: "flex", alignItems: "center", gap: "6px", padding: "6px 0" }}>
+              <label
+                style={{
+                  fontSize: "13px",
+                  color: colors.textMuted,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "6px 0",
+                }}
+              >
                 <input
                   type="checkbox"
                   checked={lockAspect}
@@ -244,44 +283,149 @@ export default function ResizeImageClient() {
 
           {mode === "percentage" && (
             <div style={{ marginBottom: "20px" }}>
-              <label style={{ fontSize: "14px", color: colors.textSecondary }}>
-                Scale: {percentage}% ({previewTargetWidth} × {previewTargetHeight}px)
+              <label htmlFor="scale" style={{ fontSize: "14px", color: colors.textSecondary }}>
+                Scale: {percentage}%
+                {preview && (
+                  <span style={{ color: colors.textMuted }}>
+                    {" "}
+                    ({preview.width} × {preview.height}px)
+                  </span>
+                )}
               </label>
               <input
+                id="scale"
                 type="range"
                 min={1}
                 max={200}
                 value={percentage}
-                onChange={(e) => setPercentage(Number(e.target.value))}
-                style={{ width: "100%", marginTop: "6px" }}
+                onChange={(e) => {
+                  setPercentage(Number(e.target.value));
+                  batch.clearResults();
+                }}
+                style={{ width: "100%", marginTop: "6px", maxWidth: "420px", display: "block" }}
               />
             </div>
           )}
 
-          <div style={{ display: "flex", gap: "12px", alignItems: "center", marginTop: "20px", flexWrap: "wrap" }}>
-            <button
-              onClick={handleResize}
-              disabled={isWorking}
+          {mode === "maxEdge" && (
+            <div style={{ marginBottom: "20px" }}>
+              <span
+                style={{
+                  display: "block",
+                  fontSize: "14px",
+                  color: colors.textSecondary,
+                  marginBottom: "8px",
+                }}
+              >
+                Fit each image within {maxEdge}px on its longest side
+              </span>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                {[640, 1280, 1920, 2560].map((edge) => (
+                  <PresetButton
+                    key={edge}
+                    active={maxEdge === edge}
+                    onClick={() => {
+                      setMaxEdge(edge);
+                      batch.clearResults();
+                    }}
+                  >
+                    {edge}px
+                  </PresetButton>
+                ))}
+              </div>
+              <p style={{ fontSize: "13px", color: colors.textFaint, margin: "8px 0 0" }}>
+                Aspect ratio is preserved, and images already smaller than this are left alone —
+                so a mixed batch scales sensibly.
+              </p>
+            </div>
+          )}
+
+          <div style={{ marginBottom: "16px" }}>
+            <span
               style={{
-                backgroundColor: isWorking ? colors.primaryDisabled : colors.primary,
-                color: colors.primaryContrast,
-                border: "none",
-                borderRadius: "8px",
-                padding: "10px 20px",
+                display: "block",
                 fontSize: "14px",
-                fontWeight: 600,
-                cursor: isWorking ? "not-allowed" : "pointer",
+                fontWeight: 500,
+                color: colors.textSecondary,
+                marginBottom: "8px",
               }}
             >
-              {isWorking ? "Resizing…" : "Resize Image"}
-            </button>
+              Output format
+            </span>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              {supportedFormats.map((f) => (
+                <ModeButton
+                  key={f.mimeType}
+                  active={format === f.mimeType}
+                  onClick={() => {
+                    setFormat(f.mimeType);
+                    batch.clearResults();
+                  }}
+                >
+                  {f.label}
+                </ModeButton>
+              ))}
+            </div>
+          </div>
 
-            {resultBlob && (
-              <DownloadButton getBlob={() => resultBlob} filename={`resized.${extension}`}>
-                Download resized.{extension}
+          {selectedFormat.lossy && (
+            <div style={{ marginBottom: "20px" }}>
+              <label htmlFor="rq" style={{ fontSize: "14px", color: colors.textSecondary }}>
+                Quality: {Math.round(quality * 100)}%
+              </label>
+              <input
+                id="rq"
+                type="range"
+                min={0.1}
+                max={1}
+                step={0.05}
+                value={quality}
+                onChange={(e) => {
+                  setQuality(Number(e.target.value));
+                  batch.clearResults();
+                }}
+                style={{ width: "100%", marginTop: "6px", maxWidth: "420px", display: "block" }}
+              />
+            </div>
+          )}
+
+          {isUpscale && (
+            <WarningBanner>
+              Enlarging an image can&apos;t add detail that was never captured — the result will
+              look softer than the original. Scaling down is lossless in the sense that matters;
+              scaling up never is.
+            </WarningBanner>
+          )}
+
+          {isRunning && <ProgressBar progress={progress} />}
+
+          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginTop: "20px" }}>
+            <PrimaryButton onClick={handleResize} disabled={isRunning}>
+              <Scaling size={16} />
+              {isRunning
+                ? "Resizing…"
+                : `Resize ${items.length} image${items.length === 1 ? "" : "s"}`}
+            </PrimaryButton>
+
+            {isRunning && <SecondaryButton onClick={batch.cancel}>Cancel</SecondaryButton>}
+
+            {singleResult && !isRunning && (
+              <DownloadButton
+                getBlob={() => new Blob([singleResult.bytes], { type: singleResult.type })}
+                filename={outputFilename(items[0].file.name, singleResult.type, "-resized")}
+              >
+                Download {outputFilename(items[0].file.name, singleResult.type, "-resized")}
+              </DownloadButton>
+            )}
+
+            {results.size > 1 && !isRunning && (
+              <DownloadButton getBlob={() => batch.buildZip()} filename="resized-images.zip">
+                Download all ({results.size}) as zip
               </DownloadButton>
             )}
           </div>
+
+          <BatchSummary items={items} results={results} />
         </div>
       )}
     </div>
@@ -292,12 +436,13 @@ function ModeButton({ active, onClick, children }) {
   return (
     <button
       onClick={onClick}
+      aria-pressed={active}
       style={{
         border: `1px solid ${active ? colors.primary : colors.border}`,
         backgroundColor: active ? colors.primarySoft : colors.surface,
         color: active ? colors.primary : colors.textSecondary,
         borderRadius: "8px",
-        padding: "10px 16px",
+        padding: "9px 16px",
         fontSize: "14px",
         fontWeight: 500,
         cursor: "pointer",
@@ -308,15 +453,25 @@ function ModeButton({ active, onClick, children }) {
   );
 }
 
-const smallButtonStyle = {
-  background: "none",
-  border: `1px solid ${colors.border}`,
-  borderRadius: "6px",
-  padding: "8px 14px",
-  fontSize: "13px",
-  color: colors.textSecondary,
-  cursor: "pointer",
-};
+function PresetButton({ active, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={active}
+      style={{
+        border: `1px solid ${active ? colors.primary : colors.border}`,
+        backgroundColor: active ? colors.primarySoft : colors.surfaceMuted,
+        color: active ? colors.primary : colors.textSecondary,
+        borderRadius: "999px",
+        padding: "6px 14px",
+        fontSize: "13px",
+        cursor: "pointer",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
 
 const numberInputStyle = {
   width: "90px",
@@ -326,4 +481,6 @@ const numberInputStyle = {
   borderRadius: "6px",
   marginLeft: "4px",
   marginRight: "4px",
+  backgroundColor: colors.surface,
+  color: colors.text,
 };

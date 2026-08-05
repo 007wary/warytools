@@ -7,8 +7,11 @@ import { events, sizeBucket, trackEvent } from "@/lib/analytics";
 // Triggers a browser download for a Blob/File, entirely client-side.
 // Usage: <DownloadButton getBlob={() => myBlob} filename="result.pdf" />
 export default function DownloadButton({ getBlob, filename, children, disabled }) {
-  function handleClick() {
-    const blob = getBlob();
+  // `getBlob` may return a Blob or a Promise of one. Awaiting covers both, so
+  // callers that build their output lazily (zipping a batch, which can take a
+  // moment) work without every existing synchronous caller having to change.
+  async function handleClick() {
+    const blob = await getBlob();
     if (!blob) return;
 
     // A completed download is the closest thing this site has to a

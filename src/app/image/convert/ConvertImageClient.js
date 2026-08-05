@@ -1,191 +1,195 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { RefreshCw } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
-import { formatBytes, loadImage, canvasToBlob, outputFormats } from "@/lib/imageFile";
+import ProgressBar from "@/components/ProgressBar";
+import ErrorBanner from "@/components/ErrorBanner";
+import ImageQueue, { BatchSummary } from "@/components/ImageQueue";
+import { PrimaryButton, SecondaryButton } from "@/components/ToolButton";
+import { useImageBatch } from "@/lib/useImageBatch";
+import { useSupportedFormats, findFormat, defaultOutputFormat } from "@/lib/imageFormats";
+import { outputFilename, clampQuality } from "@/lib/imageResampling";
 import { colors } from "@/lib/theme";
-import { events, sizeBucket, trackEvent } from "@/lib/analytics";
 
 // Fixed high quality for lossy output — this tool is about changing format,
 // not tuning compression (that's what /image/compress is for).
 const OUTPUT_QUALITY = 0.92;
 
 export default function ConvertImageClient() {
-  const [file, setFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const [format, setFormat] = useState("image/png");
-  const [isWorking, setIsWorking] = useState(false);
-  const [error, setError] = useState("");
-  const [resultBlob, setResultBlob] = useState(null);
+  // Only consulted once the user has actually picked a format; until then the
+  // suggestion below wins.
+  const [chosenFormat, setChosenFormat] = useState("image/png");
+  const [touched, setTouched] = useState(false);
 
-  // Revoke the previous preview URL whenever it's replaced or the
-  // component unmounts, so switching files repeatedly doesn't leak blobs.
-  useEffect(() => {
-    return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-    };
-  }, [previewUrl]);
+  const supportedFormats = useSupportedFormats();
+  const batch = useImageBatch({
+    toolSlug: "image_convert",
+    errorFallback: "Could not convert these images.",
+  });
 
-  function handleFiles(fileList) {
-    const selected = fileList[0];
-    if (!selected || !selected.type.startsWith("image/")) {
-      setError("Please choose an image file.");
-      return;
-    }
+  const { items, results, isRunning, progress } = batch;
 
-    setError("");
-    setResultBlob(null);
-    setFile(selected);
-    setPreviewUrl(URL.createObjectURL(selected));
+  // Suggest a sensible target based on the first image, but stop once the
+  // user has picked one — overriding an explicit choice on the next file
+  // drop would be the tool arguing with them.
+  //
+  // Derived during render rather than synced by an effect: the suggestion is
+  // a pure function of the source type, so storing it in state only creates
+  // an extra render pass showing a format the tool is about to change.
+  const firstType = items[0]?.type ?? null;
+  const format =
+    touched || !firstType || supportedFormats.length === 0
+      ? chosenFormat
+      : defaultOutputFormat(firstType, supportedFormats);
 
-    // Default to a different format than the source so conversion is obvious.
-    setFormat(selected.type === "image/png" ? "image/jpeg" : "image/png");
-  }
+  const selected = findFormat(format);
 
   async function handleConvert() {
-    setError("");
-    setIsWorking(true);
-
-    try {
-      const img = await loadImage(file);
-      const canvas = document.createElement("canvas");
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext("2d");
-
-      // JPG has no transparency — fill white behind the image first so
-      // transparent PNGs don't turn black.
-      if (format === "image/jpeg") {
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      }
-      ctx.drawImage(img, 0, 0);
-
-      const blob = await canvasToBlob(canvas, format, OUTPUT_QUALITY);
-      setResultBlob(blob);
-      // Source -> target format pairs show which conversions people
-      // actually want (e.g. heic->jpg), which is worth knowing.
-      trackEvent(events.TOOL_RUN, {
-        source_format: file?.type || "unknown",
-        output_format: format,
-        size_bucket: sizeBucket(file?.size),
-      });
-    } catch (err) {
-      console.error(err);
-      trackEvent(events.TOOL_ERROR, { reason: "image_convert_failed" });
-      setError("Could not convert this image.");
-    } finally {
-      setIsWorking(false);
-    }
+    await batch.process({
+      mode: "none",
+      format,
+      quality: selected.lossy ? clampQuality(OUTPUT_QUALITY) : undefined,
+    });
   }
 
-  function handleReset() {
-    setFile(null);
-    setPreviewUrl(null);
-    setResultBlob(null);
-    setError("");
-  }
+  const singleResult = items.length === 1 ? results.get(items[0]?.id) : null;
 
-  const selectedFormat = outputFormats.find((f) => f.mimeType === format);
+  // Flattening alpha is a real, irreversible change to the image, so it's
+  // called out before the conversion rather than discovered afterwards.
+  const willFlattenAlpha =
+    format === "image/jpeg" &&
+    items.some((item) => item.type === "image/png" || item.type === "image/webp");
 
   return (
     <div>
-      {!file && (
-        <FileDropzone onFiles={handleFiles} accept="image/*" label="Drag & drop an image here, or click to browse" />
+      <FileDropzone
+        onFiles={batch.addFiles}
+        accept="image/*"
+        multiple
+        label="Drag & drop images here, or click to browse"
+      />
+
+      <ErrorBanner>{batch.error}</ErrorBanner>
+
+      {batch.notice && (
+        <p role="status" style={{ fontSize: "13px", color: colors.warningText, marginTop: "12px" }}>
+          {batch.notice}
+        </p>
       )}
 
-      {error && <p style={{ color: colors.danger, fontSize: "14px", marginTop: "12px" }}>{error}</p>}
-
-      {file && (
-        <div>
-          <div style={{ display: "flex", gap: "20px", alignItems: "flex-start", marginBottom: "20px", flexWrap: "wrap" }}>
-            <img
-              src={previewUrl}
-              alt="Preview"
-              style={{ width: "160px", height: "160px", objectFit: "contain", border: `1px solid ${colors.border}`, borderRadius: "8px", flexShrink: 0 }}
-            />
-            <div style={{ flex: 1, minWidth: "180px" }}>
-              <div
-                style={{
-                  fontSize: "14px",
-                  color: colors.textSecondary,
-                  marginBottom: "4px",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {file.name}
-              </div>
-              <div style={{ fontSize: "13px", color: colors.textFaint, marginBottom: "12px" }}>
-                {formatBytes(file.size)} · {file.type}
-              </div>
-              <button onClick={handleReset} style={smallButtonStyle}>
-                Choose another file
-              </button>
-            </div>
+      {items.length > 0 && (
+        <div style={{ marginTop: "20px" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "12px",
+              flexWrap: "wrap",
+            }}
+          >
+            <span style={{ fontSize: "14px", fontWeight: 600, color: colors.text }}>
+              {items.length} image{items.length === 1 ? "" : "s"}
+            </span>
+            <SecondaryButton onClick={batch.clearAll} disabled={isRunning}>
+              Clear all
+            </SecondaryButton>
           </div>
 
-          <div style={{ marginBottom: "20px" }}>
-            <label style={{ fontSize: "14px", color: colors.textSecondary, display: "block", marginBottom: "6px" }}>
+          <ImageQueue
+            items={items}
+            results={results}
+            onRemove={batch.removeItem}
+            disabled={isRunning}
+          />
+
+          <div style={{ margin: "24px 0 16px" }}>
+            <span
+              style={{
+                display: "block",
+                fontSize: "14px",
+                fontWeight: 500,
+                color: colors.textSecondary,
+                marginBottom: "8px",
+              }}
+            >
               Convert to
-            </label>
+            </span>
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-              {outputFormats.map((f) => (
-                <ModeButton key={f.mimeType} active={format === f.mimeType} onClick={() => setFormat(f.mimeType)}>
+              {supportedFormats.map((f) => (
+                <FormatButton
+                  key={f.mimeType}
+                  active={format === f.mimeType}
+                  onClick={() => {
+                    setChosenFormat(f.mimeType);
+                    setTouched(true);
+                    batch.clearResults();
+                  }}
+                >
                   {f.label}
-                </ModeButton>
+                </FormatButton>
               ))}
             </div>
+            <p style={{ fontSize: "13px", color: colors.textFaint, margin: "8px 0 0" }}>
+              {selected.note}
+            </p>
           </div>
 
-          {format === "image/jpeg" && file.type === "image/png" && (
-            <p style={{ fontSize: "13px", color: colors.textFaint, marginBottom: "16px" }}>
+          {willFlattenAlpha && (
+            <p style={{ fontSize: "13px", color: colors.warningText, marginBottom: "16px" }}>
               JPG doesn&apos;t support transparency — any transparent areas will become white.
+              Choose PNG, WebP or AVIF to keep them.
             </p>
           )}
 
-          <div style={{ display: "flex", gap: "12px", alignItems: "center", marginTop: "8px", flexWrap: "wrap" }}>
-            <button
-              onClick={handleConvert}
-              disabled={isWorking}
-              style={{
-                backgroundColor: isWorking ? colors.primaryDisabled : colors.primary,
-                color: colors.primaryContrast,
-                border: "none",
-                borderRadius: "8px",
-                padding: "10px 20px",
-                fontSize: "14px",
-                fontWeight: 600,
-                cursor: isWorking ? "not-allowed" : "pointer",
-              }}
-            >
-              {isWorking ? "Converting…" : "Convert Image"}
-            </button>
+          {isRunning && <ProgressBar progress={progress} />}
 
-            {resultBlob && (
-              <DownloadButton getBlob={() => resultBlob} filename={`converted.${selectedFormat.extension}`}>
-                Download converted.{selectedFormat.extension}
+          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginTop: "20px" }}>
+            <PrimaryButton onClick={handleConvert} disabled={isRunning}>
+              <RefreshCw size={16} />
+              {isRunning
+                ? "Converting…"
+                : `Convert ${items.length} image${items.length === 1 ? "" : "s"}`}
+            </PrimaryButton>
+
+            {isRunning && <SecondaryButton onClick={batch.cancel}>Cancel</SecondaryButton>}
+
+            {singleResult && !isRunning && (
+              <DownloadButton
+                getBlob={() => new Blob([singleResult.bytes], { type: singleResult.type })}
+                filename={outputFilename(items[0].file.name, singleResult.type)}
+              >
+                Download {outputFilename(items[0].file.name, singleResult.type)}
+              </DownloadButton>
+            )}
+
+            {results.size > 1 && !isRunning && (
+              <DownloadButton getBlob={() => batch.buildZip()} filename="converted-images.zip">
+                Download all ({results.size}) as zip
               </DownloadButton>
             )}
           </div>
+
+          <BatchSummary items={items} results={results} />
         </div>
       )}
     </div>
   );
 }
 
-function ModeButton({ active, onClick, children }) {
+function FormatButton({ active, onClick, children }) {
   return (
     <button
       onClick={onClick}
+      aria-pressed={active}
       style={{
         border: `1px solid ${active ? colors.primary : colors.border}`,
         backgroundColor: active ? colors.primarySoft : colors.surface,
         color: active ? colors.primary : colors.textSecondary,
         borderRadius: "8px",
-        padding: "10px 16px",
+        padding: "9px 16px",
         fontSize: "14px",
         fontWeight: 500,
         cursor: "pointer",
@@ -195,13 +199,3 @@ function ModeButton({ active, onClick, children }) {
     </button>
   );
 }
-
-const smallButtonStyle = {
-  background: "none",
-  border: `1px solid ${colors.border}`,
-  borderRadius: "6px",
-  padding: "8px 14px",
-  fontSize: "13px",
-  color: colors.textSecondary,
-  cursor: "pointer",
-};

@@ -15,7 +15,7 @@ npm run start    # run the production build
 npm run lint     # ESLint (flat config, eslint-config-next)
 ```
 
-`npm test` runs the vitest suite (`npm run test:watch` for watch mode) — 209 tests across thirteen files, covering the pure-logic helpers in `src/lib/` (`calculatorMath`, `unitConversions`, `dateMath`, `imageFile`, `formatBytes`, `pdfPageRange`, `pdfFile`, `pdfWorkerProtocol`, `urlShortenerValidation`, `siteUrl`, `sitemapRoutes`) plus `src/app/robots`. There are no component or end-to-end tests; UI and file-processing behaviour is only verified by `npm run build` and manual checks.
+`npm test` runs the vitest suite (`npm run test:watch` for watch mode) — 279 tests across fifteen files, covering the pure-logic helpers in `src/lib/` (`calculatorMath`, `unitConversions`, `dateMath`, `imageFile`, `imageValidation`, `imageResampling`, `formatBytes`, `pdfPageRange`, `pdfFile`, `pdfWorkerProtocol`, `urlShortenerValidation`, `siteUrl`, `sitemapRoutes`) plus `src/app/robots`. There are no component or end-to-end tests; UI and file-processing behaviour is only verified by `npm run build` and manual checks.
 
 Because there is no component-level coverage, **logic that guards a user input belongs in a `src/lib/` module, not inline in a client component** — that's the only way it can be tested at all. `pdfPageRange.js` exists for exactly this reason.
 
@@ -59,6 +59,20 @@ All five PDF tools share one pipeline. Adding or changing a PDF tool means worki
 - **Shared tool UI** — [PdfFileHeader](src/components/PdfFileHeader.js), [ProgressBar](src/components/ProgressBar.js), [ErrorBanner](src/components/ErrorBanner.js) (`role="alert"`, so errors are actually announced), and the button styles in [ToolButton.js](src/components/ToolButton.js).
 
 **Reordering gotcha:** apply a drag reorder on `drop`, never on `dragover`. Mutating the list on every `dragover` event makes the dragged item jump out from under the pointer and the list flicker through orders the user never chose. Any reorderable list also needs the keyboard path (space to grab, arrows to move, escape to cancel) — drag-and-drop alone is unusable with a keyboard or screen reader.
+
+### The image pipeline
+
+The three image tools share a pipeline built the same way as the PDF one, with its own worker so a visitor to an image tool never downloads `pdf-lib` (and vice versa):
+
+- **Accepting a file** — [src/lib/imageValidation.js](src/lib/imageValidation.js). Same rule as PDFs: never trust `file.type`. `validateImageFile()` sniffs magic bytes (note that WebP identifies itself at offset 8 after the RIFF size field, and AVIF/HEIC at offset 8 after `ftyp`). It also detects **HEIC specifically** — no browser can decode it via canvas, it's the iPhone camera default, and the old tools accepted it and then failed with a generic error; now it returns instructions instead. `checkPixelBudget()` guards the canvas pixel ceiling, past which canvas silently yields a *blank image* rather than throwing.
+- **Doing the work** — [src/workers/image.worker.js](src/workers/image.worker.js) via `useImageBatch()` in [src/lib/useImageBatch.js](src/lib/useImageBatch.js). Decoding uses `createImageBitmap(blob, { imageOrientation: "from-image" })` — **that option is what applies EXIF orientation**; without it every portrait phone photo comes out sideways, which is what the old `<img>`+canvas path did. Drawing and encoding happen on `OffscreenCanvas`. Batch files are processed sequentially, not in parallel: each decoded bitmap can be hundreds of MB, and decoding twenty at once gets the worker killed.
+- **Downscaling** — always go through `planDownscaleSteps()` in [src/lib/imageResampling.js](src/lib/imageResampling.js), never a single `drawImage` to the target size. Browsers filter bilinearly from a 2×2 neighbourhood, so a one-shot 4000px→150px draw never reads most source pixels and produces visibly aliased output. The helper plans a halving schedule (`2000 → 1000 → 500 → 250 → 150`) so every step stays within what bilinear handles correctly.
+- **Output formats** — [src/lib/imageFormats.js](src/lib/imageFormats.js) probes what the browser can actually *encode* before offering it. Canvas encoders don't throw on an unsupported type, they silently return PNG, so an unprobed AVIF option hands the user a `.avif` file containing PNG bytes. The worker re-checks the returned blob's type for the same reason.
+- **Batch results** — each worker output carries the **index** of its source file. Matching results by array position breaks the moment one file fails (every later result shifts onto the wrong source), and matching by filename breaks when a batch has two files with the same name.
+
+`imageFile.js` still holds `canvasToBlob`/`getCappedDimensions`, used by the PDF thumbnail renderer — it predates this split and isn't the entry point for the image tools.
+
+**`DownloadButton` accepts an async `getBlob`**, so a handler can build its output lazily (zipping a batch) without blocking the click.
 
 ### URL shortener (the one server-touching tool)
 
