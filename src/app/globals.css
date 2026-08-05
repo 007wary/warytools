@@ -166,8 +166,36 @@ body {
   text-underline-offset: 3px;
 }
 
+/* Inline links inside body copy (homepage intro). Underlined by default —
+   unlike nav/footer links these sit mid-sentence, where color alone is not a
+   sufficient affordance and would fail WCAG 1.4.1 for color-blind readers. */
+.prose-link {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.prose-link:hover {
+  color: var(--primary-hover);
+}
+
 a {
   color: inherit;
+}
+
+/* Visually-hidden but screen-reader-readable. Tailwind v4 would generate an
+   equivalent .sr-only, but this site styles inline rather than with utility
+   classes, so the one accessible-name helper we rely on is defined here
+   instead of depending on utility-class detection. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 input,

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useMemo, useState, useSyncExternalStore } from "react";
 import { Search } from "lucide-react";
 import ToolCard from "@/components/ToolCard";
 import { colors } from "@/lib/theme";
@@ -19,18 +19,46 @@ function useQueryState() {
   return ctx;
 }
 
+// Honours the `?q=` SearchAction advertised in the WebSite JSON-LD
+// (src/lib/jsonLd.js), so a sitelinks-searchbox hit like /?q=merge lands on an
+// actually-filtered page instead of the plain homepage.
+//
+// Read from window rather than useSearchParams(): the latter opts the whole
+// route out of static rendering unless wrapped in Suspense, and keeping the
+// homepage static matters more than resolving the filter one render sooner.
+//
+// useSyncExternalStore rather than a setState-in-effect: the server snapshot is
+// always "" (matching the static HTML, so hydration never mismatches) while the
+// client snapshot reads the real URL, giving a single correct render instead of
+// a cascading second one.
+const EMPTY_SNAPSHOT = "";
+const subscribeToNothing = () => () => {};
+const getUrlQuery = () => new URLSearchParams(window.location.search).get("q") || "";
+const getServerQuery = () => EMPTY_SNAPSHOT;
+
 export function ToolSearchProvider({ children }) {
-  const [query, setQuery] = useState("");
-  return <QueryContext.Provider value={{ query, setQuery }}>{children}</QueryContext.Provider>;
+  const urlQuery = useSyncExternalStore(subscribeToNothing, getUrlQuery, getServerQuery);
+  // null means "user hasn't typed yet", so the URL seed still applies. Once
+  // they interact, their input wins and the URL is no longer consulted.
+  const [typed, setTyped] = useState(null);
+
+  const query = typed ?? urlQuery;
+  const value = useMemo(() => ({ query, setQuery: setTyped }), [query]);
+
+  return <QueryContext.Provider value={value}>{children}</QueryContext.Provider>;
 }
 
 export function ToolSearchBox() {
   const { query, setQuery } = useQueryState();
 
   return (
-    <div style={{ maxWidth: "480px", margin: "0 auto", position: "relative" }}>
+    <div
+      role="search"
+      style={{ maxWidth: "480px", margin: "0 auto", position: "relative" }}
+    >
       <Search
         size={18}
+        aria-hidden="true"
         style={{
           position: "absolute",
           left: "16px",
@@ -40,8 +68,13 @@ export function ToolSearchBox() {
           pointerEvents: "none",
         }}
       />
+      <label htmlFor="tool-search" className="sr-only">
+        Search tools
+      </label>
       <input
-        type="text"
+        id="tool-search"
+        name="q"
+        type="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search tools… e.g. merge, resize, GST"

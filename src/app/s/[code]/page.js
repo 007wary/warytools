@@ -6,6 +6,17 @@ import { colors } from "@/lib/theme";
 // Must match the alphabet/length UrlShortenerClient generates codes with.
 const CODE_PATTERN = /^[23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{7}$/;
 
+// robots.txt already disallows /s/, but that only blocks crawling — an
+// externally-linked short link can still be indexed URL-only, and because
+// crawling is blocked Google never sees a correction. Without this, such a page
+// would also inherit the root layout's `canonical: "/"`, telling Google a
+// redirect stub is the homepage. noindex here makes it explicit, and clearing
+// the inherited canonical stops the bad signal at the source.
+export const metadata = {
+  robots: { index: false, follow: false },
+  alternates: { canonical: null },
+};
+
 function NotFound() {
   return (
     <section style={{ maxWidth: "600px", margin: "0 auto", padding: "48px 20px 80px" }}>

@@ -198,7 +198,11 @@ export function buildSitemapEntries({ baseUrl, appDir, srcDir, cwd, now = () => 
     }
 
     return {
-      url: `${baseUrl}${route === "/" ? "/" : route}`,
+      // The homepage route is "/", which would append a trailing slash the
+      // canonical tag doesn't have: Next normalizes `canonical: "/"` down to
+      // "https://wary.tools". Emitting the bare base URL keeps the sitemap and
+      // the canonical declaring the identical string.
+      url: route === "/" ? baseUrl : `${baseUrl}${route}`,
       lastModified,
       changeFrequency: route === "/" ? "weekly" : "monthly",
       priority: priorityFor(route),

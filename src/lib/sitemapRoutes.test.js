@@ -148,13 +148,26 @@ describe("buildSitemapEntries", () => {
   const baseUrl = "https://wary.tools";
   const build = () => buildSitemapEntries({ baseUrl, appDir, srcDir, cwd: tmpDir });
 
-  it("emits the homepage with a trailing slash matching the canonical URL", () => {
+  // Next normalizes the homepage's `canonical: "/"` to a base URL with no
+  // trailing slash, so the sitemap must emit the same bare form rather than
+  // "https://wary.tools/" — otherwise the two disagree about the same page.
+  it("emits the homepage without a trailing slash, matching the canonical URL", () => {
     const home = build().find((entry) => entry.priority === 1);
-    expect(home.url).toBe("https://wary.tools/");
+    expect(home.url).toBe("https://wary.tools");
   });
 
-  it("does not emit a bare origin without a trailing slash", () => {
-    expect(build().some((entry) => entry.url === baseUrl)).toBe(false);
+  // Replaces an earlier guard that asserted the opposite. It was added to make
+  // <loc> match layout.js's canonical, on the assumption that the canonical
+  // carried a trailing slash — but Next normalizes `canonical: "/"` down to the
+  // bare origin, so requiring the slash produced the mismatch it meant to
+  // prevent. The homepage is the one route allowed to be the bare origin;
+  // every other entry must still carry a path.
+  it("emits a bare origin only for the homepage", () => {
+    for (const entry of build()) {
+      if (entry.priority === 1) continue;
+      expect(entry.url).not.toBe(baseUrl);
+      expect(entry.url.startsWith(`${baseUrl}/`)).toBe(true);
+    }
   });
 
   it("builds absolute URLs for every discovered route", () => {
@@ -175,7 +188,7 @@ describe("buildSitemapEntries", () => {
     // The fixture tree lives in os.tmpdir(), outside any repo, so git yields
     // nothing for every file and the mtime path is what produces these dates.
     const entries = build();
-    const home = entries.find((entry) => entry.url === "https://wary.tools/");
+    const home = entries.find((entry) => entry.url === "https://wary.tools");
     const pageMtime = fs.statSync(path.join(appDir, "page.js")).mtimeMs;
     expect(Math.abs(home.lastModified.getTime() - pageMtime)).toBeLessThan(5000);
   });
@@ -199,7 +212,7 @@ describe("buildSitemapEntries", () => {
 
     // The homepage has no page.js at all -> no own files, no imports, no
     // mtimes -> the injected clock is the only remaining source.
-    const home = entries.find((entry) => entry.url === "https://wary.tools/");
+    const home = entries.find((entry) => entry.url === "https://wary.tools");
     expect(home.lastModified).toEqual(sentinel);
     fs.rmSync(emptyDir, { recursive: true, force: true });
   });
@@ -248,7 +261,7 @@ describe("buildSitemapEntries", () => {
 
   it("marks the homepage weekly and other routes monthly", () => {
     const entries = build();
-    const home = entries.find((entry) => entry.url === "https://wary.tools/");
+    const home = entries.find((entry) => entry.url === "https://wary.tools");
     const tool = entries.find((entry) => entry.url === "https://wary.tools/pdf/merge");
     expect(home.changeFrequency).toBe("weekly");
     expect(tool.changeFrequency).toBe("monthly");
