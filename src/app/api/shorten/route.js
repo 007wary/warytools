@@ -1,84 +1,45 @@
 import { createClient } from "@supabase/supabase-js";
+import { createHash } from "crypto";
 import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { SITE_URL } from "@/lib/siteUrl";
+import { checkUrl, rejectionMessage } from "@/lib/urlShortenerValidation";
+import { generateCode } from "@/lib/shortCode";
+
+// This route is a convenience wrapper, not the security boundary. The
+// database is: `create_short_url` is a SECURITY DEFINER function and anon
+// has no direct INSERT on short_urls, so the validation and rate limiting
+// below can't be skipped by calling PostgREST directly with the (public)
+// anon key. What this route adds is a better error message and a second
+// check close to the user.
+export const runtime = "nodejs";
+// Never cache a creation endpoint.
+export const dynamic = "force-dynamic";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  { auth: { persistSession: false } }
 );
-
-// Per-instance sliding window. Resets on cold start and isn't shared across
-// serverless instances — a speed bump against scripted abuse, not a hard cap.
-// For durable enforcement, add a Supabase-side rate limit (see CLAUDE.md note).
-const WINDOW_MS = 60_000;
-const MAX_PER_WINDOW = 5;
-const hits = new Map();
-
-function isRateLimited(ip) {
-  const now = Date.now();
-  const timestamps = (hits.get(ip) || []).filter((t) => now - t < WINDOW_MS);
-  timestamps.push(now);
-  hits.set(ip, timestamps);
-
-  if (hits.size > 5000) {
-    for (const [key, arr] of hits) {
-      if (arr.every((t) => now - t >= WINDOW_MS)) hits.delete(key);
-    }
-  }
-
-  return timestamps.length > MAX_PER_WINDOW;
-}
-
-function getClientIp(req) {
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
-  return req.headers.get("x-real-ip") || "unknown";
-}
 
 const SITE_ORIGIN = new URL(SITE_URL).origin;
 
-function isValidHttpUrl(value) {
-  let url;
-  try {
-    url = new URL(value);
-  } catch {
-    return false;
-  }
+// The rate-limit bucket is a salted hash of the client IP, not the IP
+// itself — the limiter needs to tell callers apart, not know who they are,
+// and a raw IP sitting in a database row is personal data we have no
+// reason to keep. The site URL is a stable, deployment-specific salt.
+function rateLimitBucket(req) {
+  const forwarded = req.headers.get("x-forwarded-for");
+  const ip = forwarded
+    ? forwarded.split(",")[0].trim()
+    : req.headers.get("x-real-ip") || "unknown";
 
-  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
-
-  // Block shortening our own /s/ links — prevents redirect chains/loops
-  // and stops the shortener being used to obscure other short links.
-  // Mirrors the client-side check in UrlShortenerClient.js.
-  if (url.origin === SITE_ORIGIN && url.pathname.startsWith("/s/")) {
-    return false;
-  }
-
-  return true;
+  return createHash("sha256").update(`${SITE_ORIGIN}:${ip}`).digest("hex").slice(0, 32);
 }
 
-// Must match the character class enforced by the "short_urls" RLS insert
-// policy, which excludes visually ambiguous characters (0, 1, I, O, l).
-function generateCode(length = 7) {
-  const chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-  let code = "";
-  for (let i = 0; i < length; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return code;
-}
+const MAX_ATTEMPTS = 5;
 
 export async function POST(req) {
-  const ip = getClientIp(req);
-
-  if (isRateLimited(ip)) {
-    return NextResponse.json(
-      { error: "Too many links created. Please wait a minute and try again." },
-      { status: 429 }
-    );
-  }
-
   let body;
   try {
     body = await req.json();
@@ -86,32 +47,56 @@ export async function POST(req) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const longUrl = typeof body?.url === "string" ? body.url.trim() : "";
-
-  if (!longUrl || longUrl.length > 2048 || !isValidHttpUrl(longUrl)) {
-    return NextResponse.json(
-      { error: "Please enter a valid http:// or https:// URL." },
-      { status: 400 }
-    );
+  const result = checkUrl(body?.url, SITE_ORIGIN);
+  if (!result.ok) {
+    return NextResponse.json({ error: rejectionMessage(result.reason) }, { status: 400 });
   }
 
-  let shortCode = "";
-  let inserted = null;
-  for (let attempt = 0; attempt < 5 && !inserted; attempt++) {
-    shortCode = generateCode();
-    const { data, error } = await supabase
-      .from("short_urls")
-      .insert({ short_code: shortCode, long_url: longUrl, clicks: 0 })
-      .select()
-      .single();
+  const bucket = rateLimitBucket(req);
+
+  // Retry on collision. With a 57^7 keyspace a collision is vanishingly
+  // unlikely, but "unlikely" isn't "impossible" and the unique index makes
+  // the failure explicit rather than silently overwriting someone's link.
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const shortCode = generateCode();
+
+    const { data, error } = await supabase.rpc("create_short_url", {
+      p_short_code: shortCode,
+      p_long_url: result.url,
+      p_bucket: bucket,
+    });
 
     if (!error) {
-      inserted = data;
-      break;
+      const row = Array.isArray(data) ? data[0] : data;
+      return NextResponse.json(
+        { shortCode: row.short_code, longUrl: row.long_url, createdAt: row.created_at },
+        { headers: { "Cache-Control": "no-store" } }
+      );
     }
+
+    // Raised by the function itself once the per-window quota is spent.
+    if (error.message?.includes("rate limit exceeded")) {
+      return NextResponse.json(
+        { error: "Too many links created. Please wait a minute and try again." },
+        { status: 429, headers: { "Retry-After": "60" } }
+      );
+    }
+
     // 23505 = unique_violation on short_code; retry with a new code.
+    // Anything else is a real failure and shouldn't burn the remaining
+    // attempts.
     if (error.code !== "23505") {
-      Sentry.captureException(error, { extra: { shortCode } });
+      // The database rejecting the URL means our own validation and the
+      // function's disagree — worth knowing about, but the user just sees
+      // the same message they'd have got from the check above.
+      if (error.code === "23514") {
+        return NextResponse.json(
+          { error: "That URL can't be shortened." },
+          { status: 400 }
+        );
+      }
+
+      Sentry.captureException(error);
       return NextResponse.json(
         { error: "Could not create short link. Please try again." },
         { status: 500 }
@@ -119,13 +104,9 @@ export async function POST(req) {
     }
   }
 
-  if (!inserted) {
-    Sentry.captureMessage("Exhausted short-code retry attempts", "error");
-    return NextResponse.json(
-      { error: "Could not create short link. Please try again." },
-      { status: 500 }
-    );
-  }
-
-  return NextResponse.json({ shortCode: inserted.short_code, longUrl: inserted.long_url });
+  Sentry.captureMessage("Exhausted short-code retry attempts", "error");
+  return NextResponse.json(
+    { error: "Could not create short link. Please try again." },
+    { status: 500 }
+  );
 }

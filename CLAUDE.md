@@ -15,7 +15,7 @@ npm run start    # run the production build
 npm run lint     # ESLint (flat config, eslint-config-next)
 ```
 
-`npm test` runs the vitest suite (`npm run test:watch` for watch mode) — 367 tests across eighteen files, covering the pure-logic helpers in `src/lib/` (`calculatorMath`, `calculatorInput`, `calculatorFormat`, `calculatorUrlState`, `unitConversions`, `dateMath`, `imageFile`, `imageValidation`, `imageResampling`, `formatBytes`, `pdfPageRange`, `pdfFile`, `pdfWorkerProtocol`, `urlShortenerValidation`, `siteUrl`, `sitemapRoutes`) plus `src/app/robots`. There are no component or end-to-end tests; UI and file-processing behaviour is only verified by `npm run build` and manual checks.
+`npm test` runs the vitest suite (`npm run test:watch` for watch mode) — 387 tests across nineteen files, covering the pure-logic helpers in `src/lib/` (`calculatorMath`, `calculatorInput`, `calculatorFormat`, `calculatorUrlState`, `unitConversions`, `dateMath`, `imageFile`, `imageValidation`, `imageResampling`, `formatBytes`, `pdfPageRange`, `pdfFile`, `pdfWorkerProtocol`, `urlShortenerValidation`, `shortCode`, `siteUrl`, `sitemapRoutes`) plus `src/app/robots`. There are no component or end-to-end tests; UI and file-processing behaviour is only verified by `npm run build` and manual checks.
 
 Because there is no component-level coverage, **logic that guards a user input belongs in a `src/lib/` module, not inline in a client component** — that's the only way it can be tested at all. `pdfPageRange.js` exists for exactly this reason.
 
@@ -92,10 +92,21 @@ The seven calculators share a pipeline in the same spirit as the PDF and image o
 
 ### URL shortener (the one server-touching tool)
 
-The only feature with real backend state. [src/lib/supabaseClient.js](src/lib/supabaseClient.js) creates a public anon Supabase client (RLS-gated) used directly from client components — no API routes. Flow:
+The only feature with real backend state. [src/lib/supabaseClient.js](src/lib/supabaseClient.js) creates a public anon Supabase client (RLS-gated). Flow:
 
-- `src/app/url-shortener/UrlShortenerClient.js` inserts into the `short_urls` table (`short_code`, `long_url`, `clicks`) and mirrors created links into `localStorage` for session history (not an account system — just avoids losing links on refresh).
-- `src/app/s/[code]/page.js` is a dynamic server route that looks up the code, increments `clicks` best-effort, and redirects — this is the one page that isn't purely static.
+- `src/app/url-shortener/UrlShortenerClient.js` POSTs to `/api/shorten` and mirrors created links into `localStorage` for session history (not an account system — just avoids losing links on refresh). It reads click counts back directly via the anon client.
+- `src/app/api/shorten/route.js` validates, generates a code, and calls the `create_short_url` RPC.
+- `src/app/s/[code]/page.js` is a dynamic server route that looks up the code, increments `clicks` best-effort via the atomic `increment_short_url_clicks` RPC, and redirects.
+
+**The database is the security boundary, not the API route.** The anon key ships in the browser bundle, so anything the `anon` role is allowed to do directly against PostgREST is allowed to *everyone* — an API route that "validates first" enforces nothing on its own. `anon` therefore has **no INSERT** on `short_urls`; creation only happens through `create_short_url`, a `SECURITY DEFINER` function that re-checks the code pattern, the scheme, the length, embedded credentials, and private-address targets, and applies a durable per-window rate limit via the `short_url_rate_limit` table. (The previous in-route in-memory limiter reset on every cold start and wasn't shared across serverless instances, so it could never be more than a speed bump.) `/api/shorten` duplicates those checks only to produce a better error message.
+
+Three rules follow from that:
+
+- **Any new write must go through a `SECURITY DEFINER` function**, not a new RLS insert policy — otherwise it's callable directly with the public key.
+- **Validation rules live in [src/lib/urlShortenerValidation.js](src/lib/urlShortenerValidation.js) and are mirrored in `create_short_url`.** Changing one means changing both; the JS side is the tested one.
+- **Short codes come from `crypto.getRandomValues`**, via [src/lib/shortCode.js](src/lib/shortCode.js) — never `Math.random()`. Reads are public (the redirect has to work for strangers), so a predictable generator would let someone enumerate other people's links. The alphabet excludes `0/O/1/I/l` so a code read off paper doesn't 404, and generation uses rejection sampling rather than `% alphabet.length`, which would bias toward early characters and shrink the real keyspace.
+
+Two URL shapes are rejected that a naive `new URL()` check accepts: **embedded credentials** (`https://google.com@evil.example` reads as Google but goes elsewhere — a shortener that accepts these becomes phishing infrastructure, and the short link hides the giveaway) and **private/local targets** (`localhost`, RFC1918, `169.254.169.254`, `.local`), which are useless to anyone else and turn the redirector into an SSRF pivot for whatever follows our redirects.
 
 Requires `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` (see `.env.local.example`); optional `NEXT_PUBLIC_SITE_URL` for `sitemap.js`/`robots.js` (defaults to `https://wary.tools`).
 
