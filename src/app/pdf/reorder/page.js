@@ -57,8 +57,9 @@ export default function ReorderPdfPage() {
         Reorder &amp; Delete PDF Pages Online
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Drag and drop to reorder pages, or delete the ones you don&apos;t need. Everything
-        happens in your browser — files are never uploaded anywhere.
+        Drag and drop to rearrange pages, or delete the ones you don&apos;t need. This free
+        online tool reorders PDF pages entirely in your browser — files are never uploaded
+        anywhere.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
         See every page as a thumbnail, drag them into the order you want, and drop any pages

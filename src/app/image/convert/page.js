@@ -58,7 +58,8 @@ export default function ConvertImagePage() {
         Convert Image Online
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Convert between PNG, JPG, and WebP. Everything happens in your browser — files are never
+        Convert PNG to JPG, JPG to WebP, WebP to PNG, and every other combination of the three.
+        This free online image converter runs entirely in your browser — files are never
         uploaded anywhere.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
