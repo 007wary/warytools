@@ -152,6 +152,17 @@ body {
   border-color: var(--primary-soft-border) !important;
 }
 
+/* Trending/popular tool chips under the homepage search box. */
+.trending-chip {
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+.trending-chip:hover,
+.trending-chip:focus-visible {
+  border-color: var(--primary-soft-border) !important;
+  background-color: var(--surface-hover) !important;
+  color: var(--text) !important;
+}
+
 /* Generic small-interactive hover for plain buttons/links using
    className hooks (inline styles can't express :hover). */
 .hover-surface:hover {

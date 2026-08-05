@@ -3,13 +3,22 @@ import ToolIcon from "./ToolIcon";
 import { categoryColors, colors } from "@/lib/theme";
 
 // A single tool card used on the homepage and hub pages.
-export default function ToolCard({ title, description, href, icon, category, headingLevel = "h3" }) {
+export default function ToolCard({
+  title,
+  description,
+  href,
+  icon,
+  category,
+  headingLevel = "h3",
+  onClick,
+}) {
   const Heading = headingLevel;
   const accent = categoryColors[category] || categoryColors.pdf;
 
   return (
     <Link
       href={href}
+      onClick={onClick}
       className="tool-card group"
       style={{
         display: "block",

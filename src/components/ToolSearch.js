@@ -4,6 +4,7 @@ import { createContext, useContext, useMemo, useState, useSyncExternalStore } fr
 import { Search } from "lucide-react";
 import ToolCard from "@/components/ToolCard";
 import { colors } from "@/lib/theme";
+import { recordSearchClick } from "@/lib/toolUsage";
 
 // Client island for the homepage search: SearchBox and Grid are placed in
 // different spots in the server-rendered page.js layout (box inside the
@@ -95,6 +96,12 @@ export function ToolSearchBox() {
 export function ToolSearchGrid({ categories }) {
   const { query } = useQueryState();
 
+  // A click only counts as a *search* click when a query is actually
+  // narrowing the grid. With an empty box this is the full tool listing and
+  // clicking a card is plain browsing — counting that would make the search
+  // signal a duplicate of homepage traffic.
+  const isSearching = query.trim().length > 0;
+
   const filteredCategories = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return categories;
@@ -152,6 +159,7 @@ export function ToolSearchGrid({ categories }) {
                 href={tool.href}
                 icon={tool.icon}
                 category={category.slug}
+                onClick={isSearching ? () => recordSearchClick(tool.href) : undefined}
               />
             ))}
           </div>

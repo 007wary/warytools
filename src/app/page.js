@@ -3,8 +3,11 @@ import { categories, allTools } from "@/lib/tools";
 import { colors, categoryColors } from "@/lib/theme";
 import { ToolSearchProvider, ToolSearchBox, ToolSearchGrid } from "@/components/ToolSearch";
 import JsonLd from "@/components/JsonLd";
+import TrendingTools from "@/components/TrendingTools";
 import { jsonLdGraph, collectionPageJsonLd, faqJsonLd } from "@/lib/jsonLd";
 import { pageMetadata } from "@/lib/pageMetadata";
+import { fetchToolUsageSnapshot } from "@/lib/toolUsage";
+import { rankTools } from "@/lib/toolRanking";
 
 const title = "Free Online PDF, Image & Calculator Tools";
 const description =
@@ -55,7 +58,29 @@ const faqs = [
   },
 ];
 
-export default function HomePage() {
+// Rebuild the ranking hourly. The homepage stays fully static between
+// revalidations — no client-side fetch, no loading state, no layout shift
+// under the search box — while still tracking real usage over a day or two.
+// Matches the hourly granularity of the underlying usage buckets; anything
+// shorter would re-render for data that cannot have changed.
+export const revalidate = 3600;
+
+// Curated order used until real usage clears the thresholds in toolRanking.
+// Hand-picked rather than "first four in the registry": these are the four
+// highest-intent entry points across three different categories, so the
+// section still reads as a useful shortcut on day one.
+const CURATED_FALLBACK = ["/pdf/merge", "/image/compress", "/pdf/split", "/calculators/percentage"]
+  .map((href) => allTools.find((tool) => tool.href === href))
+  .filter(Boolean);
+
+export default async function HomePage() {
+  const { usage, fetchedAt } = await fetchToolUsageSnapshot();
+  const trending = rankTools({ usage, tools: allTools, now: fetchedAt });
+
+  // On fallback, rankTools returns registry order; show the curated picks
+  // instead. The mode still drives the heading, so the label stays honest.
+  const trendingTools = trending.mode === "trending" ? trending.tools : CURATED_FALLBACK;
+
   return (
     <ToolSearchProvider>
       <div>
@@ -124,6 +149,8 @@ export default function HomePage() {
           </p>
 
           <ToolSearchBox />
+
+          <TrendingTools mode={trending.mode} tools={trendingTools} />
         </section>
 
         {/* Tool grid grouped by category, filtered by the search box above */}

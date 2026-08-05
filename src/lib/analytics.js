@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { recordToolUsage } from "./toolUsage";
 
 // Thin wrapper over gtag. Safe to call from anywhere, at any time: if
 // analytics is disabled (no NEXT_PUBLIC_GA_ID), blocked by an ad blocker, or
@@ -48,11 +49,23 @@ export function currentToolSlug() {
  * image tools make. File *sizes* and *counts* are fine and genuinely useful.
  */
 export function trackEvent(name, params = {}) {
+  const slug = currentToolSlug();
+
+  // Usage counting is deliberately OUTSIDE the isAnalyticsEnabled() guard and
+  // runs first. GA is blocked for a large share of visitors by ad blockers,
+  // and that blocking is biased rather than random — ranking the homepage's
+  // trending section on gtag data would systematically under-count exactly
+  // the audiences most likely to block it. The Supabase counter is a
+  // first-party RPC, so it reflects real usage. See lib/toolUsage.js.
+  if (name === events.TOOL_RUN) {
+    recordToolUsage(slug);
+  }
+
   if (!isAnalyticsEnabled()) return;
 
   try {
     window.gtag("event", name, {
-      tool_slug: currentToolSlug(),
+      tool_slug: slug,
       ...params,
     });
   } catch {
