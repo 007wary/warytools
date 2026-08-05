@@ -1,6 +1,6 @@
 import { colors } from "@/lib/theme";
 import JsonLd from "@/components/JsonLd";
-import { jsonLdGraph, breadcrumbJsonLd } from "@/lib/jsonLd";
+import { jsonLdGraph, breadcrumbJsonLd, webPageJsonLd } from "@/lib/jsonLd";
 import { pageMetadata } from "@/lib/pageMetadata";
 
 const termsTitle = "Terms of Use";
@@ -32,6 +32,11 @@ export default function TermsPage() {
     <div>
       <JsonLd
         data={jsonLdGraph(
+          webPageJsonLd({
+            name: `${termsTitle} — WaryTools`,
+            description: termsDescription,
+            href: "/terms",
+          }),
           breadcrumbJsonLd([
             { name: "Home", href: "/" },
             { name: "Terms of Use", href: "/terms" },

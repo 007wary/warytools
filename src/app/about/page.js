@@ -5,14 +5,14 @@ import ToolIcon from "@/components/ToolIcon";
 import JsonLd from "@/components/JsonLd";
 import { categories, allTools } from "@/lib/tools";
 import { colors, categoryColors } from "@/lib/theme";
-import { jsonLdGraph, breadcrumbJsonLd } from "@/lib/jsonLd";
+import { jsonLdGraph, breadcrumbJsonLd, webPageJsonLd } from "@/lib/jsonLd";
 import { pageMetadata } from "@/lib/pageMetadata";
 
 // The layout template appends " — WaryTools", so this must not repeat the
 // brand or the rendered title reads "About WaryTools — … — WaryTools".
 const aboutTitle = "About";
 const aboutDescription =
-  "WaryTools is a free collection of PDF, image, calculator, and URL tools that run entirely in your browser. No uploads, no accounts, no ads slowing you down.";
+  "WaryTools is a free collection of PDF, image, calculator, and URL tools that run entirely in your browser. No uploads, no accounts, no sign-up wall.";
 
 export const metadata = pageMetadata({
   title: aboutTitle,
@@ -58,7 +58,14 @@ export default function AboutPage() {
         data={jsonLdGraph(
           // No organizationJsonLd() here — the root layout already emits the
           // Organization node on every page, so repeating it produced two
-          // nodes with the same @id in the graph.
+          // nodes with the same @id in the graph. The AboutPage node below
+          // *references* that node by @id instead of restating it.
+          webPageJsonLd({
+            name: `${aboutTitle} — WaryTools`,
+            description: aboutDescription,
+            href: "/about",
+            type: "AboutPage",
+          }),
           breadcrumbJsonLd([
             { name: "Home", href: "/" },
             { name: "About", href: "/about" },
@@ -111,10 +118,14 @@ export default function AboutPage() {
             lineHeight: 1.6,
           }}
         >
+          {/* Deliberately does NOT claim "no ads": the site runs AdSense, as
+              the privacy page states. Promising an ad-free experience here
+              would contradict our own disclosure two sections down. The claim
+              made instead is the one that's true — ads never gate the tool. */}
           WaryTools is a focused set of PDF, image, calculator, and URL tools —{" "}
           {allTools.length}{" "}
           and counting — that do the job in your browser tab and nothing more. No account to
-          create, no file to upload, no ad to wait out. Just the tool.
+          create, no file to upload, no waiting to reach the tool. Just the tool.
         </p>
       </section>
 
@@ -143,7 +154,7 @@ export default function AboutPage() {
       </section>
 
       {/* Principles grid */}
-      <section style={{ maxWidth: "1000px", margin: "0 auto", padding: "0 20px 72px" }}>
+      <section style={{ maxWidth: "820px", margin: "0 auto", padding: "0 20px 72px" }}>
         <h2
           style={{
             fontSize: "22px",
@@ -155,10 +166,13 @@ export default function AboutPage() {
         >
           What that means in practice
         </h2>
+        {/* Two columns, not auto-fit: there are exactly four principles, and a
+            three-across track left the fourth card stranded alone on its own
+            row with two empty cells beside it. */}
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))",
             gap: "20px",
           }}
         >
@@ -187,10 +201,23 @@ export default function AboutPage() {
               >
                 <Icon size={22} />
               </div>
-              <div style={{ fontWeight: 600, fontSize: "15.5px", color: colors.text, marginBottom: "8px" }}>
+              {/* A real <h3>, not a styled <div>: these are the page's
+                  sub-sections, and as divs they were invisible to a screen
+                  reader's heading list. Margins zeroed since the surrounding
+                  layout sets its own spacing. */}
+              <h3
+                style={{
+                  fontWeight: 600,
+                  fontSize: "15.5px",
+                  color: colors.text,
+                  margin: "0 0 8px",
+                }}
+              >
                 {title}
-              </div>
-              <div style={{ fontSize: "13.5px", color: colors.textMuted, lineHeight: 1.6 }}>{body}</div>
+              </h3>
+              <p style={{ fontSize: "13.5px", color: colors.textMuted, lineHeight: 1.6, margin: 0 }}>
+                {body}
+              </p>
             </div>
           ))}
         </div>
@@ -255,12 +282,19 @@ export default function AboutPage() {
                   >
                     <ToolIcon name={category.icon} size={18} />
                   </div>
-                  <div style={{ fontWeight: 600, fontSize: "15px", color: colors.text, marginBottom: "6px" }}>
+                  <h3
+                    style={{
+                      fontWeight: 600,
+                      fontSize: "15px",
+                      color: colors.text,
+                      margin: "0 0 6px",
+                    }}
+                  >
                     {category.label}
-                  </div>
-                  <div style={{ fontSize: "13px", color: colors.textMuted }}>
+                  </h3>
+                  <p style={{ fontSize: "13px", color: colors.textMuted, margin: 0 }}>
                     {category.tools.length} tool{category.tools.length === 1 ? "" : "s"}
-                  </div>
+                  </p>
                 </Link>
               );
             })}
@@ -276,23 +310,53 @@ export default function AboutPage() {
         <p style={{ fontSize: "14.5px", color: colors.textMuted, marginBottom: "24px" }}>
           WaryTools keeps growing based on what&rsquo;s genuinely useful to build next.
         </p>
-        <Link
-          href="/"
+        {/* The heading asks for a suggestion, so the primary action has to be
+            the one that accepts it — previously both the question and the only
+            button pointed at the homepage, leaving no way to actually answer. */}
+        <div
           style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "8px",
-            padding: "12px 24px",
-            borderRadius: "10px",
-            backgroundColor: colors.primary,
-            color: colors.primaryContrast,
-            fontWeight: 600,
-            fontSize: "14.5px",
-            textDecoration: "none",
+            display: "flex",
+            gap: "12px",
+            justifyContent: "center",
+            flexWrap: "wrap",
           }}
         >
-          Explore all tools
-        </Link>
+          <Link
+            href="/contact"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "12px 24px",
+              borderRadius: "10px",
+              backgroundColor: colors.primary,
+              color: colors.primaryContrast,
+              fontWeight: 600,
+              fontSize: "14.5px",
+              textDecoration: "none",
+            }}
+          >
+            Suggest a tool
+          </Link>
+          <Link
+            href="/"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "12px 24px",
+              borderRadius: "10px",
+              border: `1px solid ${colors.border}`,
+              backgroundColor: colors.surface,
+              color: colors.text,
+              fontWeight: 600,
+              fontSize: "14.5px",
+              textDecoration: "none",
+            }}
+          >
+            Explore all tools
+          </Link>
+        </div>
       </section>
     </div>
   );

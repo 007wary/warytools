@@ -1,7 +1,7 @@
 import { Mail, MessageSquareText, Bug } from "lucide-react";
 import { colors, categoryColors } from "@/lib/theme";
 import JsonLd from "@/components/JsonLd";
-import { jsonLdGraph, breadcrumbJsonLd } from "@/lib/jsonLd";
+import { jsonLdGraph, breadcrumbJsonLd, webPageJsonLd } from "@/lib/jsonLd";
 import { pageMetadata } from "@/lib/pageMetadata";
 
 const contactTitle = "Contact";
@@ -41,6 +41,12 @@ export default function ContactPage() {
     <div>
       <JsonLd
         data={jsonLdGraph(
+          webPageJsonLd({
+            name: `${contactTitle} — WaryTools`,
+            description: contactDescription,
+            href: "/contact",
+            type: "ContactPage",
+          }),
           breadcrumbJsonLd([
             { name: "Home", href: "/" },
             { name: "Contact", href: "/contact" },
@@ -105,10 +111,21 @@ export default function ContactPage() {
               >
                 <Icon size={19} />
               </div>
-              <div style={{ fontWeight: 600, fontSize: "14.5px", color: colors.text, marginBottom: "6px" }}>
+              {/* Real headings, not styled divs — as divs these card titles
+                  never appeared in a screen reader's heading list. */}
+              <h2
+                style={{
+                  fontWeight: 600,
+                  fontSize: "14.5px",
+                  color: colors.text,
+                  margin: "0 0 6px",
+                }}
+              >
                 {title}
-              </div>
-              <div style={{ fontSize: "13px", color: colors.textMuted, lineHeight: 1.55 }}>{body}</div>
+              </h2>
+              <p style={{ fontSize: "13px", color: colors.textMuted, lineHeight: 1.55, margin: 0 }}>
+                {body}
+              </p>
             </div>
           ))}
         </div>

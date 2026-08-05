@@ -102,6 +102,23 @@ export function collectionPageJsonLd({ name, description, href, tools }) {
   };
 }
 
+// A static informational page (e.g. /about). `type` takes the specific
+// schema.org subtype where one fits — AboutPage, ContactPage — falling back to
+// plain WebPage. Without a node like this a static page contributes only a
+// BreadcrumbList, which describes the page's *position* but never the page
+// itself, leaving it an orphan with no link back to the publisher.
+export function webPageJsonLd({ name, description, href, type = "WebPage" }) {
+  return {
+    "@type": type,
+    "@id": `${absoluteUrl(href)}#webpage`,
+    name,
+    description,
+    url: absoluteUrl(href),
+    isPartOf: { "@id": `${SITE_URL}/#website` },
+    about: { "@id": `${SITE_URL}/#organization` },
+  };
+}
+
 export function faqJsonLd(qa) {
   return {
     "@type": "FAQPage",

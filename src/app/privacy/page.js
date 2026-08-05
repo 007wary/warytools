@@ -1,6 +1,6 @@
 import { colors } from "@/lib/theme";
 import JsonLd from "@/components/JsonLd";
-import { jsonLdGraph, breadcrumbJsonLd } from "@/lib/jsonLd";
+import { jsonLdGraph, breadcrumbJsonLd, webPageJsonLd } from "@/lib/jsonLd";
 import { pageMetadata } from "@/lib/pageMetadata";
 
 const privacyTitle = "Privacy Policy";
@@ -35,6 +35,13 @@ export default function PrivacyPage() {
     <div>
       <JsonLd
         data={jsonLdGraph(
+          // Plain WebPage: schema.org has no policy-document subtype, and
+          // AboutPage/ContactPage would both misdescribe this.
+          webPageJsonLd({
+            name: `${privacyTitle} — WaryTools`,
+            description: privacyDescription,
+            href: "/privacy",
+          }),
           breadcrumbJsonLd([
             { name: "Home", href: "/" },
             { name: "Privacy Policy", href: "/privacy" },
