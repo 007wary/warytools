@@ -15,7 +15,7 @@ npm run start    # run the production build
 npm run lint     # ESLint (flat config, eslint-config-next)
 ```
 
-`npm test` runs the vitest suite (`npm run test:watch` for watch mode) — 279 tests across fifteen files, covering the pure-logic helpers in `src/lib/` (`calculatorMath`, `unitConversions`, `dateMath`, `imageFile`, `imageValidation`, `imageResampling`, `formatBytes`, `pdfPageRange`, `pdfFile`, `pdfWorkerProtocol`, `urlShortenerValidation`, `siteUrl`, `sitemapRoutes`) plus `src/app/robots`. There are no component or end-to-end tests; UI and file-processing behaviour is only verified by `npm run build` and manual checks.
+`npm test` runs the vitest suite (`npm run test:watch` for watch mode) — 367 tests across eighteen files, covering the pure-logic helpers in `src/lib/` (`calculatorMath`, `calculatorInput`, `calculatorFormat`, `calculatorUrlState`, `unitConversions`, `dateMath`, `imageFile`, `imageValidation`, `imageResampling`, `formatBytes`, `pdfPageRange`, `pdfFile`, `pdfWorkerProtocol`, `urlShortenerValidation`, `siteUrl`, `sitemapRoutes`) plus `src/app/robots`. There are no component or end-to-end tests; UI and file-processing behaviour is only verified by `npm run build` and manual checks.
 
 Because there is no component-level coverage, **logic that guards a user input belongs in a `src/lib/` module, not inline in a client component** — that's the only way it can be tested at all. `pdfPageRange.js` exists for exactly this reason.
 
@@ -32,6 +32,7 @@ Because there is no component-level coverage, **logic that guards a user input b
 ### Per-tool page pair
 
 Every tool route follows the same split:
+
 - `page.js` — server component; owns `metadata` (title/description) and static page copy, renders the client component.
 - `<Name>Client.js` — `"use client"` component with all interactivity and processing logic.
 
@@ -40,6 +41,7 @@ Hub pages (`/pdf`, `/image`, `/calculators`) render `<HubHeader>` + a grid of `<
 ### Client-side file processing
 
 PDF and image tools do all processing in the browser — no file ever hits a server:
+
 - PDF tools use `pdf-lib` for manipulation and `pdfjs-dist` (via [src/lib/pdfjs.js](src/lib/pdfjs.js)) for rendering/reading. The pdf.js worker is a static file at `public/pdf.worker.min.mjs`, kept in sync with `pdfjs-dist` by the `postinstall` script — never hand-edit or manually copy it.
 - Image tools use `<canvas>` for resize/compress/convert; shared helpers (`loadImage`, `canvasToBlob`, `outputFormats`) live in [src/lib/imageFile.js](src/lib/imageFile.js). `formatBytes` lives in [src/lib/formatBytes.js](src/lib/formatBytes.js) — it's shared with the PDF compressor, so it isn't image-specific (`imageFile.js` re-exports it for convenience).
 - Always go through `canvasToBlob` rather than calling `canvas.toBlob` directly: the raw callback yields `null` when encoding fails (large pages, memory pressure), and `URL.createObjectURL(null)` throws. The helper rejects with a real error instead.
@@ -74,9 +76,24 @@ The three image tools share a pipeline built the same way as the PDF one, with i
 
 **`DownloadButton` accepts an async `getBlob`**, so a handler can build its output lazily (zipping a batch) without blocking the click.
 
+### The calculator pipeline
+
+The seven calculators share a pipeline in the same spirit as the PDF and image ones — all logic in tested `src/lib/` modules, all UI on shared primitives. They ship no third-party dependency at all (no math parser, no charting library); everything below is plain functions plus `Intl`.
+
+- **Reading an input** — [src/lib/calculatorInput.js](src/lib/calculatorInput.js). `parseNumber()` returns a discriminated `{ok} | {empty} | {error}` rather than a bare number, because a calculator has to tell "nothing typed yet" (stay quiet) apart from "typed something invalid" (show an error) — a distinction `Number()` + `isNaN` cannot express. **Never guard an input with `!Number.isNaN()`**: it accepts `Infinity`, which then renders as the literal string "Infinity" in a result. Only `Number.isFinite` means "a usable number". `parseFields()` does the same for a whole form, and `sanitizeNumericInput()` strips the `1,234.56` / `₹1,234` shapes people paste out of spreadsheets and invoices.
+- **Doing the work** — [src/lib/calculatorMath.js](src/lib/calculatorMath.js) and [src/lib/dateMath.js](src/lib/dateMath.js). Every function guards its result and throws `CalculationError` rather than returning `Infinity`/`NaN`: valid-looking inputs still overflow (compound interest at a high rate over a long term), and the client turns that throw into an actionable message. `loanEmi()` special-cases a zero rate, where the standard EMI formula is `0/0`.
+- **Showing the answer** — [src/lib/calculatorFormat.js](src/lib/calculatorFormat.js). One place, so the site doesn't mix conventions. Money is ₹ with `en-IN` lakh/crore grouping (`₹12,34,567.89`), which is what the GST tool's Indian slabs imply. **Don't format a general number with a fixed `maximumFractionDigits`** — it renders a real `0.0000001` conversion result as `0`; `formatNumber()` falls back to significant digits, and to exponential below `1e-9`.
+- **Shareable state** — [src/lib/calculatorUrlState.js](src/lib/calculatorUrlState.js) via `useCalculatorState()` in [src/lib/useCalculatorState.js](src/lib/useCalculatorState.js). Inputs round-trip through the query string, so "18% GST on ₹4,999" is a link. Two load-bearing details: writes use `history.replaceState` (these fire per keystroke — `pushState` would make Back walk through every character typed), and **the URL is read in an effect, never during render**. These pages are statically prerendered and serve byte-identical HTML with or without query params, so reading `location.search` during the hydration render — including from a lazy `useState` initialiser — mismatches the server markup. `decodeState` validates every param against a schema, since a URL is untrusted input.
+- **Shared tool UI** — [src/components/calculator/](src/components/calculator/): `ModeToggle` (a real `role="radiogroup"` with arrow-key navigation — three calculators previously each carried a copy of a plain-`<button>` version that told a screen reader nothing about which mode was active), `NumberField`, `DateField`, and `ResultPanel`. Errors go through the existing [ErrorBanner](src/components/ErrorBanner.js) so they're announced.
+
+**Numeric input gotcha (again):** `NumberField` is `type="text"` with `inputMode="decimal"`, not `type="number"`. `type="number"` silently changes the value when the wheel scrolls over a focused field, gives a keypad without a decimal key on several Android keyboards, and discards pasted `1,234.56` outright.
+
+**Results are live, not click-to-calculate.** Age and date-difference used to compute on a button press, which left a stale answer on screen whenever a date changed afterwards. Every calculator now recomputes as you type, which is also why `ResultPanel` is an `<output>` with `aria-live="polite"`: an answer that merely appears in the DOM is invisible to a screen reader.
+
 ### URL shortener (the one server-touching tool)
 
 The only feature with real backend state. [src/lib/supabaseClient.js](src/lib/supabaseClient.js) creates a public anon Supabase client (RLS-gated) used directly from client components — no API routes. Flow:
+
 - `src/app/url-shortener/UrlShortenerClient.js` inserts into the `short_urls` table (`short_code`, `long_url`, `clicks`) and mirrors created links into `localStorage` for session history (not an account system — just avoids losing links on refresh).
 - `src/app/s/[code]/page.js` is a dynamic server route that looks up the code, increments `clicks` best-effort, and redirects — this is the one page that isn't purely static.
 

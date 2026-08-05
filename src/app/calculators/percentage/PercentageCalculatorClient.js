@@ -1,9 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { percentageOf, whatPercent, percentChange } from "@/lib/calculatorMath";
-import { colors } from "@/lib/theme";
+import { percentageOf, whatPercent, percentChange, CalculationError } from "@/lib/calculatorMath";
+import { parseNumber } from "@/lib/calculatorInput";
+import { formatNumber, formatPercent } from "@/lib/calculatorFormat";
+import { useCalculatorState } from "@/lib/useCalculatorState";
 import { useTrackedCalculation } from "@/lib/analytics";
+import ModeToggle from "@/components/calculator/ModeToggle";
+import NumberField from "@/components/calculator/NumberField";
+import ResultPanel from "@/components/calculator/ResultPanel";
+import ErrorBanner from "@/components/ErrorBanner";
 
 const modes = [
   { id: "of", label: "X% of Y" },
@@ -11,117 +16,125 @@ const modes = [
   { id: "change", label: "% change from X to Y" },
 ];
 
+// Field labels change meaning per mode. Spelling them out beats a bare "X"/"Y",
+// which forces the user to re-read the mode button to know what to type where.
+const fieldLabels = {
+  of: { x: "Percentage (X)", y: "Of value (Y)", xSuffix: "%", ySuffix: null },
+  isWhatPercent: { x: "Value (X)", y: "Of total (Y)", xSuffix: null, ySuffix: null },
+  change: { x: "From (X)", y: "To (Y)", xSuffix: null, ySuffix: null },
+};
+
+const defaults = { mode: "of", x: "", y: "" };
+const schema = { mode: modes.map((m) => m.id), x: "number", y: "number" };
+
 export default function PercentageCalculatorClient() {
-  const [mode, setMode] = useState("of");
-  const [x, setX] = useState("");
-  const [y, setY] = useState("");
+  const { state, setField, shareUrl } = useCalculatorState(schema, defaults);
+  const { mode, x, y } = state;
 
-  const xNum = Number(x);
-  const yNum = Number(y);
-  const canCompute = x !== "" && y !== "" && !Number.isNaN(xNum) && !Number.isNaN(yNum);
+  const labels = fieldLabels[mode];
+  const parsedX = parseNumber(x, { label: labels.x });
+  const parsedY = parseNumber(y, { label: labels.y });
 
-  function getResult() {
-    if (!canCompute) return null;
+  const inputError = !parsedX.ok && !parsedX.empty
+    ? parsedX.error
+    : !parsedY.ok && !parsedY.empty
+      ? parsedY.error
+      : "";
 
-    if (mode === "of") {
-      const value = percentageOf(xNum, yNum);
-      return `${xNum}% of ${yNum} is ${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-    }
-    if (mode === "isWhatPercent") {
-      try {
-        return `${xNum} is ${whatPercent(xNum, yNum).toFixed(2)}% of ${yNum}`;
-      } catch {
-        return "Y can't be zero.";
-      }
-    }
-    // change
+  const canCompute = parsedX.ok && parsedY.ok;
+
+  let result = null;
+  let calcError = "";
+
+  if (canCompute) {
+    const xNum = parsedX.value;
+    const yNum = parsedY.value;
     try {
-      const change = percentChange(xNum, yNum);
-      const direction = change >= 0 ? "increase" : "decrease";
-      return `${Math.abs(change).toFixed(2)}% ${direction} from ${xNum} to ${yNum}`;
-    } catch {
-      return "X can't be zero.";
+      if (mode === "of") {
+        const value = percentageOf(xNum, yNum);
+        result = {
+          headline: { label: `${formatNumber(xNum)}% of ${formatNumber(yNum)}`, value: formatNumber(value) },
+          rows: [
+            { label: "Result", value: formatNumber(value), emphasis: true },
+            { label: "Remaining", value: formatNumber(yNum - value) },
+          ],
+        };
+      } else if (mode === "isWhatPercent") {
+        const percent = whatPercent(xNum, yNum);
+        result = {
+          headline: {
+            label: `${formatNumber(xNum)} out of ${formatNumber(yNum)}`,
+            value: formatPercent(percent),
+          },
+          rows: [
+            { label: "Percentage", value: formatPercent(percent), emphasis: true },
+            { label: "Difference", value: formatNumber(yNum - xNum) },
+          ],
+        };
+      } else {
+        const change = percentChange(xNum, yNum);
+        const direction = change > 0 ? "increase" : change < 0 ? "decrease" : "no change";
+        result = {
+          headline: {
+            label: `Change from ${formatNumber(xNum)} to ${formatNumber(yNum)}`,
+            value: change === 0 ? "No change" : `${formatPercent(Math.abs(change))} ${direction}`,
+          },
+          rows: [
+            { label: "Percentage change", value: formatPercent(change), emphasis: true },
+            { label: "Absolute change", value: formatNumber(yNum - xNum) },
+          ],
+        };
+      }
+    } catch (err) {
+      calcError = err instanceof CalculationError ? err.message : "Couldn't calculate that.";
     }
   }
-
-  const result = getResult();
 
   // Which of the three variants people actually use — useful for deciding
   // which one should be the default.
   useTrackedCalculation({
-    active: canCompute,
+    active: Boolean(result),
     params: { mode },
-    deps: [canCompute, mode, x, y],
+    deps: [Boolean(result), mode, x, y],
   });
 
   return (
     <div>
-      <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
-        {modes.map((m) => (
-          <button
-            key={m.id}
-            onClick={() => setMode(m.id)}
-            style={{
-              border: `1px solid ${mode === m.id ? colors.primary : colors.border}`,
-              backgroundColor: mode === m.id ? colors.primarySoft : colors.surface,
-              color: mode === m.id ? colors.primary : colors.textSecondary,
-              borderRadius: "8px",
-              padding: "10px 16px",
-              fontSize: "14px",
-              fontWeight: 500,
-              cursor: "pointer",
-            }}
-          >
-            {m.label}
-          </button>
-        ))}
+      <div style={{ marginBottom: "20px" }}>
+        <ModeToggle
+          label="Calculation type"
+          options={modes}
+          value={mode}
+          onChange={(next) => setField("mode", next)}
+        />
       </div>
 
-      <div style={{ display: "flex", gap: "12px", alignItems: "center", marginBottom: "20px", flexWrap: "wrap" }}>
-        <label style={{ fontSize: "14px", color: colors.textSecondary }}>
-          X{" "}
-          <input
-            type="number"
-            value={x}
-            onChange={(e) => setX(e.target.value)}
-            style={inputStyle}
-            placeholder="0"
-          />
-        </label>
-        <label style={{ fontSize: "14px", color: colors.textSecondary }}>
-          Y{" "}
-          <input
-            type="number"
-            value={y}
-            onChange={(e) => setY(e.target.value)}
-            style={inputStyle}
-            placeholder="0"
-          />
-        </label>
+      <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "4px" }}>
+        <NumberField
+          label={labels.x}
+          value={x}
+          onChange={(next) => setField("x", next)}
+          suffix={labels.xSuffix}
+          maxWidth="180px"
+          invalid={!parsedX.ok && !parsedX.empty}
+        />
+        <NumberField
+          label={labels.y}
+          value={y}
+          onChange={(next) => setField("y", next)}
+          suffix={labels.ySuffix}
+          maxWidth="180px"
+          invalid={!parsedY.ok && !parsedY.empty}
+        />
       </div>
+
+      <ErrorBanner>{inputError || calcError}</ErrorBanner>
 
       {result && (
-        <div
-          style={{
-            border: `1px solid ${colors.border}`,
-            borderRadius: "8px",
-            padding: "16px 20px",
-          }}
-        >
-          <p style={{ fontSize: "18px", fontWeight: 600, color: colors.text }}>{result}</p>
+        <div style={{ marginTop: "20px" }}>
+          <ResultPanel headline={result.headline} rows={result.rows} shareUrl={shareUrl} />
         </div>
       )}
     </div>
   );
 }
-
-const inputStyle = {
-  width: "100%",
-  maxWidth: "120px",
-  boxSizing: "border-box",
-  padding: "8px 10px",
-  fontSize: "16px",
-  border: `1px solid ${colors.borderInput}`,
-  borderRadius: "6px",
-  marginLeft: "4px",
-};

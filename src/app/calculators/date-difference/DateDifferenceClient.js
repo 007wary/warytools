@@ -1,83 +1,85 @@
 "use client";
 
-import { useState } from "react";
-import { parseDateInput, diffBetween } from "@/lib/dateMath";
-import { colors } from "@/lib/theme";
-import { events, trackEvent } from "@/lib/analytics";
+import {
+  validateDateInput,
+  diffBetween,
+  weekdayName,
+  businessDaysBetween,
+} from "@/lib/dateMath";
+import { formatCount } from "@/lib/calculatorFormat";
+import { useCalculatorState } from "@/lib/useCalculatorState";
+import { useTrackedCalculation } from "@/lib/analytics";
+import ResultPanel from "@/components/calculator/ResultPanel";
+import DateField from "@/components/calculator/DateField";
+import ErrorBanner from "@/components/ErrorBanner";
+
+const defaults = { start: "", end: "" };
+const schema = { start: "date", end: "date" };
 
 export default function DateDifferenceClient() {
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [error, setError] = useState("");
-  const [result, setResult] = useState(null);
+  const { state, setField, shareUrl } = useCalculatorState(schema, defaults);
+  const { start, end } = state;
 
-  function handleCalculate() {
-    setError("");
-    setResult(null);
+  // Live, like the rest of the calculators — the old click-to-calculate flow
+  // left a stale result on screen whenever a date changed afterwards.
+  const parsedStart = validateDateInput(start, { label: "Start date" });
+  const parsedEnd = validateDateInput(end, { label: "End date" });
 
-    if (!startDate || !endDate) {
-      setError("Please choose both dates.");
-      trackEvent(events.TOOL_ERROR, { reason: "missing_dates" });
-      return;
-    }
+  const error = !parsedStart.ok && !parsedStart.empty
+    ? parsedStart.error
+    : !parsedEnd.ok && !parsedEnd.empty
+      ? parsedEnd.error
+      : "";
 
-    const start = parseDateInput(startDate);
-    const end = parseDateInput(endDate);
-    setResult(diffBetween(start, end));
-    trackEvent(events.TOOL_RUN);
-  }
+  const canCompute = parsedStart.ok && parsedEnd.ok;
+  const result = canCompute ? diffBetween(parsedStart.date, parsedEnd.date) : null;
+  const businessDays = canCompute ? businessDaysBetween(parsedStart.date, parsedEnd.date) : null;
+
+  useTrackedCalculation({
+    active: Boolean(result),
+    params: {},
+    deps: [Boolean(result), start, end],
+  });
 
   return (
     <div>
-      <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "20px" }}>
-        <label style={{ fontSize: "14px", color: colors.textSecondary }}>
-          <span style={{ display: "block", marginBottom: "6px" }}>Start date</span>
-          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={inputStyle} />
-        </label>
-        <label style={{ fontSize: "14px", color: colors.textSecondary }}>
-          <span style={{ display: "block", marginBottom: "6px" }}>End date</span>
-          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={inputStyle} />
-        </label>
+      <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "4px" }}>
+        <DateField
+          label="Start date"
+          value={start}
+          onChange={(next) => setField("start", next)}
+          invalid={!parsedStart.ok && !parsedStart.empty}
+        />
+        <DateField
+          label="End date"
+          value={end}
+          onChange={(next) => setField("end", next)}
+          invalid={!parsedEnd.ok && !parsedEnd.empty}
+        />
       </div>
 
-      {error && <p style={{ color: colors.danger, fontSize: "14px", marginBottom: "16px" }}>{error}</p>}
-
-      <button onClick={handleCalculate} style={buttonStyle}>
-        Calculate Difference
-      </button>
+      <ErrorBanner>{error}</ErrorBanner>
 
       {result && (
-        <div style={{ marginTop: "24px", border: `1px solid ${colors.border}`, borderRadius: "8px", padding: "20px" }}>
-          <p style={{ fontSize: "20px", fontWeight: 600, color: colors.text, marginBottom: "8px" }}>
-            {result.years} years, {result.months} months, {result.days} days
-          </p>
-          <p style={{ fontSize: "14px", color: colors.textMuted }}>
-            That&apos;s {result.totalDays.toLocaleString()} days total.
-          </p>
+        <div style={{ marginTop: "20px" }}>
+          <ResultPanel
+            headline={{
+              label: "Difference",
+              value: `${result.years} years, ${result.months} months, ${result.days} days`,
+            }}
+            rows={[
+              { label: "Total days", value: formatCount(result.totalDays), emphasis: true },
+              { label: "Business days", value: `${formatCount(businessDays)} days` },
+              { label: "Total weeks", value: `${formatCount(result.totalWeeks)} weeks` },
+              { label: "Total months", value: `${formatCount(result.totalMonths)} months` },
+              { label: "Start day", value: weekdayName(parsedStart.date) },
+              { label: "End day", value: weekdayName(parsedEnd.date) },
+            ]}
+            footnote="Business days exclude Saturdays and Sundays, but not public holidays."
+            shareUrl={shareUrl}
+          />
         </div>
       )}
     </div>
   );
 }
-
-const inputStyle = {
-  padding: "10px 12px",
-  fontSize: "16px",
-  border: `1px solid ${colors.borderInput}`,
-  borderRadius: "8px",
-  color: colors.textSecondary,
-  width: "100%",
-  maxWidth: "180px",
-  boxSizing: "border-box",
-};
-
-const buttonStyle = {
-  backgroundColor: colors.primary,
-  color: colors.primaryContrast,
-  border: "none",
-  borderRadius: "8px",
-  padding: "12px 20px",
-  fontSize: "14px",
-  fontWeight: 600,
-  cursor: "pointer",
-};

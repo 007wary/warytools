@@ -16,6 +16,7 @@ import {
   TrendingUp,
   Ruler,
   CalendarDays,
+  Landmark,
 } from "lucide-react";
 
 // Resolves the string icon names stored in tools.js to actual lucide
@@ -38,6 +39,7 @@ const iconMap = {
   TrendingUp,
   Ruler,
   CalendarDays,
+  Landmark,
 };
 
 export default function ToolIcon({ name, size = 20, strokeWidth = 1.75, style, ...props }) {

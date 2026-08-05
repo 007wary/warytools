@@ -122,6 +122,13 @@ export const categories = [
         icon: "TrendingUp",
       },
       {
+        slug: "emi",
+        title: "EMI Calculator",
+        description: "Free home, car, and personal loan EMI calculator with full interest breakdown.",
+        href: "/calculators/emi",
+        icon: "Landmark",
+      },
+      {
         slug: "unit-converter",
         title: "Unit Converter",
         description: "Convert length, weight, and temperature — cm to inches, kg to lb, °C to °F.",

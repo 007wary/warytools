@@ -7,6 +7,8 @@ import {
   removeGst,
   simpleInterest,
   compoundInterest,
+  loanEmi,
+  CalculationError,
 } from "./calculatorMath";
 
 describe("percentageOf", () => {
@@ -91,5 +93,76 @@ describe("compoundInterest", () => {
     const result = compoundInterest(1000, 10, 0, 1);
     expect(result.total).toBeCloseTo(1000);
     expect(result.interest).toBeCloseTo(0);
+  });
+
+  it("throws rather than returning Infinity when the result overflows", () => {
+    // Previously this reached the UI and rendered as the string "Infinity".
+    expect(() => compoundInterest(1e15, 1e9, 1000, 12)).toThrow(CalculationError);
+  });
+
+  it("rejects a zero compounding frequency instead of returning NaN", () => {
+    expect(() => compoundInterest(1000, 10, 1, 0)).toThrow(CalculationError);
+  });
+});
+
+describe("overflow guards", () => {
+  it("throws from percentageOf when the product overflows", () => {
+    expect(() => percentageOf(1e308, 1e308)).toThrow(CalculationError);
+  });
+
+  it("throws from simpleInterest when the product overflows", () => {
+    expect(() => simpleInterest(1e308, 1e308, 1e308)).toThrow(CalculationError);
+  });
+
+  it("rejects a -100% GST rate rather than dividing by zero", () => {
+    expect(() => removeGst(1000, -100)).toThrow(CalculationError);
+  });
+});
+
+describe("loanEmi", () => {
+  it("computes a known EMI correctly", () => {
+    // ₹10,00,000 at 9% over 10 years is ~₹12,668/month.
+    const result = loanEmi(1000000, 9, 10);
+    expect(result.emi).toBeCloseTo(12667.58, 1);
+    expect(result.months).toBe(120);
+  });
+
+  it("handles a zero interest rate as a plain division", () => {
+    // At r = 0 the standard EMI formula is 0/0; without a special case this
+    // returned NaN.
+    const result = loanEmi(120000, 0, 10);
+    expect(result.emi).toBeCloseTo(1000);
+    expect(result.totalInterest).toBeCloseTo(0);
+  });
+
+  it("reports total payable and total interest consistently", () => {
+    const result = loanEmi(500000, 8, 5);
+    expect(result.totalPayable).toBeCloseTo(result.emi * result.months);
+    expect(result.totalInterest).toBeCloseTo(result.totalPayable - 500000);
+    expect(result.totalInterest).toBeGreaterThan(0);
+  });
+
+  it("costs more interest over a longer tenure", () => {
+    expect(loanEmi(500000, 8, 20).totalInterest).toBeGreaterThan(
+      loanEmi(500000, 8, 5).totalInterest
+    );
+  });
+
+  it("amortises down to a zero balance by the final year", () => {
+    const result = loanEmi(500000, 8, 5);
+    expect(result.schedule).toHaveLength(5);
+    expect(result.schedule[result.schedule.length - 1].balance).toBeCloseTo(0, 6);
+  });
+
+  it("repays exactly the principal across the whole schedule", () => {
+    const result = loanEmi(750000, 7.5, 7);
+    const repaid = result.schedule.reduce((sum, row) => sum + row.principalPaid, 0);
+    expect(repaid).toBeCloseTo(750000, 4);
+  });
+
+  it("rejects invalid loan inputs", () => {
+    expect(() => loanEmi(0, 9, 10)).toThrow(CalculationError);
+    expect(() => loanEmi(100000, 9, 0)).toThrow(CalculationError);
+    expect(() => loanEmi(100000, -1, 10)).toThrow(CalculationError);
   });
 });
