@@ -117,8 +117,17 @@ export function looksScanned(pageTexts) {
     0
   );
 
-  // Fewer than ~20 characters per sampled page is not a document anyone typed.
-  return totalChars < pageTexts.length * 20;
+  // A flat per-page average was wrong: it scaled the requirement with the
+  // sample size, so a one-page invoice reading "Invoice 2026" was called a
+  // scan and refused, while the same header across three pages passed. The
+  // question is whether the document contains *any* real text, so this is an
+  // absolute floor — a scan yields near-zero characters regardless of how
+  // many pages are sampled.
+  //
+  // 25 is deliberately low. A false "this is a scan" blocks a document the
+  // tool could have converted, which is far worse than letting a nearly-empty
+  // PDF through and producing a nearly-empty .docx.
+  return totalChars < 25;
 }
 
 /**

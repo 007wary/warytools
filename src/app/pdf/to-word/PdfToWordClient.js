@@ -127,8 +127,18 @@ export default function PdfToWordClient() {
     } catch (err) {
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "pdf_to_word_read_failed" });
+
+      // Clear the file state WITHOUT going through resetState(): that helper
+      // also clears the error, so calling it here wiped the message on the
+      // very next line and the user saw nothing at all — no file, no error,
+      // no explanation for why picking a PDF appeared to do nothing.
+      setFile(null);
+      setPageCount(null);
+      setIsSlow(false);
+      setResultBlob(null);
+      fileRef.current = null;
+
       setError(describePdfError(err, "Could not read this PDF."));
-      resetState();
     }
   }
 

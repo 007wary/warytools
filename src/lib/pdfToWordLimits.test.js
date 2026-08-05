@@ -98,6 +98,22 @@ describe("looksScanned", () => {
     expect(looksScanned(pages)).toBe(false);
   });
 
+  it("does not flag a single sparse page as a scan", () => {
+    // Regression: the threshold used to scale with the number of pages
+    // sampled, so a one-page document with a short heading was refused as a
+    // scan while the identical text spread over three pages passed. Refusing
+    // a convertible document is the worse failure of the two.
+    expect(looksScanned(["Invoice 2026 — Total due: 4,999"])).toBe(false);
+  });
+
+  it("judges by total text, not by page count", () => {
+    // The same content must get the same verdict however many pages it
+    // arrived on — otherwise the sample size decides the outcome.
+    const text = "Quarterly report for the period ending March.";
+    expect(looksScanned([text])).toBe(false);
+    expect(looksScanned([text, "", ""])).toBe(false);
+  });
+
   it("returns false for an empty sample rather than guessing", () => {
     // No sample is not evidence of a scan — refusing here would block files
     // whose text extraction simply hadn't run.
