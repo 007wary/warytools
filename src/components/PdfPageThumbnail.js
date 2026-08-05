@@ -30,6 +30,15 @@ export default function PdfPageThumbnail({ pageNumber, getThumbnail, rotation = 
       }}
     >
       {url ? (
+        // next/image deliberately not used here, and the rule is disabled
+        // rather than satisfied: `url` is a `blob:` URL minted client-side from
+        // a canvas render (see pdfThumbnails.js), so there is nothing for the
+        // image optimizer to fetch or cache — it would have to run in
+        // `unoptimized` mode, which is a plain <img> with extra bundle weight.
+        // The LCP concern the rule warns about also doesn't apply: these are
+        // lazily rendered previews inside a fixed aspect-ratio box, so they
+        // neither race the LCP element nor shift layout.
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={url}
           alt={alt || `Page ${pageNumber}`}

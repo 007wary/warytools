@@ -1,0 +1,20 @@
+{
+  // Markdown lint config for CLAUDE.md and README.md.
+  //
+  // Both files are prose documentation written one paragraph per line rather
+  // than hard-wrapped. That is deliberate: hard wrapping at a fixed column
+  // makes every later edit reflow the whole paragraph, so a one-word change
+  // shows up as a multi-line diff and real changes get lost in the noise.
+  // Editors and GitHub both soft-wrap, so the rendered result is identical.
+  //
+  // MD013 is therefore off rather than raised to some larger number — with
+  // paragraph-per-line there is no column that is meaningfully "too long".
+  // Every other default rule stays on, including the structural ones
+  // (MD032 blanks-around-lists and friends) that catch markdown which
+  // genuinely renders wrong.
+  "config": {
+    "MD013": false
+  },
+  "globs": ["**/*.md"],
+  "ignores": ["node_modules", ".next"]
+}
