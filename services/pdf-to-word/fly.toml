@@ -28,13 +28,21 @@ primary_region = "bom"          # Mumbai — closest to the site's main audience
   auto_stop_machines = "stop"
   auto_start_machines = true
   min_machines_running = 0
+  # There is no max-machines key in fly.toml — the ceiling is set out of band
+  # with `fly scale count 1`, which the README's deploy steps include. Worth
+  # doing: without it a traffic spike is discovered on the invoice, and one
+  # machine is enough for this workload.
 
-  # Each machine handles MAX_CONCURRENT=2 conversions; the soft limit starts a
-  # second machine before the first begins queueing.
+  # Deliberately set so a burst QUEUES on one machine rather than starting a
+  # second one. Fly bills per machine-second, so autoscaling on a free-to-use
+  # tool means traffic spikes translate directly into a bill nobody approved.
+  # server.mjs already queues internally (MAX_CONCURRENT=2) and the rate
+  # limiter caps abuse, so the realistic worst case is a short wait rather
+  # than a failure. Raise soft_limit only if real usage justifies the spend.
   [http_service.concurrency]
     type = "requests"
-    soft_limit = 2
-    hard_limit = 4
+    soft_limit = 4
+    hard_limit = 8
 
 [[http_service.checks]]
   grace_period = "30s"

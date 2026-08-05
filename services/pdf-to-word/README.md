@@ -83,6 +83,11 @@ fly launch --no-deploy --copy-config --name warytools-pdf-converter
 fly secrets set CONVERTER_SECRET="$(openssl rand -hex 32)"
 
 fly deploy
+
+# Cap horizontal scale. fly.toml has no max-machines key, so without this a
+# burst can start machines you did not budget for. One is enough here.
+fly scale count 1
+
 fly status          # note the hostname
 ```
 
