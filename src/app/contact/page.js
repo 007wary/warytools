@@ -3,6 +3,7 @@ import { colors, categoryColors } from "@/lib/theme";
 import JsonLd from "@/components/JsonLd";
 import { jsonLdGraph, breadcrumbJsonLd, webPageJsonLd } from "@/lib/jsonLd";
 import { pageMetadata } from "@/lib/pageMetadata";
+import ContactFormClient from "./ContactFormClient";
 
 const contactTitle = "Contact";
 const contactDescription = "Get in touch with WaryTools — report a bug, suggest a tool, or ask a question.";
@@ -13,7 +14,11 @@ export const metadata = pageMetadata({
   path: "/contact",
 });
 
-const CONTACT_EMAIL = "007mwnswrangwary@gmail.com";
+// No address is published here any more. A mailto: link hands a personal
+// inbox to every scraper that reads the page, and it's a dead end for the many
+// visitors browsing without a configured desktop mail client — the click
+// simply does nothing. The form posts to /api/contact, which sends through
+// Resend with the sender's address in Reply-To.
 
 const reasons = [
   {
@@ -72,7 +77,7 @@ export default function ContactPage() {
           Get in touch
         </h1>
         <p style={{ fontSize: "15px", color: colors.textMuted, maxWidth: "540px", margin: "0 auto" }}>
-          Bug reports, tool ideas, or anything else — send an email and it goes straight to a
+          Bug reports, tool ideas, or anything else — send a message and it goes straight to a
           real inbox, not a ticket queue.
         </p>
       </section>
@@ -131,53 +136,50 @@ export default function ContactPage() {
         </div>
       </section>
 
-      {/* Email card */}
+      {/* Form */}
       <section style={{ maxWidth: "560px", margin: "0 auto", padding: "0 20px 80px" }}>
-        <div
+        <h2
           style={{
-            border: `1px solid ${colors.border}`,
-            borderRadius: "16px",
-            padding: "32px",
-            backgroundColor: colors.surfaceMuted,
-            textAlign: "center",
+            fontSize: "18px",
+            fontWeight: 600,
+            color: colors.text,
+            margin: "0 0 6px",
           }}
         >
-          <div
-            style={{
-              width: "48px",
-              height: "48px",
-              borderRadius: "12px",
-              backgroundColor: colors.primarySoft,
-              color: colors.primary,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 16px",
-            }}
-          >
-            <Mail size={22} />
-          </div>
-          <p style={{ fontSize: "13.5px", color: colors.textMuted, marginBottom: "12px" }}>
-            Email us directly at
-          </p>
-          <a
-            href={`mailto:${CONTACT_EMAIL}`}
-            className="footer-link"
-            style={{
-              display: "block",
-              fontSize: "clamp(15px, 4.5vw, 18px)",
-              fontWeight: 600,
-              color: colors.text,
-              textDecoration: "none",
-              wordBreak: "break-word",
-            }}
-          >
-            {CONTACT_EMAIL}
+          Send a message
+        </h2>
+        <p
+          style={{
+            fontSize: "13.5px",
+            color: colors.textMuted,
+            margin: "0 0 20px",
+            lineHeight: 1.6,
+          }}
+        >
+          We read every message and usually reply within a couple of days.
+        </p>
+
+        <ContactFormClient />
+
+        {/* The site's other tools promise that nothing is uploaded, so a form
+            that does send data to a server states plainly what it sends and
+            what happens to it — the same standard /pdf/to-word is held to. */}
+        <p
+          style={{
+            fontSize: "12.5px",
+            color: colors.textFaint,
+            marginTop: "16px",
+            lineHeight: 1.6,
+          }}
+        >
+          Your name, email, and message are sent to our server and delivered to our inbox by
+          email. They aren&rsquo;t stored in a database, used for marketing, or shared with
+          anyone. See the{" "}
+          <a href="/privacy" className="footer-link" style={{ color: colors.textMuted }}>
+            privacy policy
           </a>
-          <p style={{ fontSize: "12.5px", color: colors.textFaint, marginTop: "16px" }}>
-            We read every message and usually reply within a couple of days.
-          </p>
-        </div>
+          .
+        </p>
       </section>
     </div>
   );
