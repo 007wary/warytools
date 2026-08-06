@@ -71,6 +71,13 @@ export const categories = [
         icon: "Hash",
       },
       {
+        slug: "watermark",
+        title: "Watermark PDF",
+        description: "Add a text or image watermark to a PDF — tiled or single, free and private.",
+        href: "/pdf/watermark",
+        icon: "Droplets",
+      },
+      {
         slug: "to-jpg",
         title: "PDF to JPG",
         description: "Convert PDF pages to JPG or PNG images at 72, 150, or 300 DPI — free.",

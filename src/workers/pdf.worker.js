@@ -21,6 +21,16 @@ import { ops, replies, createProgress } from "@/lib/pdfWorkerProtocol";
 import { layoutImagePage } from "@/lib/pdfPageSizes";
 import { toPdfBox } from "@/lib/cropGeometry";
 import { formatPageLabel, placeNumber } from "@/lib/pdfPageNumbers";
+import {
+  planMarks,
+  resolveFontSize,
+  resolveImageSize,
+  hexToRgb01,
+  findRotation,
+  findOpacity,
+  findColor,
+  normalizeAngle,
+} from "@/lib/pdfWatermark";
 
 // Requests the main thread has cancelled. Checked between pages so a cancelled
 // 500-page split stops promptly instead of running to completion and throwing
@@ -104,6 +114,8 @@ async function runOp(id, op, payload) {
       return crop(payload);
     case ops.ADD_PAGE_NUMBERS:
       return addPageNumbers(payload);
+    case ops.WATERMARK:
+      return watermark(id, payload);
     default:
       throw new Error(`Unknown PDF worker op: ${op}`);
   }
@@ -434,6 +446,182 @@ async function addPageNumbers({ bytes, plan, formatId, positionId, marginPoints,
   const out = await pdf.save({ useObjectStreams: true });
   return {
     message: { bytes: out.buffer, pageCount: pages.length, numberedCount: total },
+    transfer: [out.buffer],
+  };
+}
+
+/**
+ * Stamps a text or image watermark across selected pages.
+ *
+ * Like addPageNumbers, this draws onto the existing pages rather than rebuilding
+ * the document — copyPages into a fresh doc drops bookmarks, links, and form
+ * fields, and a watermarked contract losing its signature fields is a worse
+ * outcome than an unwatermarked one.
+ *
+ * `pageIndices` names the pages to mark. Pages absent from it are untouched, so
+ * "watermark the first page only" doesn't rewrite the rest of the document.
+ *
+ * Placement comes entirely from planMarks(), shared with the client, so the
+ * preview and the output are computed by one function rather than two that
+ * drift. Everything about rotation and tiling lives there.
+ */
+async function watermark(id, payload) {
+  const {
+    bytes,
+    mode,
+    text,
+    imageBytes,
+    imageEmbedAs,
+    pageIndices,
+    layoutId,
+    positionId,
+    rotationId,
+    opacityId,
+    textSizeId,
+    imageSizeId,
+    colorId,
+    densityId,
+  } = payload;
+
+  const pdf = await loadPdf(bytes);
+  const pages = pdf.getPages();
+
+  const markRotation = findRotation(rotationId).degrees;
+  const opacity = findOpacity(opacityId).value;
+
+  // Helvetica-Bold rather than Helvetica: a watermark is drawn at low opacity,
+  // and a light-weight face at 15% grey all but disappears on a printed page.
+  // Still one of the 14 standard fonts, so nothing is added to the file size.
+  //
+  // The text is user-supplied, which is the difference from addPageNumbers:
+  // validateWatermarkText() has already rejected anything outside WinAnsi on the
+  // client, since pdf-lib's encodeText throws from deep inside the library with
+  // a message no user could act on.
+  const font = mode === "text" ? await pdf.embedFont(StandardFonts.HelveticaBold) : null;
+
+  // Embedded once for the whole document, not per page. pdf-lib deduplicates
+  // fonts but not images, so embedding inside the loop would put a full copy of
+  // the logo in the file for every page marked — a 200 KB PNG on a 100-page
+  // document is 20 MB of identical bytes.
+  const image =
+    mode === "image"
+      ? imageEmbedAs === "png"
+        ? await pdf.embedPng(imageBytes)
+        : await pdf.embedJpg(imageBytes)
+      : null;
+
+  const { r, g, b } = hexToRgb01(findColor(colorId).hex);
+  const color = mode === "text" ? rgb(r, g, b) : undefined;
+
+  const targets = Array.isArray(pageIndices)
+    ? pageIndices
+    : pages.map((_page, index) => index);
+
+  const total = targets.length;
+  let markedCount = 0;
+  let marksDrawn = 0;
+
+  for (let i = 0; i < total; i++) {
+    throwIfCancelled(id);
+    report(id, i, total, "Watermarking page");
+
+    const page = pages[targets[i]];
+    // A stale index (file re-selected mid-edit) would throw on the next line.
+    // Skipping omits one page rather than failing the whole run.
+    if (!page) continue;
+
+    // The CropBox, not the MediaBox: that is what a reader displays, so on a
+    // page cropped once the MediaBox describes edges that are no longer visible
+    // and the mark would be sized and placed against an area nobody sees.
+    const box = page.getCropBox();
+    const pageRotation = page.getRotation().angle;
+
+    // Displayed dimensions, which is the frame the sizing presets mean. On a
+    // quarter-turned page the axes swap, so sizing against the raw box would
+    // make the mark on a rotated landscape page a different size from the one
+    // on its unrotated neighbour in the same document.
+    const angle = normalizeAngle(pageRotation);
+    const quarterTurned = angle === 90 || angle === 270;
+    const displayWidth = quarterTurned ? box.height : box.width;
+    const displayHeight = quarterTurned ? box.width : box.height;
+
+    let markWidth;
+    let markHeight;
+    let fontSize = 0;
+
+    if (mode === "text") {
+      fontSize = resolveFontSize(textSizeId, displayWidth, displayHeight);
+      // Measured with the same font and size it is drawn at — the width drives
+      // every placement and tile step, so a guessed value would misplace the
+      // whole grid.
+      markWidth = font.widthOfTextAtSize(text, fontSize);
+      // The font's own height at this size, not the size itself: drawText
+      // positions from the baseline, and using the point size as the height
+      // would place a tiled grid slightly off vertically on every row.
+      markHeight = font.heightAtSize(fontSize);
+    } else {
+      const size = resolveImageSize(
+        imageSizeId,
+        image.width,
+        image.height,
+        displayWidth,
+        displayHeight
+      );
+      markWidth = size.width;
+      markHeight = size.height;
+    }
+
+    const marks = planMarks({
+      layoutId,
+      positionId,
+      markWidth,
+      markHeight,
+      markRotation,
+      densityId,
+      box,
+      pageRotation,
+    });
+
+    if (marks.length === 0) continue;
+
+    for (const mark of marks) {
+      if (mode === "text") {
+        page.drawText(text, {
+          x: mark.x,
+          y: mark.y,
+          size: fontSize,
+          font,
+          color,
+          opacity,
+          rotate: degrees(mark.rotate),
+        });
+      } else {
+        page.drawImage(image, {
+          x: mark.x,
+          y: mark.y,
+          width: markWidth,
+          height: markHeight,
+          opacity,
+          rotate: degrees(mark.rotate),
+        });
+      }
+    }
+
+    marksDrawn += marks.length;
+    markedCount++;
+  }
+
+  throwIfCancelled(id);
+  report(id, total, total, "Saving");
+
+  const out = await pdf.save({ useObjectStreams: true });
+  return {
+    message: {
+      bytes: out.buffer,
+      pageCount: pages.length,
+      markedCount,
+      marksDrawn,
+    },
     transfer: [out.buffer],
   };
 }

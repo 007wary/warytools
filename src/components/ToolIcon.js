@@ -23,6 +23,7 @@ import {
   Crop,
   Images,
   Hash,
+  Droplets,
 } from "lucide-react";
 
 // Resolves the string icon names stored in tools.js to actual lucide
@@ -61,6 +62,8 @@ const iconMap = {
   // that isn't in this map renders FileText and looks plausible, which is how
   // three tools shipped with the wrong glyph.
   Hash,
+  // Watermark PDF.
+  Droplets,
 };
 
 export default function ToolIcon({ name, size = 20, strokeWidth = 1.75, style, ...props }) {

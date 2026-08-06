@@ -4,8 +4,9 @@ import { allTools } from "./tools";
 
 // Snapshot of the `tool_usage_slugs` table, verified against the live database
 // on 2026-08-06 (and again when PowerPoint to PDF was added, and again when
-// Crop PDF, PDF to JPG, and JPG to PDF were added — each time by selecting the
-// table back after the insert rather than assuming it landed). Hand-maintained
+// Crop PDF, PDF to JPG, and JPG to PDF were added, and again for Watermark PDF
+// — each time by selecting the table back after the insert rather than assuming
+// it landed). Hand-maintained
 // on purpose: this is the only representation of the DB state that lives in the
 // repo, so it is what makes a missing allowlist row visible without a network
 // call.
@@ -37,6 +38,7 @@ const ALLOWLISTED_IN_DATABASE = [
   "pdf/split",
   "pdf/to-jpg",
   "pdf/to-word",
+  "pdf/watermark",
   "pdf/word-to-pdf",
   "url-shortener",
 ].sort();
