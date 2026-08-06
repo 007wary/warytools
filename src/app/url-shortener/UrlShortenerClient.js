@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Copy, ExternalLink, Link2, RefreshCw, Trash2 } from "lucide-react";
-import { supabase } from "@/lib/supabaseClient";
+// Imported dynamically at its single call site below rather than statically:
+// the Supabase SDK is ~200 KB and is only needed when the user refreshes
+// click counts, which is always an interaction well after first paint.
 import { checkUrl, rejectionMessage, UrlRejection } from "@/lib/urlShortenerValidation";
 import { colors } from "@/lib/theme";
 import { copyText } from "@/lib/copyText";
@@ -143,6 +145,7 @@ export default function UrlShortenerClient() {
       // short_urls, because `.in(...)` over a readable table also permits an
       // unfiltered scan of everyone else's links. This returns only the codes
       // the caller already holds.
+      const { supabase } = await import("@/lib/supabaseClient");
       const { data, error: fetchError } = await supabase.rpc("get_short_url_clicks", {
         p_short_codes: codes,
       });

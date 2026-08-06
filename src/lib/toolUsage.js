@@ -4,7 +4,20 @@
 // event); read path runs on the server during ISR. The ranking itself lives
 // in toolRanking.js — this module only moves rows.
 
-import { supabase } from "./supabaseClient";
+// NOT a static import. `@supabase/supabase-js` pulls in auth (GoTrue),
+// realtime (websockets), storage, and postgrest — ~200 KB of JS — and this
+// module is reached from lib/analytics.js, which every tool client and the
+// root layout's AnalyticsRouteTracker import. A static import therefore put
+// the entire Supabase SDK in the initial bundle of *every page on the site*
+// to support one fire-and-forget RPC that only ever runs after a user
+// interaction. That alone cost ~25 points of Lighthouse mobile performance.
+//
+// The server read path (fetchToolUsage) imports it the same way: there it
+// costs nothing, and keeping one accessor means the two paths can't drift.
+async function getSupabase() {
+  const { supabase } = await import("./supabaseClient");
+  return supabase;
+}
 
 // Window the ranking looks at. Matches the "trending this week" framing.
 export const USAGE_WINDOW_DAYS = 7;
@@ -43,17 +56,16 @@ export function recordToolUsage(slug, kind = "run") {
   // collapsing them would silently drop whichever happened second.
   if (alreadyCountedThisSession(kind, slug)) return;
 
-  try {
-    // Deliberately not awaited — this is telemetry, not part of the tool's
-    // work. The .then/.catch pair keeps it from surfacing as an unhandled
-    // rejection if the request fails.
-    supabase
-      .rpc("increment_tool_usage", { p_tool_slug: slug, p_kind: kind })
-      .then(() => {})
-      .catch(() => {});
-  } catch {
-    // Client construction failed (bad env). Ignore.
-  }
+  // Deliberately not awaited — this is telemetry, not part of the tool's
+  // work. The chained catch covers both the dynamic import and the RPC, so
+  // neither a failed chunk fetch nor a failed request surfaces as an
+  // unhandled rejection.
+  getSupabase()
+    .then((supabase) =>
+      supabase.rpc("increment_tool_usage", { p_tool_slug: slug, p_kind: kind })
+    )
+    .then(() => {})
+    .catch(() => {});
 }
 
 /**
@@ -80,6 +92,7 @@ export async function fetchToolUsage(days = USAGE_WINDOW_DAYS) {
   }
 
   try {
+    const supabase = await getSupabase();
     const { data, error } = await supabase.rpc("get_tool_usage", { p_days: days });
     if (error || !Array.isArray(data)) return [];
     return data;
