@@ -24,6 +24,7 @@ import {
   Images,
   Hash,
   Droplets,
+  PenLine,
 } from "lucide-react";
 
 // Resolves the string icon names stored in tools.js to actual lucide
@@ -64,6 +65,8 @@ const iconMap = {
   Hash,
   // Watermark PDF.
   Droplets,
+  // Sign PDF.
+  PenLine,
 };
 
 export default function ToolIcon({ name, size = 20, strokeWidth = 1.75, style, ...props }) {

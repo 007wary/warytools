@@ -20,6 +20,7 @@ export const ops = {
   CROP: "crop",
   ADD_PAGE_NUMBERS: "add_page_numbers",
   WATERMARK: "watermark",
+  SIGN: "sign",
 };
 
 /** Message kinds the worker sends back. */

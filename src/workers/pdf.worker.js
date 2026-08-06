@@ -17,6 +17,13 @@
 // briefly exist twice in memory.
 
 import { PDFDocument, StandardFonts, degrees, rgb } from "pdf-lib";
+import {
+  placementToPdfRect,
+  drawOriginFor,
+  findTypeFace,
+  findInkColor,
+  hexToRgb01 as signatureHexToRgb01,
+} from "@/lib/pdfSignature";
 import { ops, replies, createProgress } from "@/lib/pdfWorkerProtocol";
 import { layoutImagePage } from "@/lib/pdfPageSizes";
 import { toPdfBox } from "@/lib/cropGeometry";
@@ -116,6 +123,8 @@ async function runOp(id, op, payload) {
       return addPageNumbers(payload);
     case ops.WATERMARK:
       return watermark(id, payload);
+    case ops.SIGN:
+      return sign(payload);
     default:
       throw new Error(`Unknown PDF worker op: ${op}`);
   }
@@ -621,6 +630,141 @@ async function watermark(id, payload) {
       pageCount: pages.length,
       markedCount,
       marksDrawn,
+    },
+    transfer: [out.buffer],
+  };
+}
+
+/**
+ * Stamps signatures onto a document.
+ *
+ * Draws onto the existing pages, like addPageNumbers and watermark and for the
+ * same reason — copyPages into a fresh document drops bookmarks, links, and form
+ * fields. On a signed contract that matters more than on anything else this
+ * pipeline touches: an agreement that loses its form fields on the way to being
+ * signed is worse than an unsigned one.
+ *
+ * `placements` arrives already resolved by the client, each entry naming a page,
+ * a normalised display-space rect, and which signature asset it draws. Resolving
+ * it there means the preview and the output are computed by the same function
+ * (placementToPdfRect) rather than two that drift.
+ *
+ * **This is not a cryptographic signature.** It draws an image or text onto the
+ * page — there is no certificate, no key, and no tamper-evident hash, and the
+ * tool's copy says so plainly rather than letting someone infer otherwise. A
+ * PKCS#7 signature would need a certificate authority and a private key, neither
+ * of which a browser tool can honestly offer.
+ */
+async function sign({ bytes, placements, assets }) {
+  const pdf = await loadPdf(bytes);
+  const pages = pdf.getPages();
+
+  // Assets are embedded once each, up front, rather than per placement. pdf-lib
+  // deduplicates fonts but NOT images, so embedding inside the loop would put a
+  // full copy of the signature PNG in the file for every place it appears — an
+  // initial on all forty pages of a contract would be forty copies of the same
+  // bitmap.
+  const embedded = new Map();
+
+  for (const asset of assets || []) {
+    if (asset.kind === "image") {
+      embedded.set(
+        asset.id,
+        asset.embedAs === "jpg"
+          ? { kind: "image", image: await pdf.embedJpg(asset.bytes) }
+          : { kind: "image", image: await pdf.embedPng(asset.bytes) }
+      );
+    } else {
+      // A typed signature. The face resolves to one of pdf-lib's 14 standard
+      // fonts, so nothing is added to the file size — see pdfSignature.js on why
+      // a real handwriting face isn't offered.
+      const face = findTypeFace(asset.faceId);
+      embedded.set(asset.id, {
+        kind: "text",
+        text: asset.text,
+        font: await pdf.embedFont(StandardFonts[face.pdfFont] || StandardFonts.TimesRomanItalic),
+        colorId: asset.colorId,
+      });
+    }
+  }
+
+  let signedCount = 0;
+  const signedPages = new Set();
+
+  for (const placement of placements || []) {
+    const page = pages[placement.pageIndex];
+    // A stale placement (file re-selected mid-edit) would throw on the next
+    // line. Skipping omits one signature rather than failing the whole run.
+    if (!page) continue;
+
+    const asset = embedded.get(placement.assetId);
+    if (!asset) continue;
+
+    // The CropBox, not the MediaBox: that is what a reader displays and what the
+    // user dragged against, so on a page cropped once the MediaBox describes
+    // edges that are no longer visible and the signature would land off-screen.
+    const box = page.getCropBox();
+    const pageRotation = page.getRotation().angle;
+
+    const pdfRect = placementToPdfRect(placement.rect, box, pageRotation);
+    // pdf-lib rotates about the origin, not the box centre, so the origin is
+    // walked to the corner the rotation sweeps from — without this a signature
+    // on a rotated page swings off the placement entirely.
+    const origin = drawOriginFor(pdfRect);
+
+    if (asset.kind === "image") {
+      page.drawImage(asset.image, {
+        x: origin.x,
+        y: origin.y,
+        width: pdfRect.width,
+        height: pdfRect.height,
+        rotate: degrees(pdfRect.rotate),
+      });
+    } else {
+      // Text is positioned from its BASELINE, not its bottom edge, so drawing at
+      // the rect's foot would sink the descenders below the placement the user
+      // saw. The font is asked where its baseline sits at this size instead.
+      //
+      // The size is solved from the box height rather than set directly: the
+      // placement is a rectangle the user sized by dragging, and the glyphs have
+      // to fill it. heightAtSize is linear in the size, so one probe gives the
+      // ratio.
+      const probe = asset.font.heightAtSize(100);
+      const fontSize = probe > 0 ? (pdfRect.height / probe) * 100 : pdfRect.height;
+
+      const { r, g, b } = signatureHexToRgb01(findInkColor(asset.colorId).hex);
+
+      // The baseline offset within the box, in the direction the text is
+      // rotated. At 0° that is straight up from the origin; at each quarter turn
+      // it follows the rotated y axis, which is why it is applied as a vector
+      // rather than added to y.
+      const baselineGap = fontSize * 0.22;
+      const angle = pdfRect.rotate;
+      const radians = (angle * Math.PI) / 180;
+      const baselineX = -Math.sin(radians) * baselineGap;
+      const baselineY = Math.cos(radians) * baselineGap;
+
+      page.drawText(asset.text, {
+        x: origin.x + baselineX,
+        y: origin.y + baselineY,
+        size: fontSize,
+        font: asset.font,
+        color: rgb(r, g, b),
+        rotate: degrees(angle),
+      });
+    }
+
+    signedCount++;
+    signedPages.add(placement.pageIndex);
+  }
+
+  const out = await pdf.save({ useObjectStreams: true });
+  return {
+    message: {
+      bytes: out.buffer,
+      pageCount: pages.length,
+      signedCount,
+      signedPageCount: signedPages.size,
     },
     transfer: [out.buffer],
   };

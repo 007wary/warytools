@@ -35,6 +35,7 @@ const ALLOWLISTED_IN_DATABASE = [
   "pdf/powerpoint-to-pdf",
   "pdf/reorder",
   "pdf/rotate",
+  "pdf/sign",
   "pdf/split",
   "pdf/to-jpg",
   "pdf/to-word",

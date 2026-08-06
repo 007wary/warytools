@@ -78,6 +78,13 @@ export const categories = [
         icon: "Droplets",
       },
       {
+        slug: "sign",
+        title: "Sign PDF",
+        description: "Draw, type, or upload your signature and place it on a PDF — free, private.",
+        href: "/pdf/sign",
+        icon: "PenLine",
+      },
+      {
         slug: "to-jpg",
         title: "PDF to JPG",
         description: "Convert PDF pages to JPG or PNG images at 72, 150, or 300 DPI — free.",
