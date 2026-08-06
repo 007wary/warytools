@@ -102,6 +102,55 @@ describe("renderContactEmailHtml", () => {
     });
   });
 
+  describe("character encoding", () => {
+    // A delivered message showed "this — the split tool" as "this ? the split
+    // tool": the em-dash arrived as a replacement character. The template was
+    // never at fault (these tests pin that down), but they guard the rendering
+    // half of the fix while the route declares charset=utf-8 for the transport
+    // half.
+    it("preserves an em-dash, the character that surfaced the bug", () => {
+      const html = renderContactEmailHtml({ ...base, message: "Thanks — really" });
+      expect(html).toContain("Thanks — really");
+      expect(html).not.toContain("�");
+    });
+
+    it("preserves curly quotes and apostrophes, which phones insert by default", () => {
+      const message = "It’s a “bug”, I think";
+      expect(renderContactEmailHtml({ ...base, message })).toContain(message);
+    });
+
+    it("preserves accented Latin text", () => {
+      const message = "café naïve Zürich";
+      expect(renderContactEmailHtml({ ...base, message })).toContain(message);
+    });
+
+    it("preserves non-Latin scripts", () => {
+      const message = "नमस्ते — こんにちは — مرحبا";
+      expect(renderContactEmailHtml({ ...base, message })).toContain(message);
+    });
+
+    it("preserves emoji, including surrogate pairs", () => {
+      const message = "Works great 🚀 thanks 👍";
+      expect(renderContactEmailHtml({ ...base, message })).toContain(message);
+    });
+
+    it("preserves non-ASCII in the sender's name", () => {
+      const html = renderContactEmailHtml({ ...base, name: "José Müller" });
+      expect(html).toContain("José Müller");
+    });
+
+    it("declares the charset both ways, since clients strip one or the other", () => {
+      const html = renderContactEmailHtml(base);
+      expect(html).toContain('<meta charset="utf-8">');
+      expect(html).toMatch(/http-equiv="Content-Type"[^>]*charset=UTF-8/i);
+    });
+
+    it("carries non-ASCII through the plain-text alternative too", () => {
+      const text = renderContactEmailText({ ...base, message: "café — 🚀 — नमस्ते" });
+      expect(text).toContain("café — 🚀 — नमस्ते");
+    });
+  });
+
   describe("hostile input", () => {
     it("breaks a long unbroken token so it can't stretch the card", () => {
       // Found by rendering an adversarial message: a 70-character run with no

@@ -130,6 +130,11 @@ export function renderContactEmailHtml({ name, email, message, siteOrigin = "htt
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<!-- The http-equiv form as well as the bare charset: several mail clients
+     strip <meta charset> when they rewrite the document, and fall back to a
+     single-byte encoding that turns an em-dash or any accented character into
+     mojibake. Declaring both is the cheap insurance. -->
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>New contact message</title>
 </head>

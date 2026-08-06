@@ -135,13 +135,14 @@ export async function POST(req) {
   }
 
   try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    // charset=utf-8 is explicit, not decorative. JSON.stringify emits raw
+    // multi-byte characters, and without a declared charset the receiving
+    // parser is free to assume a single-byte encoding — which turns an em-dash
+    // (e2 80 94) into three mojibake characters, and mangles every accent,
+    // curly quote, emoji, and non-Latin script a real sender might type.
+    // Observed in a delivered message before this was set.
+    const payload = Buffer.from(
+      JSON.stringify({
         from: CONTACT_FROM,
         to: [CONTACT_TO],
         // The sender's own address goes in Reply-To, never in From: sending
@@ -159,6 +160,20 @@ export async function POST(req) {
         html: renderContactEmailHtml({ name, email, message, siteOrigin: SITE_ORIGIN }),
         text: renderContactEmailText({ name, email, message, siteOrigin: SITE_ORIGIN }),
       }),
+      "utf8"
+    );
+
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json; charset=utf-8",
+        // Byte length, not character count. A string body would let the
+        // runtime infer a length from characters, under-reporting any
+        // multi-byte content and truncating the request.
+        "Content-Length": String(payload.length),
+      },
+      body: payload,
     });
 
     if (!response.ok) {
