@@ -83,6 +83,31 @@ const nextConfig = {
       },
     ];
   },
+
+  // Permanent redirects for tools that have moved.
+  //
+  // A moved tool cannot simply change href: the old URL was live, is in the
+  // sitemap Google has already fetched, and may sit in someone's bookmarks or
+  // an inbound link. Dropping it would turn all of that into a 404 and throw
+  // away whatever ranking the page had earned, so the old path 308s to the new
+  // one and passes its signals along.
+  //
+  // `permanent: true` emits a 308 (not a 301), which preserves the method and
+  // is what Next uses for permanent moves. Browsers and search engines cache
+  // it aggressively — which is the point, and also why an entry here should
+  // not be removed once shipped.
+  async redirects() {
+    return [
+      {
+        // JPG to PDF moved from the Image category to PDF on 2026-08-06: the
+        // output is a PDF, and it belongs beside PDF to JPG rather than beside
+        // the image editors. Shipped at the old path first, hence the redirect.
+        source: "/image/to-pdf",
+        destination: "/pdf/jpg-to-pdf",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default withSentryConfig(nextConfig, {

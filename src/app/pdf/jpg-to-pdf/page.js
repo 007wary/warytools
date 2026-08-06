@@ -14,7 +14,7 @@ const title = "JPG to PDF — Convert Images to PDF Free";
 const description =
   "Convert JPG, PNG, WebP, and AVIF images into a single PDF — free, no sign-up. Reorder pages, set the page size, and keep every file on your device.";
 const appName = "JPG to PDF";
-const href = "/image/to-pdf";
+const href = "/pdf/jpg-to-pdf";
 
 export const metadata = pageMetadata({
   title,
@@ -56,16 +56,16 @@ const faqs = [
 ];
 
 export default function JpgToPdfPage() {
-  const category = categories.find((c) => c.slug === "image");
+  const category = categories.find((c) => c.slug === "pdf");
 
   return (
     <section style={{ maxWidth: "900px", margin: "0 auto", padding: "48px 20px 80px" }}>
       <JsonLd
         data={jsonLdGraph(
-          toolSoftwareAppJsonLd({ name: appName, description, href, categorySlug: "image" }),
+          toolSoftwareAppJsonLd({ name: appName, description, href, categorySlug: "pdf" }),
           breadcrumbJsonLd([
             { name: "Home", href: "/" },
-            { name: "Image Tools", href: "/image" },
+            { name: "PDF Tools", href: "/pdf" },
             { name: appName, href },
           ]),
           faqJsonLd(faqs)
@@ -89,9 +89,9 @@ export default function JpgToPdfPage() {
       <FaqSection items={faqs} />
       <RelatedTools
         currentHref={href}
-        categorySlug="image"
-        categoryLabel="Image tools"
-        hubHref="/image"
+        categorySlug="pdf"
+        categoryLabel="PDF tools"
+        hubHref="/pdf"
         tools={category.tools}
       />
     </section>

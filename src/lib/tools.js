@@ -71,6 +71,18 @@ export const categories = [
         icon: "Images",
       },
       {
+        // Sits next to its counterpart PDF to JPG rather than under Image
+        // Tools: the output is a PDF, and someone hunting for it is thinking
+        // about the document they want, not the files they happen to hold.
+        // The href follows the same <source>-to-pdf shape as word-to-pdf and
+        // powerpoint-to-pdf.
+        slug: "jpg-to-pdf",
+        title: "JPG to PDF",
+        description: "Convert JPG, PNG, and WebP images into one PDF — free, nothing uploaded.",
+        href: "/pdf/jpg-to-pdf",
+        icon: "FileText",
+      },
+      {
         slug: "to-word",
         // The only tool description here that can't say "nothing uploaded" —
         // this one converts on a server, because rebuilding a .docx from a
@@ -130,17 +142,6 @@ export const categories = [
         description: "Convert images free — PNG to JPG, JPG to WebP, WebP to PNG, and more.",
         href: "/image/convert",
         icon: "RefreshCw",
-      },
-      {
-        // Lives under Image rather than PDF because the *input* is images and
-        // that's what someone looking for it has in hand. Its counterpart,
-        // PDF to JPG, sits in the PDF category for the same reason, and the
-        // two cross-link in their FAQs so either entry point finds the pair.
-        slug: "to-pdf",
-        title: "JPG to PDF",
-        description: "Convert JPG, PNG, and WebP images into one PDF — free, nothing uploaded.",
-        href: "/image/to-pdf",
-        icon: "FileText",
       },
     ],
   },
