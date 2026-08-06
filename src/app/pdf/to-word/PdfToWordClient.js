@@ -293,10 +293,11 @@ export default function PdfToWordClient() {
           style={{ color: colors.textMuted, flexShrink: 0, marginTop: "1px" }}
         />
         <p style={{ fontSize: "13px", color: colors.textSecondary, lineHeight: 1.5, margin: 0 }}>
-          <strong style={{ color: colors.text }}>This tool uploads your file.</strong> Unlike
-          every other tool here, Word conversion can&apos;t run in a browser — your PDF is sent
-          to our converter, turned into a .docx, and deleted immediately afterwards. Nothing is
-          stored or logged. If the document is confidential, use desktop software instead.
+          <strong style={{ color: colors.text }}>This tool uploads your file.</strong> Like the
+          two Office-to-PDF converters, and unlike everything else here, Word conversion
+          can&apos;t run in a browser — your PDF is sent to our converter, turned into a .docx,
+          and deleted immediately afterwards. Nothing is stored or logged. If the document is
+          confidential, use desktop software instead.
         </p>
       </div>
 

@@ -27,7 +27,7 @@ const faqs = [
   {
     question: "Is my PDF uploaded to convert it?",
     answer:
-      "Yes — and this is the only tool on WaryTools that does. Converting to Word means rebuilding paragraphs, headings, and tables from a PDF's positioned text, which no browser can do. Your file is sent to our converter over an encrypted connection, converted, and deleted immediately. It is never stored, logged, or shared. If a document is confidential, use desktop software instead.",
+      "Yes. This, Word to PDF, and PowerPoint to PDF are the only three tools on WaryTools that upload anything. Converting to Word means rebuilding paragraphs, headings, and tables from a PDF's positioned text, which no browser can do. Your file is sent to our converter over an encrypted connection, converted, and deleted immediately. It is never stored, logged, or shared. If a document is confidential, use desktop software instead.",
   },
   {
     question: "Will the Word file look exactly like my PDF?",

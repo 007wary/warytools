@@ -1,0 +1,73 @@
+# Fly.io deployment for the PPTX -> PDF converter.
+#
+# NOTE: `fly launch` rewrites this file and strips every comment. If you re-run
+# it, restore these notes from git rather than leaving the bare generated
+# version — the reasoning below is why the numbers are what they are.
+#
+# Sized like the sibling Word converter, and for the same reason: LibreOffice is
+# a full office suite, and each conversion starts a soffice process that builds
+# a fresh user profile and loads the layout engine, fonts, and import filters
+# before it renders a slide. An OOM-killed conversion looks to the user like a
+# broken tool rather than a capacity limit.
+#
+# Impress is if anything hungrier than Writer per document — decks are mostly
+# images, and every one is decoded and rasterised into the PDF. 2 GB covers
+# MAX_CONCURRENT=2 conversions with headroom. Lowering the memory means lowering
+# MAX_CONCURRENT in server.mjs to match; the two are one decision, not two.
+
+app = 'warytools-powerpoint-converter'
+primary_region = 'bom'          # Mumbai — closest to the site's main audience.
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  # Set explicitly rather than relying on the image default. The Dockerfile
+  # defaults to 7860 (what Hugging Face Spaces routes to); server.mjs reads
+  # PORT either way, so the image runs unmodified on both — but internal_port
+  # below must match whatever this says, or Fly health-checks a dead port.
+  PORT = '8080'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+
+  # Scale to zero when idle. This service is bursty — paying for an always-on
+  # machine to serve occasional conversions is the wrong trade. Expect a cold
+  # request to take ~30-40s end to end (image pull, soffice warm-up, then the
+  # boot-time Impress probe before the port opens). The client UI's timeout
+  # accounts for this; don't lower it without testing a cold start.
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  # There is no max-machines key in fly.toml — the ceiling is set out of band
+  # with `fly scale count 1`, which the README's deploy steps include. Worth
+  # doing, and not optional: `fly deploy` creates TWO machines by default ("for
+  # high availability") despite min_machines_running = 0, which is double the
+  # expected bill until it is scaled back down.
+
+  # Deliberately set so a burst QUEUES on one machine rather than starting a
+  # second one. Fly bills per machine-second, so autoscaling on a free-to-use
+  # tool means traffic spikes translate directly into a bill nobody approved.
+  # server.mjs already queues internally (MAX_CONCURRENT=2) and the rate
+  # limiter caps abuse, so the realistic worst case is a short wait rather
+  # than a failure. Raise soft_limit only if real usage justifies the spend.
+  [http_service.concurrency]
+    type = 'requests'
+    hard_limit = 8
+    soft_limit = 4
+
+  [[http_service.checks]]
+    # Longer grace than the Word converter's 45s: this service runs a real test
+    # conversion before binding the port, so boot is a few seconds slower. A
+    # grace period that expires mid-boot makes Fly restart a machine that was
+    # about to become healthy — a boot loop that reads as an outage.
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '60s'
+    method = 'GET'
+    path = '/health'
+
+[[vm]]
+  size = 'shared-cpu-2x'
+  memory = '2gb'

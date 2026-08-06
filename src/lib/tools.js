@@ -78,6 +78,16 @@ export const categories = [
         href: "/pdf/word-to-pdf",
         icon: "FileOutput",
       },
+      {
+        slug: "powerpoint-to-pdf",
+        // The third tool here that can't say "nothing uploaded", for the same
+        // reason as Word to PDF: laying out a presentation needs a presentation
+        // layout engine, which a browser doesn't have. Same honesty rule.
+        title: "PowerPoint to PDF",
+        description: "Convert PowerPoint to PDF online, free — one page per slide, layout intact.",
+        href: "/pdf/powerpoint-to-pdf",
+        icon: "Presentation",
+      },
     ],
   },
   {

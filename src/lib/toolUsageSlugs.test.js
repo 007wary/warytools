@@ -3,9 +3,11 @@ import { TOOL_USAGE_SLUGS, allowlistSql } from "./toolUsageSlugs";
 import { allTools } from "./tools";
 
 // Snapshot of the `tool_usage_slugs` table, verified against the live database
-// on 2026-08-06. Hand-maintained on purpose: this is the only representation of
-// the DB state that lives in the repo, so it is what makes a missing allowlist
-// row visible without a network call.
+// on 2026-08-06 (and again when PowerPoint to PDF was added, by selecting the
+// table back after the insert rather than assuming it landed). Hand-maintained
+// on purpose: this is the only representation of the DB state that lives in the
+// repo, so it is what makes a missing allowlist row visible without a network
+// call.
 //
 // When this test fails because a tool was added, the fix is TWO steps — add the
 // slug below AND run the emitted SQL. Editing only this list makes the test
@@ -25,6 +27,7 @@ const ALLOWLISTED_IN_DATABASE = [
   "image/resize",
   "pdf/compress",
   "pdf/merge",
+  "pdf/powerpoint-to-pdf",
   "pdf/reorder",
   "pdf/rotate",
   "pdf/split",
@@ -88,11 +91,14 @@ describe("tool usage allowlist", () => {
     expect(new Set(TOOL_USAGE_SLUGS).size).toBe(allTools.length);
   });
 
-  it("includes both document converters", () => {
-    // Named explicitly because these two are the newest and the ones whose
-    // absence prompted this test.
+  it("includes every server-side converter", () => {
+    // Named explicitly because these are the newest tools and the ones whose
+    // absence prompted this test. They are also the three that upload, so the
+    // list doubles as the check that the privacy copy's "three tools" claim
+    // still matches the registry.
     expect(TOOL_USAGE_SLUGS).toContain("pdf/to-word");
     expect(TOOL_USAGE_SLUGS).toContain("pdf/word-to-pdf");
+    expect(TOOL_USAGE_SLUGS).toContain("pdf/powerpoint-to-pdf");
   });
 });
 

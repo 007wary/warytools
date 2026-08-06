@@ -15,7 +15,7 @@ npm run start    # run the production build
 npm run lint     # ESLint (flat config, eslint-config-next)
 ```
 
-`npm test` runs the vitest suite (`npm run test:watch` for watch mode) — 557 tests across twenty-four files, covering the pure-logic helpers in `src/lib/` (`calculatorMath`, `calculatorInput`, `calculatorFormat`, `calculatorUrlState`, `unitConversions`, `dateMath`, `imageFile`, `imageValidation`, `imageResampling`, `formatBytes`, `pdfPageRange`, `pdfFile`, `pdfToWordLimits`, `docxFile`, `wordToPdfLimits`, `pdfWorkerProtocol`, `urlShortenerValidation`, `shortCode`, `siteUrl`, `sitemapRoutes`, `toolRanking`) plus `src/app/robots`. There are no component or end-to-end tests; UI and file-processing behaviour is only verified by `npm run build` and manual checks.
+`npm test` runs the vitest suite (`npm run test:watch` for watch mode) — 613 tests across twenty-seven files, covering the pure-logic helpers in `src/lib/` (`calculatorMath`, `calculatorInput`, `calculatorFormat`, `calculatorUrlState`, `unitConversions`, `dateMath`, `imageFile`, `imageValidation`, `imageResampling`, `formatBytes`, `pdfPageRange`, `pdfFile`, `pdfToWordLimits`, `docxFile`, `wordToPdfLimits`, `pptxFile`, `powerPointToPdfLimits`, `pdfWorkerProtocol`, `urlShortenerValidation`, `shortCode`, `siteUrl`, `sitemapRoutes`, `toolRanking`, `toolUsageSlugs`) plus `src/app/robots`. There are no component or end-to-end tests; UI and file-processing behaviour is only verified by `npm run build` and manual checks.
 
 Because there is no component-level coverage, **logic that guards a user input belongs in a `src/lib/` module, not inline in a client component** — that's the only way it can be tested at all. `pdfPageRange.js` exists for exactly this reason.
 
@@ -23,7 +23,7 @@ Because there is no component-level coverage, **logic that guards a user input b
 
 ## Architecture
 
-**WaryTools** is a Next.js App Router site (`next@16`, React 19, Turbopack) offering free, mostly client-side PDF/image/calculator/URL-shortener tools. Three features touch a server: the URL shortener (Supabase), PDF to Word (a pdf2docx container in `services/pdf-to-word/`), and Word to PDF (a LibreOffice container in `services/word-to-pdf/`). Everything else runs in the browser.
+**WaryTools** is a Next.js App Router site (`next@16`, React 19, Turbopack) offering free, mostly client-side PDF/image/calculator/URL-shortener tools. Four features touch a server: the URL shortener (Supabase), PDF to Word (a pdf2docx container in `services/pdf-to-word/`), Word to PDF (a LibreOffice Writer container in `services/word-to-pdf/`), and PowerPoint to PDF (a LibreOffice Impress container in `services/powerpoint-to-pdf/`). Everything else runs in the browser.
 
 ### Tool registry drives everything
 
@@ -133,7 +133,20 @@ What's specific to this direction:
 - **`WORD_CONVERTER_URL` / `WORD_CONVERTER_SECRET`**, server-only, and deliberately a *different* secret from the PDF converter's — separate services on separate hosts, so one shared secret would make a compromise of either a compromise of both.
 - Rate limiting reuses the `consume_pdf_conversion_quota` RPC but hashes a different tag (`soffice` vs `pdf2docx`) into the bucket key, so the two tools have independent quotas and no migration was needed.
 
-**Adding a third server-touching tool means another copy audit.** The "only two tools upload" claim is now load-bearing in `/privacy` (two places plus the page description), `/about` (two), the homepage (FAQ + prose), `/pdf`, and `llms.txt`.
+### PowerPoint to PDF (the third tool that uploads)
+
+`/pdf/powerpoint-to-pdf` is the Impress-shaped sibling of Word to PDF, and shares its structure exactly: [src/lib/powerPointToPdfLimits.js](src/lib/powerPointToPdfLimits.js) for limits and error copy, [src/lib/pptxFile.js](src/lib/pptxFile.js) for container sniffing, [src/app/api/powerpoint-to-pdf/route.js](src/app/api/powerpoint-to-pdf/route.js) as the proxy, and a container in [services/powerpoint-to-pdf/](services/powerpoint-to-pdf/). Everything in the two sections above — server-only env vars, validate-before-availability-check, durable fail-closed rate limiting, limits shared between client and route, no preview in the client, `-env:UserInstallation` per conversion, `fonts-liberation`, soffice-exits-0-with-no-output — applies here identically and isn't repeated.
+
+What's specific to this direction:
+
+- **The legacy binaries cannot be told apart by magic bytes.** `.doc`, `.ppt`, and `.xls` are all OLE2 compound files with the identical `D0 CF 11 E0` header; distinguishing them for real means walking the compound-file directory for a stream name. So `detectPresentationFormat()` consults the *filename* for OLE2 input only, the client sends an `X-Source-Extension: ppt` header, and the route forwards a sniffed `X-Source-Format` to the service. An OLE2 body with no such declaration is **refused**, because guessing `ppt` for every legacy Office file would feed `.doc` uploads to the Impress filter and return nonsense instead of an honest error. This is the one place in the codebase where a filename is load-bearing rather than a hint, and the reason is documented in all three files.
+- **The export filter is named explicitly: `pdf:impress_pdf_Export`.** Bare `pdf` lets LibreOffice pick from the input type, and the Writer exporter reflows slides into a document, destroying the layout.
+- **The service refuses to start if Impress is missing.** This image differs from `services/word-to-pdf` by essentially one package name, and a `libreoffice-writer` build reports a healthy `--version`, passes `/health`, converts `.docx` fine, and fails *every* `.pptx`. So `server.mjs` converts a generated `.fodp` at boot and requires a real PDF back before binding the port — turning a silent site-wide outage into a deploy that visibly won't go live. Same spirit as the `convert.py` presence check on the pdf2docx service.
+- **`POWERPOINT_CONVERTER_URL` / `POWERPOINT_CONVERTER_SECRET`**, server-only, and a *third* distinct secret. Separate services on separate hosts.
+- Rate limiting reuses `consume_pdf_conversion_quota` with an `impress` tag, so all three converters have independent quotas.
+- **PDF to PowerPoint is deliberately not offered**, and the FAQ says so. There is no pdf2docx equivalent for slides: a PDF page has no concept of a slide, placeholder, or bullet list, so the achievable outputs are full-page images with zero editable text, or LibreOffice Draw's overlapping positioned textboxes — the exact failure that got LibreOffice removed from the PDF→Word path. Shipping either would hand someone a technically-successful file that doesn't do what they wanted, which is the same reasoning behind the scanned-PDF and HEIC refusals. Revisit only if a library appears that genuinely reconstructs slide structure.
+
+**Adding a fourth server-touching tool means another copy audit.** The "only three tools upload" claim is load-bearing in `/privacy` (three places plus the page description), `/about` (two — note the prose there counts *four* exceptions, including the URL shortener), the homepage (FAQ + prose), `/pdf`, `llms.txt`, and each converter's own page FAQ and client banner (all three cross-reference the other two).
 
 ### URL shortener (the other server-touching tool)
 

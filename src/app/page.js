@@ -39,7 +39,7 @@ const faqs = [
   {
     question: "Are my files uploaded to a server?",
     answer:
-      "Almost never. Every image tool and every PDF tool but two runs entirely in your browser using JavaScript, so your files never leave your device. The exceptions are the document converters, PDF to Word and Word to PDF: converting between those formats needs a layout engine a browser does not have, so those files are sent to our converter and deleted immediately afterwards. Both tools say so clearly before you choose a file.",
+      "Almost never. Every image tool and every PDF tool but three runs entirely in your browser using JavaScript, so your files never leave your device. The exceptions are the document converters — PDF to Word, Word to PDF, and PowerPoint to PDF: converting between those formats needs a layout engine a browser does not have, so those files are sent to our converter and deleted immediately afterwards. All three say so clearly before you choose a file.",
   },
   {
     question: "Do I need to install anything?",
@@ -213,10 +213,11 @@ export default async function HomePage() {
             file you pick is processed by your own browser and never uploaded, so documents stay
             private by construction rather than by policy. The{" "}
             <Link href="/calculators" className="prose-link">calculators</Link> work the same way —
-            nothing you type is sent anywhere. The exceptions are the two document converters —{" "}
-            <Link href="/pdf/to-word" className="prose-link">PDF to Word</Link> and{" "}
-            <Link href="/pdf/word-to-pdf" className="prose-link">Word to PDF</Link> — which need a
-            server to rebuild the document and say so up front.
+            nothing you type is sent anywhere. The exceptions are the three document converters —{" "}
+            <Link href="/pdf/to-word" className="prose-link">PDF to Word</Link>,{" "}
+            <Link href="/pdf/word-to-pdf" className="prose-link">Word to PDF</Link>, and{" "}
+            <Link href="/pdf/powerpoint-to-pdf" className="prose-link">PowerPoint to PDF</Link> —
+            which need a server to rebuild the document and say so up front.
           </p>
         </section>
 

@@ -25,7 +25,7 @@ const principles = [
     icon: EyeOff,
     title: "Private by default",
     body:
-      "PDF and image tools process files with pdf-lib and canvas, right in your browser tab — close the tab and it's gone. Only the two document converters, PDF to Word and Word to PDF, need a server, and both say so before you pick a file.",
+      "PDF and image tools process files with pdf-lib and canvas, right in your browser tab — close the tab and it's gone. Only the three document converters — PDF to Word, Word to PDF, and PowerPoint to PDF — need a server, and each says so before you pick a file.",
     accent: categoryColors.image,
   },
   {
@@ -142,12 +142,12 @@ export default function AboutPage() {
         </p>
         <p style={{ fontSize: "15px", color: colors.textSecondary, lineHeight: 1.75 }}>
           The rule is simple: if the browser can do it, the browser does it — reading a PDF,
-          drawing to a canvas, running the math, all on your machine, none of it uploaded. Three
+          drawing to a canvas, running the math, all on your machine, none of it uploaded. Four
           tools break that rule by necessity. The URL shortener does, since a short link is
-          useless unless something remembers where it points. The two document converters do —
-          PDF to Word and Word to PDF — because converting between those formats means running a
-          layout engine no browser has. All three say so plainly where you use them, and exactly
-          what each one handles is on the{" "}
+          useless unless something remembers where it points. The three document converters do —
+          PDF to Word, Word to PDF, and PowerPoint to PDF — because converting between those
+          formats means running a layout engine no browser has. All four say so plainly where you
+          use them, and exactly what each one handles is on the{" "}
           <Link href="/privacy" style={{ color: colors.primary, textDecoration: "underline" }}>
             privacy page
           </Link>
