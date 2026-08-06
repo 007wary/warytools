@@ -94,6 +94,10 @@ describe("isProgressiveOp", () => {
     // Crop touches every page but only writes box metadata, so the loop
     // finishes faster than a bar could render and one would just flash.
     expect(isProgressiveOp(ops.CROP)).toBe(false);
+    // Same reasoning for page numbers: drawText on an already-parsed page is
+    // cheap, and the cost is dominated by the single save at the end, which no
+    // per-page bar can describe anyway.
+    expect(isProgressiveOp(ops.ADD_PAGE_NUMBERS)).toBe(false);
   });
 });
 
@@ -104,6 +108,7 @@ describe("the new tool ops", () => {
   it("are accepted by createRequest", () => {
     expect(createRequest("req-1", ops.IMAGES_TO_PDF, { images: [] }).op).toBe("images_to_pdf");
     expect(createRequest("req-1", ops.CROP, { rects: {} }).op).toBe("crop");
+    expect(createRequest("req-1", ops.ADD_PAGE_NUMBERS, { plan: [] }).op).toBe("add_page_numbers");
   });
 
   it("have distinct values, so no two ops collide in the worker's switch", () => {

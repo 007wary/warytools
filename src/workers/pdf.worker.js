@@ -16,10 +16,11 @@
 // (see the transfer list in pdfWorkerClient.js), so a 50 MB document does not
 // briefly exist twice in memory.
 
-import { PDFDocument, degrees } from "pdf-lib";
+import { PDFDocument, StandardFonts, degrees, rgb } from "pdf-lib";
 import { ops, replies, createProgress } from "@/lib/pdfWorkerProtocol";
 import { layoutImagePage } from "@/lib/pdfPageSizes";
 import { toPdfBox } from "@/lib/cropGeometry";
+import { formatPageLabel, placeNumber } from "@/lib/pdfPageNumbers";
 
 // Requests the main thread has cancelled. Checked between pages so a cancelled
 // 500-page split stops promptly instead of running to completion and throwing
@@ -101,6 +102,8 @@ async function runOp(id, op, payload) {
       return imagesToPdf(id, payload);
     case ops.CROP:
       return crop(payload);
+    case ops.ADD_PAGE_NUMBERS:
+      return addPageNumbers(payload);
     default:
       throw new Error(`Unknown PDF worker op: ${op}`);
   }
@@ -360,6 +363,77 @@ async function crop({ bytes, rects }) {
   const out = await pdf.save({ useObjectStreams: true });
   return {
     message: { bytes: out.buffer, pageCount: pages.length, croppedCount },
+    transfer: [out.buffer],
+  };
+}
+
+/**
+ * Stamps page numbers onto a document.
+ *
+ * Draws onto the existing pages rather than rebuilding the document, so
+ * bookmarks, links, and form fields survive — copyPages into a fresh document
+ * (the pattern the reorder/extract ops use) drops all of those, which on a
+ * numbered contract or report is a worse outcome than not numbering it.
+ *
+ * `plan` arrives from planPageNumbers() in the client, already resolved to
+ * {index, number} pairs, so the two sides can't disagree about which page gets
+ * what — the preview shows exactly what this loop draws.
+ *
+ * Helvetica is used unembedded. It's one of the 14 standard PDF fonts every
+ * reader carries, so nothing is added to the file size, and it only has to
+ * render digits and the words "Page"/"of" — all WinAnsi, so there is no
+ * encoding risk of the kind a user-supplied string would carry.
+ */
+async function addPageNumbers({ bytes, plan, formatId, positionId, marginPoints, fontSize }) {
+  const pdf = await loadPdf(bytes);
+  const pages = pdf.getPages();
+
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  const total = plan.length;
+
+  for (const { index, number } of plan) {
+    const page = pages[index];
+    // A plan referencing a page that isn't there would throw on the next line.
+    // Skipping keeps a stale plan (file re-selected mid-edit) from failing the
+    // whole run rather than just omitting one stamp.
+    if (!page) continue;
+
+    const text = formatPageLabel({ formatId, number, total });
+
+    // Measured with the same font and size it is drawn at — the width is what
+    // right-alignment and centring are computed from, so a guessed value would
+    // put every non-left-aligned number slightly off.
+    const textWidth = font.widthOfTextAtSize(text, fontSize);
+
+    // The CropBox, not the MediaBox: that is what a reader displays, so on a
+    // page cropped once the MediaBox describes edges that are no longer
+    // visible, and a margin measured from it would push the number out of view.
+    const box = page.getCropBox();
+
+    const spot = placeNumber({
+      positionId,
+      marginPoints,
+      textWidth,
+      fontSize,
+      box,
+      // The page's /Rotate. Without it the number lands along the edge of a
+      // quarter-turned page, rotated — see placeNumber's comment.
+      rotation: page.getRotation().angle,
+    });
+
+    page.drawText(text, {
+      x: spot.x,
+      y: spot.y,
+      size: fontSize,
+      font,
+      color: rgb(0, 0, 0),
+      rotate: degrees(spot.rotate),
+    });
+  }
+
+  const out = await pdf.save({ useObjectStreams: true });
+  return {
+    message: { bytes: out.buffer, pageCount: pages.length, numberedCount: total },
     transfer: [out.buffer],
   };
 }

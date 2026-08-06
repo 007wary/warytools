@@ -64,6 +64,13 @@ export const categories = [
         icon: "Crop",
       },
       {
+        slug: "page-numbers",
+        title: "Add Page Numbers",
+        description: "Add page numbers to a PDF — pick position, format, and start page. Free.",
+        href: "/pdf/page-numbers",
+        icon: "Hash",
+      },
+      {
         slug: "to-jpg",
         title: "PDF to JPG",
         description: "Convert PDF pages to JPG or PNG images at 72, 150, or 300 DPI — free.",

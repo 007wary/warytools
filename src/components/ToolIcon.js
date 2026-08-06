@@ -22,6 +22,7 @@ import {
   Presentation,
   Crop,
   Images,
+  Hash,
 } from "lucide-react";
 
 // Resolves the string icon names stored in tools.js to actual lucide
@@ -56,6 +57,10 @@ const iconMap = {
   // correct rather than a fallback: a PDF is what it produces.
   Crop,
   Images,
+  // Add Page Numbers. Wired in at the same time as the registry entry — a name
+  // that isn't in this map renders FileText and looks plausible, which is how
+  // three tools shipped with the wrong glyph.
+  Hash,
 };
 
 export default function ToolIcon({ name, size = 20, strokeWidth = 1.75, style, ...props }) {

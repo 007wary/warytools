@@ -30,6 +30,7 @@ const ALLOWLISTED_IN_DATABASE = [
   "pdf/crop",
   "pdf/jpg-to-pdf",
   "pdf/merge",
+  "pdf/page-numbers",
   "pdf/powerpoint-to-pdf",
   "pdf/reorder",
   "pdf/rotate",

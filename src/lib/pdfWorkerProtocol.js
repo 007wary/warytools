@@ -18,6 +18,7 @@ export const ops = {
   INSPECT: "inspect",
   IMAGES_TO_PDF: "images_to_pdf",
   CROP: "crop",
+  ADD_PAGE_NUMBERS: "add_page_numbers",
 };
 
 /** Message kinds the worker sends back. */
