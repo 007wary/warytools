@@ -20,6 +20,8 @@ import {
   FileType2,
   FileOutput,
   Presentation,
+  Crop,
+  Images,
 } from "lucide-react";
 
 // Resolves the string icon names stored in tools.js to actual lucide
@@ -50,6 +52,10 @@ const iconMap = {
   FileType2,
   FileOutput,
   Presentation,
+  // Crop PDF and PDF to JPG. JPG to PDF reuses FileText above, which is
+  // correct rather than a fallback: a PDF is what it produces.
+  Crop,
+  Images,
 };
 
 export default function ToolIcon({ name, size = 20, strokeWidth = 1.75, style, ...props }) {

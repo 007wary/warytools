@@ -3,7 +3,8 @@ import { TOOL_USAGE_SLUGS, allowlistSql } from "./toolUsageSlugs";
 import { allTools } from "./tools";
 
 // Snapshot of the `tool_usage_slugs` table, verified against the live database
-// on 2026-08-06 (and again when PowerPoint to PDF was added, by selecting the
+// on 2026-08-06 (and again when PowerPoint to PDF was added, and again when
+// Crop PDF, PDF to JPG, and JPG to PDF were added — each time by selecting the
 // table back after the insert rather than assuming it landed). Hand-maintained
 // on purpose: this is the only representation of the DB state that lives in the
 // repo, so it is what makes a missing allowlist row visible without a network
@@ -25,12 +26,15 @@ const ALLOWLISTED_IN_DATABASE = [
   "image/compress",
   "image/convert",
   "image/resize",
+  "image/to-pdf",
   "pdf/compress",
+  "pdf/crop",
   "pdf/merge",
   "pdf/powerpoint-to-pdf",
   "pdf/reorder",
   "pdf/rotate",
   "pdf/split",
+  "pdf/to-jpg",
   "pdf/to-word",
   "pdf/word-to-pdf",
   "url-shortener",

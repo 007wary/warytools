@@ -102,24 +102,32 @@ export function collectSourceFiles(entryFiles, srcDir) {
 // stable across clones. Vercel's default checkout keeps commit metadata; the
 // mtime path below remains as a fallback for shallow/exportless builds.
 export function gitLastModified(files, cwd) {
-  let newest = null;
+  if (!files || files.length === 0) return null;
 
-  for (const file of files) {
-    try {
-      const iso = execFileSync("git", ["log", "-1", "--format=%cI", "--", file], {
-        cwd,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
-      }).trim();
-      if (!iso) continue;
-      const date = new Date(iso);
-      if (!Number.isNaN(date.getTime()) && (newest === null || date > newest)) newest = date;
-    } catch {
-      // git unavailable or file untracked — fall through to the next file.
-    }
+  // One `git log` for the whole set, not one per file. Passing every path as a
+  // pathspec makes git report the newest commit touching *any* of them, which
+  // is exactly the value this returns — and process spawning dominates the
+  // cost here, so the per-file loop this replaces scaled with the number of
+  // routes times the size of each route's import graph. On the fallback path
+  // (a page with no history of its own, which walks transitive imports) that
+  // reached hundreds of spawns and pushed a build past the point where the
+  // sitemap test timed out.
+  try {
+    const iso = execFileSync("git", ["log", "-1", "--format=%cI", "--", ...files], {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+
+    if (!iso) return null;
+
+    const date = new Date(iso);
+    return Number.isNaN(date.getTime()) ? null : date;
+  } catch {
+    // git unavailable, not a repo, or no tracked file among the set — the
+    // caller falls back to mtimes.
+    return null;
   }
-
-  return newest;
 }
 
 // Fallback when git yields nothing: newest mtime across the same file set.

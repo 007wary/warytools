@@ -82,11 +82,32 @@ describe("isProgressiveOp", () => {
   it("is true for the looping operations", () => {
     expect(isProgressiveOp(ops.MERGE)).toBe(true);
     expect(isProgressiveOp(ops.SPLIT_ALL)).toBe(true);
+    // Building a PDF from images embeds and lays out one file at a time, and
+    // a twenty-photo batch is slow enough that silence reads as a hang.
+    expect(isProgressiveOp(ops.IMAGES_TO_PDF)).toBe(true);
   });
 
   it("is false for single-shot operations", () => {
     expect(isProgressiveOp(ops.COMPRESS)).toBe(false);
     expect(isProgressiveOp(ops.ROTATE)).toBe(false);
     expect(isProgressiveOp(ops.INSPECT)).toBe(false);
+    // Crop touches every page but only writes box metadata, so the loop
+    // finishes faster than a bar could render and one would just flash.
+    expect(isProgressiveOp(ops.CROP)).toBe(false);
+  });
+});
+
+describe("the new tool ops", () => {
+  // These go through createRequest like everything else, so an op missing from
+  // the registry would throw at post time rather than hanging on a reply that
+  // never comes.
+  it("are accepted by createRequest", () => {
+    expect(createRequest("req-1", ops.IMAGES_TO_PDF, { images: [] }).op).toBe("images_to_pdf");
+    expect(createRequest("req-1", ops.CROP, { rects: {} }).op).toBe("crop");
+  });
+
+  it("have distinct values, so no two ops collide in the worker's switch", () => {
+    const values = Object.values(ops);
+    expect(new Set(values).size).toBe(values.length);
   });
 });

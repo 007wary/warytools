@@ -18,6 +18,8 @@
 
 import { PDFDocument, degrees } from "pdf-lib";
 import { ops, replies, createProgress } from "@/lib/pdfWorkerProtocol";
+import { layoutImagePage } from "@/lib/pdfPageSizes";
+import { toPdfBox } from "@/lib/cropGeometry";
 
 // Requests the main thread has cancelled. Checked between pages so a cancelled
 // 500-page split stops promptly instead of running to completion and throwing
@@ -95,6 +97,10 @@ async function runOp(id, op, payload) {
       return reorder(payload);
     case ops.ROTATE:
       return rotate(payload);
+    case ops.IMAGES_TO_PDF:
+      return imagesToPdf(id, payload);
+    case ops.CROP:
+      return crop(payload);
     default:
       throw new Error(`Unknown PDF worker op: ${op}`);
   }
@@ -229,6 +235,131 @@ async function rotate({ bytes, rotations }) {
   const out = await pdf.save({ useObjectStreams: true });
   return {
     message: { bytes: out.buffer, pageCount: pages.length },
+    transfer: [out.buffer],
+  };
+}
+
+/**
+ * Builds a PDF from a list of images, one page each.
+ *
+ * Each entry arrives already reduced to something pdf-lib can embed —
+ * `embedAs` is "jpg" or "png" and the bytes match, because the PDF spec has no
+ * WebP or AVIF image filter and the client transcodes those on the way in (see
+ * pdfImageEmbed.js). Doing the transcode there rather than here keeps this
+ * worker free of canvas code and lets it reuse the image pipeline that already
+ * handles EXIF orientation.
+ *
+ * Layout comes from layoutImagePage(), shared with the client so the preview
+ * and the output are computed by the same function rather than two
+ * implementations that drift.
+ */
+async function imagesToPdf(id, { images, pageSizeId, orientation, marginId }) {
+  const pdf = await PDFDocument.create();
+  const total = images.length;
+
+  for (let i = 0; i < total; i++) {
+    throwIfCancelled(id);
+    report(id, i, total, "Adding image");
+
+    const entry = images[i];
+
+    // pdf-lib picks the embedder from the *bytes*, so handing JPEG bytes to
+    // embedPng fails with an opaque parse error rather than a useful one. The
+    // client decides which to use from the sniffed type; this just obeys.
+    const embedded =
+      entry.embedAs === "png" ? await pdf.embedPng(entry.bytes) : await pdf.embedJpg(entry.bytes);
+
+    const layout = layoutImagePage({
+      // The embedded image's own dimensions, not the source file's — a
+      // transcode can change them, and the layout has to describe what is
+      // actually being drawn.
+      imageWidth: embedded.width,
+      imageHeight: embedded.height,
+      pageSizeId,
+      orientation,
+      marginId,
+    });
+
+    const page = pdf.addPage([layout.pageWidth, layout.pageHeight]);
+    page.drawImage(embedded, {
+      x: layout.x,
+      y: layout.y,
+      width: layout.width,
+      height: layout.height,
+    });
+  }
+
+  throwIfCancelled(id);
+  report(id, total, total, "Saving");
+
+  const out = await pdf.save({ useObjectStreams: true });
+  return {
+    message: { bytes: out.buffer, pageCount: pdf.getPageCount() },
+    transfer: [out.buffer],
+  };
+}
+
+/**
+ * Applies a crop rectangle to selected pages.
+ *
+ * Sets **both** the CropBox and the MediaBox, which is the detail that decides
+ * whether this tool actually works. CropBox alone is what most readers display,
+ * so the crop looks correct on screen — but the MediaBox still describes the
+ * full sheet, so printing and many converters fall back to the uncropped page
+ * and the user discovers it after sending the file. Setting both means the
+ * document is cropped by every consumer, not just by viewers.
+ *
+ * Note this hides content rather than deleting it: the page's drawing
+ * operations are untouched and someone can widen the box again. That's the same
+ * behaviour as every other PDF cropper, and the tool's copy says so rather than
+ * implying the cropped-away area is gone.
+ *
+ * `rects` maps a page index to a normalised rectangle. Pages absent from it are
+ * left exactly as they are, so "crop the first page only" doesn't rewrite the
+ * rest of the document.
+ */
+async function crop({ bytes, rects }) {
+  const pdf = await loadPdf(bytes);
+  const pages = pdf.getPages();
+
+  let croppedCount = 0;
+
+  pages.forEach((page, index) => {
+    const rect = rects[index];
+    if (!rect) return;
+
+    // The page's existing box is the frame the normalised rectangle is
+    // relative to — not the intrinsic size. A page already cropped once has a
+    // non-zero origin, and measuring against anything else shifts the new crop
+    // off the visible area.
+    const media = page.getMediaBox();
+
+    // The page's /Rotate has to go in too. The user drew the rectangle against
+    // the page as *displayed*, and on a quarter-turned page that frame differs
+    // from unrotated user space — without this the crop lands rotated 90° from
+    // the selection, with no error to hint at it.
+    const box = toPdfBox(rect, media, page.getRotation().angle);
+
+    page.setCropBox(box.x, box.y, box.width, box.height);
+    page.setMediaBox(box.x, box.y, box.width, box.height);
+
+    // BleedBox and TrimBox, when present, describe production areas outside
+    // the new crop and would leave readers with a box larger than the page.
+    // Only set when the document actually carries them.
+    try {
+      page.setBleedBox(box.x, box.y, box.width, box.height);
+      page.setTrimBox(box.x, box.y, box.width, box.height);
+    } catch {
+      // Not every document has these, and a missing one is not an error worth
+      // failing the whole crop over.
+    }
+
+    croppedCount++;
+  });
+
+  const out = await pdf.save({ useObjectStreams: true });
+  return {
+    message: { bytes: out.buffer, pageCount: pages.length, croppedCount },
     transfer: [out.buffer],
   };
 }

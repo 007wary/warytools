@@ -16,6 +16,8 @@ export const ops = {
   REORDER: "reorder",
   ROTATE: "rotate",
   INSPECT: "inspect",
+  IMAGES_TO_PDF: "images_to_pdf",
+  CROP: "crop",
 };
 
 /** Message kinds the worker sends back. */
@@ -87,5 +89,8 @@ export function formatProgress(progress) {
  * pages or files get one.
  */
 export function isProgressiveOp(op) {
-  return op === ops.MERGE || op === ops.SPLIT_ALL;
+  // Crop is excluded deliberately even though it touches every page: setting a
+  // box is a cheap metadata write, so the whole loop finishes faster than a
+  // progress bar could render, and showing one would only flash.
+  return op === ops.MERGE || op === ops.SPLIT_ALL || op === ops.IMAGES_TO_PDF;
 }
