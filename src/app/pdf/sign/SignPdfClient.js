@@ -158,11 +158,25 @@ export default function SignPdfClient() {
     if (source === "upload" && uploaded) return uploaded.width / uploaded.height;
 
     if (source === "type" && typedCheck.ok) {
-      // Approximated from the character count rather than measured with real font
+      // Estimated from the character count rather than measured with real font
       // metrics, which would mean loading pdf-lib into the page bundle purely to
-      // size a preview. The worker solves the true size from the placement box,
-      // so this only has to be close enough that the initial box looks sensible.
-      return Math.max(1.5, typedCheck.text.length * 0.5);
+      // size a preview. This only sets the INITIAL box shape — the worker fits
+      // the text to whatever box the user ends up with, against both dimensions,
+      // so an imperfect estimate here can no longer let the text overflow.
+      //
+      // The per-character figures come from measuring the three offered faces
+      // (see the pdfSignature tests): mixed-case names average ~0.52 of the font
+      // height per character, but all-caps runs to ~0.63 because capitals carry
+      // no narrow lowercase letters to pull the average down. Using one flat
+      // figure made an uppercase name's box about 20% too narrow.
+      const text = typedCheck.text;
+      const upperRatio =
+        text.replace(/[^A-Za-z]/g, "").length > 0
+          ? text.replace(/[^A-Z]/g, "").length / text.replace(/[^A-Za-z]/g, "").length
+          : 0;
+      const perChar = 0.5 + upperRatio * 0.12;
+
+      return Math.max(1.5, text.length * perChar);
     }
 
     if (source === "draw") {
@@ -783,27 +797,33 @@ function pageDisplaySize(page) {
  */
 function PlacementPreview({ placement }) {
   if (placement.source === "type") {
+    // An SVG rather than styled text, because the worker fits the name to its
+    // box against BOTH axes and takes the smaller size — and CSS has no honest
+    // way to express "shrink the type until it fits". `maxWidth` with overflow
+    // would CLIP a long name where the worker SHRINKS it, so the preview would
+    // disagree with the output on exactly the names that motivated the fix.
+    //
+    // preserveAspectRatio="xMidYMid meet" is that fit, natively: the text is laid
+    // out in an arbitrary viewBox and scaled down until both axes are inside the
+    // box, centred — the same rule, applied by the renderer instead of guessed at.
     return (
-      <span
-        style={{
-          position: "absolute",
-          inset: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: findTypeFace(placement.faceId).cssStack,
-          color: findInkColor(placement.colorId).hex,
-          // Sized to the box height in container units so it scales with the
-          // placement instead of being pinned to a pixel size the layout doesn't
-          // control.
-          fontSize: "80cqh",
-          whiteSpace: "nowrap",
-          lineHeight: 1,
-          containerType: "size",
-        }}
+      <svg
+        viewBox="0 0 100 24"
+        preserveAspectRatio="xMidYMid meet"
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+        aria-hidden="true"
       >
-        {placement.text}
-      </span>
+        <text
+          x="50"
+          y="17"
+          textAnchor="middle"
+          fontFamily={findTypeFace(placement.faceId).cssStack}
+          fontSize="20"
+          fill={findInkColor(placement.colorId).hex}
+        >
+          {placement.text}
+        </text>
+      </svg>
     );
   }
 

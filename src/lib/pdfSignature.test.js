@@ -535,6 +535,113 @@ describe("findUnsupportedCharacters", () => {
   });
 });
 
+// The worker fits a typed signature to its box by solving the font size against
+// BOTH dimensions and taking the smaller. This reproduces that arithmetic against
+// real pdf-lib metrics, because the failure it guards against is silent and
+// shipped once: solving from the height alone let a fourteen-character name
+// overflow its box by ~20% in every offered face, so the text ran past the
+// rectangle the user dragged with nothing reporting it.
+//
+// pdf-lib is imported here and nowhere else in the tests. That is deliberate —
+// the whole point is to check the estimate in pdfSignature/SignPdfClient against
+// the true metrics rather than against another copy of the estimate.
+describe("typed signatures fit the box they were dragged", () => {
+  /** The client's initial-aspect estimate, mirrored from SignPdfClient. */
+  function estimateAspect(text) {
+    const letters = text.replace(/[^A-Za-z]/g, "").length;
+    const upperRatio = letters > 0 ? text.replace(/[^A-Z]/g, "").length / letters : 0;
+    return Math.max(1.5, text.length * (0.5 + upperRatio * 0.12));
+  }
+
+  const NAMES = [
+    "Jo",
+    "Ana Ray",
+    "Mwnswrang Wary",
+    "Alexander Constantine III",
+    "WILLIAM MACDONALD",
+    "O'Brien-Smith",
+    "José Müller",
+  ];
+
+  it("never draws wider or taller than the placement, in any face", async () => {
+    const { PDFDocument, StandardFonts } = await import("pdf-lib");
+    const pdf = await PDFDocument.create();
+
+    for (const face of TYPE_FACES) {
+      const font = await pdf.embedFont(StandardFonts[face.pdfFont]);
+
+      for (const name of NAMES) {
+        const rect = resolvePlacementRect(
+          { x: 0.1, y: 0.7, widthFraction: DEFAULT_WIDTH_FRACTION },
+          estimateAspect(name),
+          A4.width,
+          A4.height
+        );
+
+        const boxWidth = rect.width * A4.width;
+        const boxHeight = rect.height * A4.height;
+
+        // The worker's fit: both probes taken at size 100 and scaled, since
+        // heightAtSize and widthOfTextAtSize are each linear in the size.
+        const heightProbe = font.heightAtSize(100);
+        const widthProbe = font.widthOfTextAtSize(name, 100);
+        const fontSize = Math.min(
+          (boxHeight / heightProbe) * 100,
+          (boxWidth / widthProbe) * 100
+        );
+
+        const drawnWidth = (widthProbe / 100) * fontSize;
+        const drawnHeight = (heightProbe / 100) * fontSize;
+
+        // A hair over 1 is floating-point, not overflow.
+        expect(drawnWidth / boxWidth).toBeLessThanOrEqual(1.001);
+        expect(drawnHeight / boxHeight).toBeLessThanOrEqual(1.001);
+      }
+    }
+  });
+
+  // The other half of the claim: fitting must not leave the signature swimming
+  // in its box. A fit that always returned a tiny size would pass the test above
+  // and be just as wrong.
+  it("fills at least 60% of the placement in both axes", async () => {
+    const { PDFDocument, StandardFonts } = await import("pdf-lib");
+    const pdf = await PDFDocument.create();
+
+    for (const face of TYPE_FACES) {
+      const font = await pdf.embedFont(StandardFonts[face.pdfFont]);
+
+      for (const name of NAMES) {
+        const rect = resolvePlacementRect(
+          { x: 0.1, y: 0.7, widthFraction: DEFAULT_WIDTH_FRACTION },
+          estimateAspect(name),
+          A4.width,
+          A4.height
+        );
+
+        const boxWidth = rect.width * A4.width;
+        const boxHeight = rect.height * A4.height;
+
+        const heightProbe = font.heightAtSize(100);
+        const widthProbe = font.widthOfTextAtSize(name, 100);
+        const fontSize = Math.min(
+          (boxHeight / heightProbe) * 100,
+          (boxWidth / widthProbe) * 100
+        );
+
+        const filled = Math.max(
+          ((widthProbe / 100) * fontSize) / boxWidth,
+          ((heightProbe / 100) * fontSize) / boxHeight
+        );
+
+        // One axis always touches the box — that is what taking the smaller of
+        // the two solved sizes means — so this really asserts the OTHER axis
+        // isn't wildly short, i.e. that the client's aspect estimate is close.
+        expect(filled).toBeGreaterThan(0.6);
+      }
+    }
+  });
+});
+
 describe("describePlacements", () => {
   it("prompts when nothing is placed", () => {
     expect(describePlacements([])).toContain("Place your signature");

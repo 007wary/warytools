@@ -721,32 +721,56 @@ async function sign({ bytes, placements, assets }) {
         rotate: degrees(pdfRect.rotate),
       });
     } else {
-      // Text is positioned from its BASELINE, not its bottom edge, so drawing at
-      // the rect's foot would sink the descenders below the placement the user
-      // saw. The font is asked where its baseline sits at this size instead.
+      // The size is solved against BOTH dimensions and the smaller wins, which
+      // is what "fit this text in that box" means. Solving from the height alone
+      // is wrong and fails silently: the client sizes a typed placement from a
+      // guessed aspect (character count, since measuring properly would mean
+      // loading pdf-lib into the page bundle), and a guess that is narrower than
+      // the real metrics lets the text run past the box the user dragged. A
+      // fourteen-character name overflows by about 20% in every offered face —
+      // enough to sit outside the signature line, with nothing reporting it.
       //
-      // The size is solved from the box height rather than set directly: the
-      // placement is a rectangle the user sized by dragging, and the glyphs have
-      // to fill it. heightAtSize is linear in the size, so one probe gives the
-      // ratio.
-      const probe = asset.font.heightAtSize(100);
-      const fontSize = probe > 0 ? (pdfRect.height / probe) * 100 : pdfRect.height;
+      // Both probes are taken at size 100 and scaled: heightAtSize and
+      // widthOfTextAtSize are each linear in the size, so one probe per axis
+      // gives the ratio exactly.
+      const heightProbe = asset.font.heightAtSize(100);
+      const widthProbe = asset.font.widthOfTextAtSize(asset.text, 100);
+
+      const sizeForHeight = heightProbe > 0 ? (pdfRect.height / heightProbe) * 100 : pdfRect.height;
+      const sizeForWidth = widthProbe > 0 ? (pdfRect.width / widthProbe) * 100 : sizeForHeight;
+      const fontSize = Math.min(sizeForHeight, sizeForWidth);
+
+      // Centred horizontally in the box. Once the width constrains the size, the
+      // text no longer fills the box's width, and left-aligning it would park a
+      // short name against the box's left edge rather than where it was placed.
+      const drawnWidth = widthProbe > 0 ? (widthProbe / 100) * fontSize : pdfRect.width;
+      const inset = Math.max(0, (pdfRect.width - drawnWidth) / 2);
 
       const { r, g, b } = signatureHexToRgb01(findInkColor(asset.colorId).hex);
 
-      // The baseline offset within the box, in the direction the text is
-      // rotated. At 0° that is straight up from the origin; at each quarter turn
-      // it follows the rotated y axis, which is why it is applied as a vector
-      // rather than added to y.
+      // Both offsets are applied as VECTORS along the text's own rotated axes,
+      // not added to x and y directly. On a quarter-turned page the text's "up"
+      // is the page's left or right, so adding the baseline gap to y would push
+      // the signature sideways out of its box on exactly the rotated pages the
+      // rest of this pipeline works so hard to get right.
+      //
+      // Text is positioned from its BASELINE, not its bottom edge, so drawing at
+      // the box's foot would sink the descenders below the placement the user
+      // saw. 0.22 of the size is roughly where the baseline sits within these
+      // faces' full height.
       const baselineGap = fontSize * 0.22;
       const angle = pdfRect.rotate;
       const radians = (angle * Math.PI) / 180;
-      const baselineX = -Math.sin(radians) * baselineGap;
-      const baselineY = Math.cos(radians) * baselineGap;
+      const cos = Math.cos(radians);
+      const sin = Math.sin(radians);
+
+      // Local (inset, baselineGap) rotated into user space.
+      const offsetX = inset * cos - baselineGap * sin;
+      const offsetY = inset * sin + baselineGap * cos;
 
       page.drawText(asset.text, {
-        x: origin.x + baselineX,
-        y: origin.y + baselineY,
+        x: origin.x + offsetX,
+        y: origin.y + offsetY,
         size: fontSize,
         font: asset.font,
         color: rgb(r, g, b),
