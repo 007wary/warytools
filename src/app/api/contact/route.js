@@ -7,8 +7,11 @@ import {
   checkSubmission,
   rejectionMessage,
   notificationSubject,
-  escapeHtml,
 } from "@/lib/contactValidation";
+import {
+  renderContactEmailHtml,
+  renderContactEmailText,
+} from "@/lib/contactEmailTemplate";
 
 // Sends a contact-form submission to our inbox via Resend.
 //
@@ -147,11 +150,14 @@ export async function POST(req) {
         // Reply-To means hitting reply in the inbox still answers the sender.
         reply_to: `${name} <${email}>`,
         subject: notificationSubject(name),
-        // Both parts are escaped: this is user-authored text rendered by a mail
-        // client, and a form that pipes attacker HTML into the operator's inbox
-        // is a phishing delivery mechanism pointed at us.
-        html: renderHtml({ name, email, message }),
-        text: renderText({ name, email, message }),
+        // Both parts are escaped inside the template: this is user-authored
+        // text rendered by a mail client, and a form that pipes attacker HTML
+        // into the operator's inbox is a phishing delivery mechanism pointed at
+        // us. The text alternative is sent alongside the HTML rather than as a
+        // fallback nobody sees — some clients prefer it, and HTML-only mail is
+        // itself a spam signal.
+        html: renderContactEmailHtml({ name, email, message, siteOrigin: SITE_ORIGIN }),
+        text: renderContactEmailText({ name, email, message, siteOrigin: SITE_ORIGIN }),
       }),
     });
 
@@ -176,30 +182,4 @@ export async function POST(req) {
     Sentry.captureException(error);
     return fail(UNAVAILABLE, 502);
   }
-}
-
-function renderText({ name, email, message }) {
-  return [
-    `From: ${name} <${email}>`,
-    "",
-    message,
-    "",
-    "—",
-    `Sent from the contact form at ${SITE_ORIGIN}/contact`,
-  ].join("\n");
-}
-
-function renderHtml({ name, email, message }) {
-  const safeName = escapeHtml(name);
-  const safeEmail = escapeHtml(email);
-  // Newlines are meaningful in what someone typed into a textarea, and HTML
-  // collapses them — so they're converted to <br> after escaping, never before.
-  const safeMessage = escapeHtml(message).replace(/\n/g, "<br>");
-
-  return `<div style="font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6;color:#111">
-  <p style="margin:0 0 4px"><strong>${safeName}</strong></p>
-  <p style="margin:0 0 16px;color:#555">${safeEmail}</p>
-  <div style="padding:16px;border-left:3px solid #ddd;background:#fafafa">${safeMessage}</div>
-  <p style="margin:16px 0 0;font-size:12px;color:#888">Sent from the contact form at ${SITE_ORIGIN}/contact</p>
-</div>`;
 }
