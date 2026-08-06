@@ -126,8 +126,12 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--text);
+  /* No --font-mono: nothing on the site renders monospace text, and loading
+     Geist Mono put seven @font-face blocks (~1.8 KB) into the single
+     render-blocking stylesheet for a family that was never applied to an
+     element. Re-add it here and in layout.js together if a tool ever needs
+     one — the variable alone is what pulls in the whole family. */
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 }
 
 * {
