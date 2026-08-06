@@ -12,6 +12,7 @@ import { PrimaryButton, SecondaryButton } from "@/components/ToolButton";
 import { validatePdfFile, describePdfError } from "@/lib/pdfFile";
 import { usePdfWorker, ops } from "@/lib/pdfWorkerClient";
 import {
+  CLIENT_TIMEOUT_MS,
   checkUploadSize,
   checkPageCount,
   looksScanned,
@@ -32,6 +33,7 @@ export default function PdfToWordClient() {
   const [isSlow, setIsSlow] = useState(false);
   const [error, setError] = useState("");
   const [resultBlob, setResultBlob] = useState(null);
+  const [isPartial, setIsPartial] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
 
   const { run } = usePdfWorker();
@@ -45,6 +47,7 @@ export default function PdfToWordClient() {
     setPageCount(null);
     setIsSlow(false);
     setResultBlob(null);
+    setIsPartial(false);
     setError("");
     setIsConverting(false);
     fileRef.current = null;
@@ -96,6 +99,10 @@ export default function PdfToWordClient() {
   async function handleFiles(fileList) {
     setError("");
     setResultBlob(null);
+    // Cleared here too, not just in resetState: picking a new file without
+    // resetting would otherwise carry the previous document's "incomplete"
+    // warning onto a conversion it says nothing about.
+    setIsPartial(false);
 
     const candidate = fileList[0];
 
@@ -160,6 +167,7 @@ export default function PdfToWordClient() {
       setPageCount(null);
       setIsSlow(false);
       setResultBlob(null);
+      setIsPartial(false);
       fileRef.current = null;
 
       // describePdfError only recognises encrypted/corrupt/out-of-memory. For
@@ -180,10 +188,24 @@ export default function PdfToWordClient() {
   async function handleConvert() {
     setError("");
     setResultBlob(null);
+    setIsPartial(false);
     setIsConverting(true);
 
     const controller = new AbortController();
     abortRef.current = controller;
+
+    // Without this the only timeout in the chain is the server's. If the
+    // connection stalls — a dropped mobile network mid-upload is the common
+    // case — the fetch never settles, the spinner runs forever, and the only
+    // way out is a page reload. Deliberately longer than the route's own
+    // budget so a conversion that is merely slow still finishes: this fires
+    // only when the request is genuinely stuck, never as a race with a
+    // response that was going to arrive.
+    let timedOut = false;
+    const stallTimer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, CLIENT_TIMEOUT_MS);
 
     try {
       const response = await fetch("/api/pdf-to-word", {
@@ -212,15 +234,24 @@ export default function PdfToWordClient() {
 
       const blob = await response.blob();
       setResultBlob(blob);
+      setIsPartial(response.headers.get("X-Conversion-Partial") === "1");
 
       trackEvent(events.TOOL_RUN, {
         page_count: pageCount,
         size_bucket: sizeBucket(fileRef.current.size),
       });
     } catch (err) {
-      // An abort is the user resetting or navigating, not a failure — showing
-      // an error for something they deliberately did would be noise.
-      if (err?.name === "AbortError") return;
+      if (err?.name === "AbortError") {
+        // Two very different things arrive here. A user-initiated cancel needs
+        // no message — showing an error for something they deliberately did
+        // would be noise. A stall timeout does, or the UI just goes quiet and
+        // looks like the button did nothing.
+        if (timedOut) {
+          trackEvent(events.TOOL_ERROR, { reason: "pdf_to_word_client_timeout" });
+          setError(rejectionMessage("timeout"));
+        }
+        return;
+      }
 
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "pdf_to_word_network" });
@@ -228,6 +259,7 @@ export default function PdfToWordClient() {
         "Could not reach the converter. Check your connection and try again."
       );
     } finally {
+      clearTimeout(stallTimer);
       setIsConverting(false);
       abortRef.current = null;
     }
@@ -327,7 +359,20 @@ export default function PdfToWordClient() {
             )}
           </div>
 
-          {resultBlob && !isConverting && (
+          {/* A conversion that dropped pages is reported as its own state, not
+              as a clean success with a caveat appended. The user is about to
+              send this document to someone; "some pages are missing" has to be
+              impossible to skim past, and a green panel saying "Converted"
+              actively works against that. */}
+          {resultBlob && isPartial && !isConverting && (
+            <WarningBanner>
+              Some pages of this PDF couldn&apos;t be read and were left out of the Word file.
+              The rest converted normally — check the document against the original before
+              using it.
+            </WarningBanner>
+          )}
+
+          {resultBlob && !isPartial && !isConverting && (
             <div
               style={{
                 marginTop: "16px",

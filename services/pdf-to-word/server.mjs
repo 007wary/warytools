@@ -22,8 +22,10 @@ import { createServer } from "node:http";
 import { execFile } from "node:child_process";
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import { mkdtemp, rm, writeFile, readFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 // 7860 matches the Dockerfile default and what Hugging Face Spaces routes to.
 // Every platform we deploy on sets PORT explicitly, so this fallback only
@@ -37,6 +39,30 @@ const PORT = Number(process.env.PORT) || 7860;
 const SECRET = process.env.CONVERTER_SECRET;
 if (!SECRET) {
   console.error("CONVERTER_SECRET is not set. Refusing to start an unauthenticated converter.");
+  process.exit(1);
+}
+
+// Resolved relative to this file rather than hardcoded to /app, so the service
+// runs the same way from a checkout as it does in the image.
+//
+// Checked at boot, not at first use. A missing convert.py used to be invisible
+// until someone uploaded a document: the process started, /health answered
+// {ok:true}, the platform marked the deploy healthy, and every conversion
+// failed with a generic convert_failed. That is exactly the shape of outage
+// that survives a deploy unnoticed, so it is now a startup failure — the same
+// treatment CONVERTER_SECRET gets above, and for the same reason.
+// fileURLToPath rather than import.meta.dirname: the image installs Node from
+// Debian bookworm's apt, which is Node 18, and dirname only exists from 20.11.
+// It would read as undefined there and throw inside path.join at boot.
+const CONVERTER_SCRIPT = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "convert.py"
+);
+if (!existsSync(CONVERTER_SCRIPT)) {
+  console.error(
+    `convert.py is missing at ${CONVERTER_SCRIPT}. The image was built without it; ` +
+      `see README.md ("Deploy"). Refusing to start a converter that cannot convert.`
+  );
   process.exit(1);
 }
 
@@ -153,22 +179,28 @@ function runConverter(inputPath, outputPath) {
   return new Promise((resolve, reject) => {
     const child = execFile(
       "python3",
-      [path.join("/app", "convert.py"), inputPath, outputPath],
+      [CONVERTER_SCRIPT, inputPath, outputPath],
       { timeout: CONVERT_TIMEOUT_MS, killSignal: "SIGKILL", maxBuffer: 1024 * 1024 },
       (error, stdout, stderr) => {
-        if (error) {
-          // execFile surfaces a timeout kill as a signal, not an exit code.
-          if (error.killed || error.signal === "SIGKILL") {
-            reject(Object.assign(new Error("timeout"), { code: "timeout" }));
-            return;
-          }
-
+        if (!error) {
+          // Exit 0 with a "partial" token means pages were dropped. It is a
+          // success — the user gets a document — but a qualified one, so the
+          // flag travels to the route and on to the UI. Swallowing it here
+          // would present an incomplete document as a clean conversion.
           const token = String(stderr || "").trim().split("\n").pop();
-          const code = PYTHON_ERROR_CODES[token] || "convert_failed";
-          reject(Object.assign(new Error(token || error.message), { code }));
+          resolve({ partial: token === "partial" });
           return;
         }
-        resolve(stdout);
+
+        // execFile surfaces a timeout kill as a signal, not an exit code.
+        if (error.killed || error.signal === "SIGKILL") {
+          reject(Object.assign(new Error("timeout"), { code: "timeout" }));
+          return;
+        }
+
+        const failureToken = String(stderr || "").trim().split("\n").pop();
+        const code = PYTHON_ERROR_CODES[failureToken] || "convert_failed";
+        reject(Object.assign(new Error(failureToken || error.message), { code }));
       }
     );
 
@@ -194,14 +226,14 @@ async function convert(pdfBuffer) {
     // versions, pdf2docx writes exactly where it is told.
     const outputPath = path.join(workDir, `${randomUUID()}.docx`);
 
-    await runConverter(inputPath, outputPath);
+    const { partial } = await runConverter(inputPath, outputPath);
 
     const docx = await readFile(outputPath).catch(() => null);
     if (!docx || docx.length === 0) {
       throw Object.assign(new Error("no output produced"), { code: "convert_failed" });
     }
 
-    return docx;
+    return { docx, partial };
   } finally {
     // Always, on every path. The whole privacy claim for this tool is that the
     // file does not outlive the request, and a leaked temp dir on an error path
@@ -257,11 +289,15 @@ const server = createServer(async (req, res) => {
   await acquireSlot();
 
   try {
-    const docx = await convert(body);
+    const { docx, partial } = await convert(body);
 
     res.writeHead(200, {
       "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       "Content-Length": docx.length,
+      // Signals a conversion that dropped one or more unparseable pages. A
+      // header rather than a body field because the body is the document
+      // itself; the route reads this and turns it into a visible caveat.
+      "X-Conversion-Partial": partial ? "1" : "0",
       "Cache-Control": "no-store",
     });
     res.end(docx);

@@ -50,6 +50,21 @@ export const MAX_PAGES = 200;
 export const CONVERSION_TIMEOUT_MS = 60_000;
 
 /**
+ * How long the browser waits before giving up on the request entirely.
+ *
+ * Deliberately the longest timeout in the chain. Each layer below has its own
+ * (the container kills at 55s, the route aborts at 60s, Vercel caps the
+ * function at 90s), and every one of those produces a real response the user
+ * can act on. This one exists only for the case where none of them get to
+ * reply — a connection that stalls mid-upload, which is ordinary on mobile.
+ *
+ * Ordering matters: if this fired first it would abort conversions that were
+ * about to succeed and report a timeout that never happened, turning a working
+ * tool into a flaky one. It must be strictly greater than maxDuration.
+ */
+export const CLIENT_TIMEOUT_MS = 120_000;
+
+/**
  * Checks an upload's size before any bytes are read or forwarded.
  *
  * Size-only, because that's all the API route can cheaply know about a

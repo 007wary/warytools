@@ -194,11 +194,18 @@ export async function POST(req) {
       return reject("convert_failed", 502);
     }
 
+    // Forwarded from the converter: the document is usable but one or more
+    // pages failed to parse and were dropped. Normalised to "1"/"0" rather
+    // than passed through, so the client never sees an unexpected value from
+    // an upstream we do not control.
+    const partial = response.headers.get("x-conversion-partial") === "1";
+
     return new NextResponse(docx, {
       status: 200,
       headers: {
         "Content-Type": DOCX_TYPE,
         "Content-Length": String(docx.length),
+        "X-Conversion-Partial": partial ? "1" : "0",
         // The download filename is applied client-side from the original file
         // name; sending it here would mean reflecting a user-controlled string
         // into a response header.

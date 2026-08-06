@@ -3,6 +3,8 @@ import {
   MAX_UPLOAD_BYTES,
   SLOW_UPLOAD_BYTES,
   MAX_PAGES,
+  CONVERSION_TIMEOUT_MS,
+  CLIENT_TIMEOUT_MS,
   checkUploadSize,
   checkPageCount,
   looksScanned,
@@ -45,6 +47,25 @@ describe("checkUploadSize", () => {
     for (const size of [NaN, Infinity, -1, undefined, null]) {
       expect(checkUploadSize(size).ok).toBe(false);
     }
+  });
+});
+
+describe("timeout ordering", () => {
+  // The chain is container (55s) < route (60s) < Vercel maxDuration (90s) <
+  // browser. Every layer but the last produces a real, actionable response;
+  // the browser's exists only for a connection that stalls with nobody
+  // replying. If the browser's fired first it would abort conversions that
+  // were about to succeed and report a timeout that never happened — a
+  // working tool made flaky by its own safety net.
+  it("gives the browser the longest budget in the chain", () => {
+    expect(CLIENT_TIMEOUT_MS).toBeGreaterThan(CONVERSION_TIMEOUT_MS);
+  });
+
+  it("outlasts the route's own Vercel maxDuration of 90s", () => {
+    // Hardcoded rather than imported: maxDuration is a route-segment export
+    // Next.js reads statically, so it cannot come from this module. That makes
+    // this the only place the two can be checked against each other.
+    expect(CLIENT_TIMEOUT_MS).toBeGreaterThan(90_000);
   });
 });
 

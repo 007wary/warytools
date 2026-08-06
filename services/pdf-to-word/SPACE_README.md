@@ -11,7 +11,7 @@ pinned: false
 # WaryTools PDF converter
 
 Backend service for the PDF to Word tool at [wary.tools/pdf/to-word](https://wary.tools/pdf/to-word).
-LibreOffice headless behind a small HTTP API.
+pdf2docx (PyMuPDF) behind a small HTTP API.
 
 This Space is not an interactive demo — it exposes two endpoints and requires a
 shared secret, so opening it in a browser will show nothing useful.

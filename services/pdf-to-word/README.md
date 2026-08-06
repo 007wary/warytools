@@ -28,10 +28,33 @@ is why the tool page and the privacy policy both say so explicitly.
 
 - Header `X-Converter-Secret: <CONVERTER_SECRET>` — required.
 - Body: raw PDF bytes, max 20 MB.
-- Success: `200` with the `.docx` bytes.
+- Success: `200` with the `.docx` bytes, plus `X-Conversion-Partial: 0|1`.
+  `1` means the document is usable but one or more pages failed to parse and
+  were left out. The route forwards this and the UI shows a warning instead of
+  a success panel — an incomplete document must never be presented as a clean
+  conversion.
 - Failure: JSON `{ error }` — `unauthorized` (401), `not_a_pdf` /
   `bad_request` / `encrypted` / `empty` (400), `too_large` (413),
   `convert_failed` (500), `timeout` (504).
+
+### Conversion strategy
+
+`convert.py` runs the conversion **strictly first** (`ignore_page_error:
+False`), and only retries leniently if that fails. pdf2docx's default is
+lenient, which silently drops unparseable pages: a 40-page contract comes back
+as a 38-page `.docx` with nothing anywhere saying so. Strict-then-lenient gives
+a complete document whenever one is achievable and an explicitly-flagged
+partial one when it is not.
+
+Two settings that sound like quality wins are deliberately **not** used, both
+measured against the pinned 0.5.13:
+
+- `delete_end_line_hyphen` removes the hyphen but leaves the line break, so
+  `compre-\nhensive` becomes `compre\nhensive` — a word split by whitespace,
+  worse for spellcheck and search than the hyphen it removed.
+- `extract_stream_table` is read only by `extract_tables()`, which the DOCX
+  path never calls. Borderless tables are already recovered by
+  `parse_stream_table` (on by default).
 
 ### `GET /health`
 
@@ -58,10 +81,16 @@ Space cannot use it — but if the cold start becomes annoying, moving to Fly
 2. Push these files to the Space repo. `SPACE_README.md` must be renamed to
    `README.md` — Spaces reads its YAML front-matter to find `app_port`:
 
+   `convert.py` is not optional — `server.mjs` execs it by absolute path at
+   `/app/convert.py`, so a Space pushed without it builds cleanly, passes its
+   health check, and then fails *every* conversion with `convert_failed`. It
+   was missed here once already when this service moved from LibreOffice (a
+   single binary) to pdf2docx (a script the image has to carry).
+
    ```bash
    git clone https://huggingface.co/spaces/<user>/<space-name> hf-space
    cd hf-space
-   cp ../Dockerfile ../server.mjs .
+   cp ../Dockerfile ../server.mjs ../convert.py .
    cp ../SPACE_README.md README.md
    git add -A && git commit -m "Add PDF converter" && git push
    ```

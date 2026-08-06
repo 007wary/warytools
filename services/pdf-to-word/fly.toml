@@ -1,8 +1,15 @@
 # Fly.io deployment for the PDF -> DOCX converter.
 #
-# Sized for the workload rather than the defaults: LibreOffice holding a
-# document model plus a JVM does not fit in the 256 MB shared tier, and an
-# OOM-killed conversion looks to the user like a broken tool.
+# Sized for the workload rather than the defaults. pdf2docx/PyMuPDF holds the
+# whole parsed document model plus rendered page pixmaps in memory, and usage
+# scales with page complexity rather than file size — a dense 20 MB PDF costs
+# far more than a sparse one. The 256 MB shared tier cannot hold that, and an
+# OOM-killed conversion looks to the user like a broken tool rather than a
+# capacity limit.
+#
+# 2 GB covers MAX_CONCURRENT=2 conversions with headroom. Lowering the memory
+# means lowering MAX_CONCURRENT in server.mjs to match; the two are one
+# decision, not two.
 
 app = "warytools-pdf-converter"
 primary_region = "bom"          # Mumbai — closest to the site's main audience.
