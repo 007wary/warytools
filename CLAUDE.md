@@ -27,6 +27,14 @@ Because there is no component-level coverage, **logic that guards a user input b
 
 ### Tool registry drives everything
 
+**Adding a tool takes three edits, not one.** `tools.js` drives the navbar, grid, hubs, footer, and sitemap automatically — but the trending section needs a database row that no amount of code can grant itself:
+
+1. [src/lib/tools.js](src/lib/tools.js) — the registry
+2. [src/lib/toolUsageSlugs.js](src/lib/toolUsageSlugs.js) + its test's `ALLOWLISTED_IN_DATABASE` snapshot
+3. `insert into tool_usage_slugs (tool_slug) values ('<slug>')` against Postgres
+
+Step 3 is the one that gets forgotten, and it fails *silently*: `increment_tool_usage` looks the slug up in `tool_usage_slugs` and just `return`s if it's absent. No error, no log, no failed request — the tool simply records nothing and can never trend however popular it gets. **Word to PDF shipped that way and was live and converting for a day before it was caught.** `toolUsageSlugs.test.js` now fails with the exact SQL to run, so the suite catches it instead of a person noticing months later. Editing the snapshot without running the SQL makes the test pass while the bug persists — don't.
+
 [src/lib/tools.js](src/lib/tools.js) is the single source of truth for every tool: slug, title, description, href, icon. `categories` (grouped) and `allTools` (flat) are exported and consumed by the navbar, homepage grid, hub pages, footer, and the generated `sitemap.js`. **Adding or changing a tool means editing this file first** — the rest of the site reacts to it. Icons are referenced by string name and resolved at render time through [src/components/ToolIcon.js](src/components/ToolIcon.js) against `lucide-react`, keeping `tools.js` a plain data module with no JSX (so it's safely importable from server components and `sitemap.js`/`robots.js`).
 
 ### Per-tool page pair
