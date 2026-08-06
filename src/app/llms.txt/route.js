@@ -41,12 +41,13 @@ ${toolSections}
 - [About](${link("/about")}): Why WaryTools exists and how it works.
 - [Privacy](${link("/privacy")}): What is (and isn't) collected — relevant since nearly all tools never leave the browser.
 - [Terms](${link("/terms")}): Terms of use.
-- [Contact](${link("/contact")}): Get in touch.
+- [Contact](${link("/contact")}): Get in touch via a contact form — bug reports, tool suggestions, questions.
 
 ## Notes
 
 - The URL shortener is the only tool with persistent server-side state (Supabase); it stores the short code, destination URL, and a click count.
-- PDF to Word sends the file to a LibreOffice converter we run, which returns the .docx and deletes the file immediately. Nothing is stored.
+- PDF to Word sends the file to a pdf2docx converter we run, which returns the .docx and deletes the file immediately. Nothing is stored.
+- The contact form posts the sender's name, email, and message to our server and delivers them by email. Nothing is stored in a database.
 - All other tools have no backend: no file, image, or calculator input is ever transmitted off the user's device.
 `;
 

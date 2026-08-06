@@ -134,7 +134,7 @@ export default function PdfToWordClient() {
 
       // Scan detection is a courtesy, not a gate. If pdf.js can't read the
       // text layer — an unusual encoding, a font it won't parse, a buffer it
-      // rejects — that says nothing about whether LibreOffice can convert the
+      // rejects — that says nothing about whether pdf2docx can convert the
       // file, and it certainly isn't a reason to refuse it. A failure here
       // used to propagate to the outer catch and surface as "Could not read
       // this PDF" for documents that would have converted perfectly well.

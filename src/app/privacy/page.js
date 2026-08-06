@@ -15,7 +15,7 @@ export const metadata = pageMetadata({
   path: "/privacy",
 });
 
-const LAST_UPDATED = "August 2, 2026";
+const LAST_UPDATED = "August 6, 2026";
 
 function Section({ id, title, children }) {
   return (
@@ -94,12 +94,12 @@ export default function PrivacyPage() {
           <p style={{ marginBottom: "10px" }}>
             Converting a PDF into an editable Word document means rebuilding paragraphs,
             headings, and tables from text that a PDF stores only as characters placed at
-            coordinates. That analysis is not something a browser can do, so this tool — and
-            only this tool — sends your file to a server we operate.
+            coordinates. That analysis is not something a browser can do, so this tool — and no
+            other tool on the site — sends your file to a server we operate.
           </p>
           <p style={{ marginBottom: "10px" }}>
             What happens: your PDF is sent over an encrypted connection to our converter, which
-            runs LibreOffice to produce the .docx, returns it to you, and deletes the file. The
+            runs pdf2docx to produce the .docx, returns it to you, and deletes the file. The
             file is written to a temporary directory that is removed as soon as the conversion
             finishes, including when it fails. Nothing is kept after your download, and no copy
             is made anywhere else.
@@ -140,6 +140,24 @@ export default function PrivacyPage() {
           <p>
             We do not log who clicked a shortened link, their IP address, or any identifying
             information — only an aggregate click count on the link itself.
+          </p>
+        </Section>
+
+        <Section id="contact-form" title="Contact form">
+          <p style={{ marginBottom: "10px" }}>
+            If you send us a message through the{" "}
+            <a href="/contact" style={{ color: colors.primary, textDecoration: "underline" }}>
+              contact form
+            </a>
+            , the name, email address, and message you type are sent to our server and delivered
+            to our inbox by email through Resend, our email provider. Your email address is used
+            only to reply to you.
+          </p>
+          <p>
+            We do not store contact messages in a database, add you to a mailing list, or share
+            what you send with anyone. To limit abuse we keep a count of recent submissions
+            against a one-way hash of your IP address — the same method the other server-backed
+            tools use, and the hash cannot be reversed to an IP.
           </p>
         </Section>
 
@@ -271,7 +289,9 @@ export default function PrivacyPage() {
           <p>
             Shortened URLs and their click counts are kept indefinitely so links keep working;
             there&rsquo;s currently no self-serve way to delete one. Analytics and advertising
-            data is retained by Google under its own retention policies, not ours. Files, images,
+            data is retained by Google under its own retention policies, not ours. Messages sent
+            through the contact form aren&rsquo;t stored in a database, but they do stay in our
+            email inbox the way any email does — ask and we&rsquo;ll delete yours. Files, images,
             and calculator inputs are never stored in the first place, so there is nothing to
             retain or delete.
           </p>

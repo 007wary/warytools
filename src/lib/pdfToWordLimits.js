@@ -2,7 +2,7 @@
 //
 // This tool is the one exception to the site's "nothing is uploaded" rule:
 // reconstructing a DOCX means real layout analysis, which no browser library
-// does, so the file goes to a LibreOffice container we run (see
+// does, so the file goes to a pdf2docx container we run (see
 // services/pdf-to-word/). That makes the limits here load-bearing in a way the
 // client-side tools' aren't — every accepted file costs CPU on a machine we
 // pay for, and every rejected one costs nothing. Rejecting early and cheaply
@@ -19,7 +19,7 @@
  * Much lower than MAX_PDF_BYTES (100 MB) in pdfFile.js, and deliberately so:
  * that limit is about what a browser tab can hold in memory, while this one is
  * about what a shared container can convert without starving other requests.
- * LibreOffice's memory use scales with page complexity, not just byte count,
+ * pdf2docx's memory use scales with page complexity, not just byte count,
  * so this is the conservative end.
  */
 export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024; // 20 MB
@@ -110,7 +110,7 @@ export function checkPageCount(pageCount) {
 /**
  * True when a PDF carries no extractable text layer.
  *
- * A scanned PDF is a stack of page images. LibreOffice will happily convert it
+ * A scanned PDF is a stack of page images. pdf2docx will happily convert it
  * and produce a DOCX containing those same images and not one editable word,
  * which is worse than a refusal — the user pays the upload, the wait, and the
  * download to learn nothing. We detect it client-side (pdf.js already gives us
