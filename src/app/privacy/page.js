@@ -7,7 +7,7 @@ const privacyTitle = "Privacy Policy";
 // Trimmed to ~155 chars: the previous 220-char version was cut off mid-clause
 // in search results, hiding the part that actually matters to readers.
 const privacyDescription =
-  "How WaryTools handles your data: nearly all files are processed in your browser and never uploaded. What we do and don't store, and the one tool that converts on a server.";
+  "How WaryTools handles your data: nearly all files are processed in your browser and never uploaded. What we do and don't store, and the two tools that convert on a server.";
 
 export const metadata = pageMetadata({
   title: privacyTitle,
@@ -85,24 +85,30 @@ export default function PrivacyPage() {
             processed, because the file never reached us in the first place.
           </p>
           <p>
-            <strong>One tool is an exception: PDF to Word.</strong> It is covered separately
-            below.
+            <strong>Two tools are an exception: PDF to Word and Word to PDF.</strong> They are
+            covered separately below.
           </p>
         </Section>
 
-        <Section id="pdf-to-word" title="PDF to Word (the one tool that uploads)">
+        <Section id="pdf-to-word" title="The document converters (the two tools that upload)">
           <p style={{ marginBottom: "10px" }}>
-            Converting a PDF into an editable Word document means rebuilding paragraphs,
-            headings, and tables from text that a PDF stores only as characters placed at
-            coordinates. That analysis is not something a browser can do, so this tool — and no
-            other tool on the site — sends your file to a server we operate.
+            Two tools convert between PDF and Word, and both need a server.
           </p>
           <p style={{ marginBottom: "10px" }}>
-            What happens: your PDF is sent over an encrypted connection to our converter, which
-            runs pdf2docx to produce the .docx, returns it to you, and deletes the file. The
-            file is written to a temporary directory that is removed as soon as the conversion
-            finishes, including when it fails. Nothing is kept after your download, and no copy
-            is made anywhere else.
+            <strong>PDF to Word</strong> has to rebuild paragraphs, headings, and tables from
+            text that a PDF stores only as characters placed at coordinates. <strong>Word to
+            PDF</strong> has to do the reverse: resolve styles, flow text through sections, break
+            tables across pages, and paginate the result. Neither is something a browser can do —
+            the first needs layout analysis, the second needs a word processor&rsquo;s layout
+            engine — so these two tools, and no others on the site, send your file to a server we
+            operate.
+          </p>
+          <p style={{ marginBottom: "10px" }}>
+            What happens: your file is sent over an encrypted connection to our converter, which
+            produces the output (pdf2docx for PDF to Word, LibreOffice for Word to PDF), returns
+            it to you, and deletes the file. The file is written to a temporary directory that is
+            removed as soon as the conversion finishes, including when it fails. Nothing is kept
+            after your download, and no copy is made anywhere else.
           </p>
           <p style={{ marginBottom: "10px" }}>
             What we do not do: we do not store your document, read it, index it, log its
@@ -112,9 +118,9 @@ export default function PrivacyPage() {
             hash cannot be reversed to an IP, and it is discarded after a day.
           </p>
           <p>
-            The tool states all of this on the page before you choose a file. If a document is
+            Both tools state all of this on the page before you choose a file. If a document is
             confidential enough that sending it to any server is unacceptable, use desktop
-            software such as Word or LibreOffice, which convert locally.
+            software such as Word or LibreOffice, which convert in both directions locally.
           </p>
         </Section>
 
@@ -272,8 +278,8 @@ export default function PrivacyPage() {
             device, the biggest category of risk in an online tool — your files sitting on
             someone else&rsquo;s server — mostly doesn&rsquo;t apply here. For those tools there
             is no upload endpoint to secure and no file storage to breach, because the file
-            never leaves your browser. The PDF to Word converter is the exception: it receives
-            files, so it holds each one only for the length of the conversion, deletes it
+            never leaves your browser. The two document converters are the exception: they
+            receive files, so each holds a file only for the length of the conversion, deletes it
             immediately afterwards, accepts requests only from this site, and stores nothing.
           </p>
           <p>

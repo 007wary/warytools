@@ -1,0 +1,74 @@
+# Fly.io deployment for the DOCX -> PDF converter.
+#
+# NOTE: `fly launch` rewrites this file and strips every comment. If you re-run
+# it, restore these notes from git rather than leaving the bare generated
+# version — the reasoning below is why the numbers are what they are.
+#
+# Sized for the workload rather than the defaults, and more generously than the
+# sibling PDF converter: LibreOffice is a full office suite, and each
+# conversion starts a soffice process that builds a fresh user profile and
+# loads the layout engine, fonts, and import filters before it renders a page.
+# Resident set for a single conversion is comfortably larger than pdf2docx's,
+# and an OOM-killed conversion looks to the user like a broken tool rather than
+# a capacity limit.
+#
+# 2 GB covers MAX_CONCURRENT=2 conversions with headroom. Lowering the memory
+# means lowering MAX_CONCURRENT in server.mjs to match; the two are one
+# decision, not two.
+
+app = 'warytools-word-converter'
+primary_region = 'bom'          # Mumbai — closest to the site's main audience.
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  # Set explicitly rather than relying on the image default. The Dockerfile
+  # defaults to 7860 (what Hugging Face Spaces routes to); server.mjs reads
+  # PORT either way, so the image runs unmodified on both — but internal_port
+  # below must match whatever this says, or Fly health-checks a dead port.
+  PORT = '8080'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+
+  # Scale to zero when idle. This service is bursty — paying for an always-on
+  # machine to serve occasional conversions is the wrong trade. Measured on the
+  # first real deploy: a cold request takes ~30s end to end (image pull, then
+  # ~12s for soffice to warm before the port opens). The client UI's timeout
+  # accounts for this; don't lower it without testing a cold start.
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  # There is no max-machines key in fly.toml — the ceiling is set out of band
+  # with `fly scale count 1`, which the README's deploy steps include. Worth
+  # doing, and not optional: `fly deploy` created TWO machines on the first
+  # deploy ("for high availability") despite min_machines_running = 0, which
+  # is double the expected bill until it is scaled back down.
+
+  # Deliberately set so a burst QUEUES on one machine rather than starting a
+  # second one. Fly bills per machine-second, so autoscaling on a free-to-use
+  # tool means traffic spikes translate directly into a bill nobody approved.
+  # server.mjs already queues internally (MAX_CONCURRENT=2) and the rate
+  # limiter caps abuse, so the realistic worst case is a short wait rather
+  # than a failure. Raise soft_limit only if real usage justifies the spend.
+  [http_service.concurrency]
+    type = 'requests'
+    hard_limit = 8
+    soft_limit = 4
+
+  [[http_service.checks]]
+    # Longer than the PDF converter's 30s. Measured: soffice takes ~12s to warm
+    # before the port opens, and a grace period that expires mid-boot makes Fly
+    # restart a machine that was about to become healthy — a boot loop that
+    # reads as an outage rather than a slow start.
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '45s'
+    method = 'GET'
+    path = '/health'
+
+[[vm]]
+  size = 'shared-cpu-2x'
+  memory = '2gb'

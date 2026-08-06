@@ -29,9 +29,10 @@ export async function GET() {
 > Free, browser-based PDF, image, calculator, and URL-shortener tools —
 > ${allTools.length} tools total. PDF and image tools run entirely
 > client-side (pdf-lib, canvas): files are processed on-device and never
-> uploaded to a server. The sole exception is PDF to Word, which converts
-> server-side because a browser cannot rebuild an editable document from a
-> PDF. Every tool is free and requires no account or sign-up.
+> uploaded to a server. The exceptions are the two document converters, PDF to
+> Word and Word to PDF, which convert server-side because a browser has no
+> layout engine for either direction. Every tool is free and requires no
+> account or sign-up.
 
 ${toolSections}
 
@@ -47,6 +48,7 @@ ${toolSections}
 
 - The URL shortener is the only tool with persistent server-side state (Supabase); it stores the short code, destination URL, and a click count.
 - PDF to Word sends the file to a pdf2docx converter we run, which returns the .docx and deletes the file immediately. Nothing is stored.
+- Word to PDF sends the file to a LibreOffice converter we run, which returns the PDF and deletes the file immediately. Nothing is stored. It accepts .docx, .doc, .odt, and .rtf.
 - The contact form posts the sender's name, email, and message to our server and delivers them by email. Nothing is stored in a database.
 - All other tools have no backend: no file, image, or calculator input is ever transmitted off the user's device.
 `;

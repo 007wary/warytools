@@ -15,7 +15,7 @@ npm run start    # run the production build
 npm run lint     # ESLint (flat config, eslint-config-next)
 ```
 
-`npm test` runs the vitest suite (`npm run test:watch` for watch mode) — 452 tests across twenty files, covering the pure-logic helpers in `src/lib/` (`calculatorMath`, `calculatorInput`, `calculatorFormat`, `calculatorUrlState`, `unitConversions`, `dateMath`, `imageFile`, `imageValidation`, `imageResampling`, `formatBytes`, `pdfPageRange`, `pdfFile`, `pdfToWordLimits`, `pdfWorkerProtocol`, `urlShortenerValidation`, `shortCode`, `siteUrl`, `sitemapRoutes`, `toolRanking`) plus `src/app/robots`. There are no component or end-to-end tests; UI and file-processing behaviour is only verified by `npm run build` and manual checks.
+`npm test` runs the vitest suite (`npm run test:watch` for watch mode) — 557 tests across twenty-four files, covering the pure-logic helpers in `src/lib/` (`calculatorMath`, `calculatorInput`, `calculatorFormat`, `calculatorUrlState`, `unitConversions`, `dateMath`, `imageFile`, `imageValidation`, `imageResampling`, `formatBytes`, `pdfPageRange`, `pdfFile`, `pdfToWordLimits`, `docxFile`, `wordToPdfLimits`, `pdfWorkerProtocol`, `urlShortenerValidation`, `shortCode`, `siteUrl`, `sitemapRoutes`, `toolRanking`) plus `src/app/robots`. There are no component or end-to-end tests; UI and file-processing behaviour is only verified by `npm run build` and manual checks.
 
 Because there is no component-level coverage, **logic that guards a user input belongs in a `src/lib/` module, not inline in a client component** — that's the only way it can be tested at all. `pdfPageRange.js` exists for exactly this reason.
 
@@ -23,7 +23,7 @@ Because there is no component-level coverage, **logic that guards a user input b
 
 ## Architecture
 
-**WaryTools** is a Next.js App Router site (`next@16`, React 19, Turbopack) offering free, mostly client-side PDF/image/calculator/URL-shortener tools. Two features touch a server: the URL shortener (Supabase) and PDF to Word (a pdf2docx container in `services/pdf-to-word/`). Everything else runs in the browser.
+**WaryTools** is a Next.js App Router site (`next@16`, React 19, Turbopack) offering free, mostly client-side PDF/image/calculator/URL-shortener tools. Three features touch a server: the URL shortener (Supabase), PDF to Word (a pdf2docx container in `services/pdf-to-word/`), and Word to PDF (a LibreOffice container in `services/word-to-pdf/`). Everything else runs in the browser.
 
 ### Tool registry drives everything
 
@@ -90,7 +90,7 @@ The seven calculators share a pipeline in the same spirit as the PDF and image o
 
 **Results are live, not click-to-calculate.** Age and date-difference used to compute on a button press, which left a stale answer on screen whenever a date changed afterwards. Every calculator now recomputes as you type, which is also why `ResultPanel` is an `<output>` with `aria-live="polite"`: an answer that merely appears in the DOM is invisible to a screen reader.
 
-### PDF to Word (the one tool that uploads a file)
+### PDF to Word (the first of two tools that upload a file)
 
 `/pdf/to-word` is the deliberate exception to everything above. Producing a real `.docx` means reconstructing paragraphs, headings, and tables from glyphs positioned at coordinates — a PDF has no concept of a paragraph — and no browser library does that analysis. So the file goes to a pdf2docx container in [services/pdf-to-word/](services/pdf-to-word/), proxied by [src/app/api/pdf-to-word/route.js](src/app/api/pdf-to-word/route.js). (It ran LibreOffice originally; that emits absolutely-positioned textboxes rather than flowing paragraphs, so nothing reflowed when edited. Don't switch back.)
 
@@ -108,6 +108,24 @@ Rules specific to this tool:
 - **`convert.py`'s stderr is a protocol, not a log.** `server.mjs` reads the *last line* of stderr as the result token, so anything else written there breaks it. pdf2docx calls `logging.basicConfig()` at import and logs to stderr, so `_silence_library_logging()` runs *after* the import and removes the handlers — setting a level beforehand is overridden and lets `[INFO] Terminated in 0.04s.` be read as the token.
 - **Don't tune the pdf2docx settings from the names alone.** Two obvious-looking wins were measured and rejected: `delete_end_line_hyphen` strips the hyphen but keeps the line break (`compre\nhensive`), and `extract_stream_table` only affects `extract_tables()`, which the DOCX path never calls. Both are documented in `convert.py` with what was measured; verify against the pinned version before adding more.
 - **The deploy must copy `convert.py`.** `server.mjs` execs it, so a Space or image built without it builds fine, health-checks green, and fails every conversion. It was missed once already in the LibreOffice→pdf2docx migration, which is why the service now refuses to start when the script is absent.
+
+### Word to PDF (the second tool that uploads a file)
+
+`/pdf/word-to-pdf` is the mirror image of the tool above, and shares its structure: [src/lib/wordToPdfLimits.js](src/lib/wordToPdfLimits.js) for limits and error copy, [src/app/api/word-to-pdf/route.js](src/app/api/word-to-pdf/route.js) as the proxy, and a container in [services/word-to-pdf/](services/word-to-pdf/). Everything in the PDF to Word rules above (server-only env vars, validate-before-availability-check, durable fail-closed rate limiting, limits shared between client and route) applies here identically and isn't repeated.
+
+What's specific to this direction:
+
+- **It runs LibreOffice, and that is not a contradiction of the section above.** PDF to Word rejected LibreOffice because its PDF *import* emits absolutely-positioned textboxes instead of flowing paragraphs. This tool needs DOCX *export*, which is the same layout engine Writer renders with, and PDF is simply its print target. **Do not "fix" this by switching it to something else on the strength of the pdf2docx note** — the objection is about direction, and both READMEs say so explicitly.
+- **A `.docx` has no magic bytes of its own.** It's a ZIP, so `PK\x03\x04` identifies it no better than it identifies a spreadsheet, a slide deck, or a renamed archive. [src/lib/docxFile.js](src/lib/docxFile.js) reads the first 4 KB and looks for the entry *paths* (`word/`, `opendocument.text`), which sit uncompressed in the ZIP's local file headers. Legacy `.doc` (OLE2) and `.rtf` do have real signatures. The same logic is mirrored in the route and in the service — three copies, because each has to be safe alone.
+- **The sniffed format decides the temp file's extension**, and that's load-bearing: LibreOffice picks its import filter partly from the filename, so a wrong or missing suffix makes it guess and can yield a PDF of the document's raw XML.
+- **Every conversion needs its own `-env:UserInstallation` profile and `HOME`.** Concurrent conversions sharing one LibreOffice profile make the second exit silently without output. This is the single most common way a LibreOffice service passes testing and fails under load.
+- **soffice exits 0 having produced nothing**, routinely. The exit code is not the success signal — the output directory is scanned, and an empty one is the failure. The route additionally checks that what came back actually starts with `%PDF-`.
+- **`fonts-liberation` is not an optional image size saving.** It provides the metric-compatible substitutes for Arial, Times New Roman, and Courier New; without them line breaks and page counts drift from the original, which is the most visible way a converted PDF looks wrong.
+- **No page count or preview in the client**, unlike the other PDF tools. Getting either means laying out the document in the browser, which is the exact work being sent to a server. `PdfFileHeader` renders fine without a `pageCount`.
+- **`WORD_CONVERTER_URL` / `WORD_CONVERTER_SECRET`**, server-only, and deliberately a *different* secret from the PDF converter's — separate services on separate hosts, so one shared secret would make a compromise of either a compromise of both.
+- Rate limiting reuses the `consume_pdf_conversion_quota` RPC but hashes a different tag (`soffice` vs `pdf2docx`) into the bucket key, so the two tools have independent quotas and no migration was needed.
+
+**Adding a third server-touching tool means another copy audit.** The "only two tools upload" claim is now load-bearing in `/privacy` (two places plus the page description), `/about` (two), the homepage (FAQ + prose), `/pdf`, and `llms.txt`.
 
 ### URL shortener (the other server-touching tool)
 

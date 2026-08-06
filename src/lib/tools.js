@@ -68,6 +68,16 @@ export const categories = [
         href: "/pdf/to-word",
         icon: "FileType2",
       },
+      {
+        slug: "word-to-pdf",
+        // The second tool here that can't say "nothing uploaded", for the
+        // mirror-image reason: laying out a Word document needs a Word layout
+        // engine, which a browser doesn't have. Same honesty rule as above.
+        title: "Word to PDF",
+        description: "Convert Word to PDF online, free — keeps your layout, fonts, and page breaks.",
+        href: "/pdf/word-to-pdf",
+        icon: "FileOutput",
+      },
     ],
   },
   {
