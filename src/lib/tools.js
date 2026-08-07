@@ -85,6 +85,24 @@ export const categories = [
         icon: "PenLine",
       },
       {
+        // Deliberately worded as "remove a password you have" rather than
+        // "unlock". Every competitor's copy here implies recovery, and someone
+        // arriving with a PDF they're locked out of should learn in the
+        // description that this isn't that tool — not after uploading it.
+        slug: "unlock",
+        title: "Unlock PDF",
+        description: "Remove a password you know from a PDF — free, nothing uploaded.",
+        href: "/pdf/unlock",
+        icon: "LockKeyholeOpen",
+      },
+      {
+        slug: "protect",
+        title: "Protect PDF",
+        description: "Password-protect a PDF with AES encryption — free, nothing uploaded.",
+        href: "/pdf/protect",
+        icon: "LockKeyhole",
+      },
+      {
         slug: "to-jpg",
         title: "PDF to JPG",
         description: "Convert PDF pages to JPG or PNG images at 72, 150, or 300 DPI — free.",

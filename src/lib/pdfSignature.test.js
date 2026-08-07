@@ -542,9 +542,15 @@ describe("findUnsupportedCharacters", () => {
 // overflow its box by ~20% in every offered face, so the text ran past the
 // rectangle the user dragged with nothing reporting it.
 //
-// pdf-lib is imported here and nowhere else in the tests. That is deliberate —
-// the whole point is to check the estimate in pdfSignature/SignPdfClient against
-// the true metrics rather than against another copy of the estimate.
+// The library is imported here and nowhere else in the tests. That is
+// deliberate — the whole point is to check the estimate in
+// pdfSignature/SignPdfClient against the true metrics rather than against
+// another copy of the estimate.
+//
+// It must be the SAME package the worker uses (@cantoo/pdf-lib, the fork that
+// carries the standard security handler for Unlock/Protect). Measuring against
+// a different build of the font metrics than the one that does the drawing
+// would make this test agree with itself and disagree with production.
 describe("typed signatures fit the box they were dragged", () => {
   /** The client's initial-aspect estimate, mirrored from SignPdfClient. */
   function estimateAspect(text) {
@@ -564,7 +570,7 @@ describe("typed signatures fit the box they were dragged", () => {
   ];
 
   it("never draws wider or taller than the placement, in any face", async () => {
-    const { PDFDocument, StandardFonts } = await import("pdf-lib");
+    const { PDFDocument, StandardFonts } = await import("@cantoo/pdf-lib");
     const pdf = await PDFDocument.create();
 
     for (const face of TYPE_FACES) {
@@ -604,7 +610,7 @@ describe("typed signatures fit the box they were dragged", () => {
   // in its box. A fit that always returned a tiny size would pass the test above
   // and be just as wrong.
   it("fills at least 60% of the placement in both axes", async () => {
-    const { PDFDocument, StandardFonts } = await import("pdf-lib");
+    const { PDFDocument, StandardFonts } = await import("@cantoo/pdf-lib");
     const pdf = await PDFDocument.create();
 
     for (const face of TYPE_FACES) {

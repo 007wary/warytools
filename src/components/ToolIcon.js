@@ -25,6 +25,8 @@ import {
   Hash,
   Droplets,
   PenLine,
+  LockKeyholeOpen,
+  LockKeyhole,
 } from "lucide-react";
 
 // Resolves the string icon names stored in tools.js to actual lucide
@@ -67,6 +69,10 @@ const iconMap = {
   Droplets,
   // Sign PDF.
   PenLine,
+  // Unlock PDF and Protect PDF. The open/closed pair reads as one feature with
+  // two directions at a glance, which is what they are.
+  LockKeyholeOpen,
+  LockKeyhole,
 };
 
 export default function ToolIcon({ name, size = 20, strokeWidth = 1.75, style, ...props }) {

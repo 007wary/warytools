@@ -16,7 +16,22 @@
 // (see the transfer list in pdfWorkerClient.js), so a 50 MB document does not
 // briefly exist twice in memory.
 
-import { PDFDocument, StandardFonts, degrees, rgb } from "pdf-lib";
+// @cantoo/pdf-lib is a maintained fork of pdf-lib with an identical API plus
+// the one thing stock pdf-lib has never had: the standard security handler.
+// It is used for EVERY op here, not just the two encryption ones — running two
+// forks side by side would ship two copies of the same library in this chunk
+// and, worse, give a document loaded by one and saved by the other two
+// different object models. API parity was verified against every call this
+// file makes (copyPages, embedPng/Jpg, getCropBox, getRotation, drawText,
+// widthOfTextAtSize, heightAtSize) before the swap.
+//
+// Cost: ~148 KB minified over stock pdf-lib, and it lands in the worker chunk
+// only — never the page bundle. The alternative for encryption was qpdf
+// compiled to WASM, which is 1.27 MB of .wasm, a 0.0.2 release from a single
+// unaffiliated maintainer, and would still have left pdf-lib in place for
+// everything else.
+import { PDFDocument, StandardFonts, PDFName, PDFObjectCopier, degrees, rgb } from "@cantoo/pdf-lib";
+import { PRESERVED_CATALOG_KEYS, toSecurityPermissions } from "@/lib/pdfEncryption";
 import {
   placementToPdfRect,
   drawOriginFor,
@@ -125,6 +140,12 @@ async function runOp(id, op, payload) {
       return watermark(id, payload);
     case ops.SIGN:
       return sign(payload);
+    case ops.INSPECT_ENCRYPTION:
+      return inspectEncryption(payload);
+    case ops.UNLOCK:
+      return unlock(payload);
+    case ops.PROTECT:
+      return protect(payload);
     default:
       throw new Error(`Unknown PDF worker op: ${op}`);
   }
@@ -791,5 +812,157 @@ async function sign({ bytes, placements, assets }) {
       signedPageCount: signedPages.size,
     },
     transfer: [out.buffer],
+  };
+}
+
+// ── Encryption ───────────────────────────────────────────────────────────────
+//
+// The two encryption ops are the only place in this worker that must NOT go
+// through loadPdf(): that helper passes `ignoreEncryption: true`, which is right
+// for every other tool (it lets an owner-password file be edited, as every
+// reader does) and exactly wrong here. Unlock needs the library to actually
+// derive the key from the user's password, and it can only do that when it is
+// allowed to treat the document as encrypted.
+
+/**
+ * Rebuilds a decrypted document into a brand-new one.
+ *
+ * This is the load-bearing part of Unlock PDF, and it is not the obvious
+ * implementation. `PDFDocument.load(bytes, { password }).save()` looks correct
+ * and even reloads without a password — but @cantoo's save() preserves the
+ * source file's bytes and appends to them, so the output still opens with the
+ * original document and still carries `/Encrypt` in its trailer. Readers that
+ * trust that declaration prompt for a password that no longer opens anything.
+ *
+ * `save({ rewrite: true })`, `useObjectStreams: false`, deleting the orphaned
+ * security dictionary, and clearing `context.trailerInfo.Encrypt` were each
+ * measured and each still emitted `/Encrypt`. Copying the pages into a fresh
+ * document — whose context never had encryption — is the only route that
+ * produces genuinely clean bytes.
+ *
+ * The cost is the one CLAUDE.md warns about: copyPages drops everything hanging
+ * off the catalog rather than off a page. So the catalog entries are carried
+ * across explicitly with PDFObjectCopier (see PRESERVED_CATALOG_KEYS), which is
+ * what keeps a fillable form fillable instead of returning a flat picture of it.
+ */
+async function rebuildWithoutEncryption(src) {
+  const out = await PDFDocument.create();
+
+  const pages = await out.copyPages(src, src.getPageIndices());
+  pages.forEach((page) => out.addPage(page));
+
+  const copier = PDFObjectCopier.for(src.context, out.context);
+  for (const key of PRESERVED_CATALOG_KEYS) {
+    const ref = src.catalog.get(PDFName.of(key));
+    // copy() returns a ref already registered in the destination context, so it
+    // is set directly rather than registered a second time.
+    if (ref) out.catalog.set(PDFName.of(key), copier.copy(ref));
+  }
+
+  return out;
+}
+
+/**
+ * Reports whether a document is encrypted and whether it needs a password.
+ *
+ * Both tools need this before doing anything, and the two cases lead to
+ * completely different UI:
+ *
+ *   - `needsPassword` — a user password. Nothing can be read without it, so the
+ *     tool must ask before it can even count the pages.
+ *   - encrypted but openable — an owner password only. The content was never
+ *     encrypted against reading, which is why every reader opens it silently.
+ *     Unlock can strip it with no password at all, and saying so is more useful
+ *     than implying a feat was performed.
+ */
+async function inspectEncryption({ bytes, password }) {
+  // Attempted WITHOUT ignoreEncryption, so a user-password file throws here
+  // rather than loading half-readable.
+  try {
+    const pdf = await PDFDocument.load(bytes, password ? { password } : undefined);
+    return {
+      message: {
+        encrypted: Boolean(pdf.context?.isDecrypted) || false,
+        needsPassword: false,
+        pageCount: pdf.getPageCount(),
+      },
+      transfer: [],
+    };
+  } catch (error) {
+    const message = String(error?.message || error).toLowerCase();
+
+    // The library's own guard for "encrypted, and you gave me nothing usable".
+    if (message.includes("is encrypted") || message.includes("password")) {
+      return {
+        message: { encrypted: true, needsPassword: true, pageCount: null },
+        transfer: [],
+      };
+    }
+
+    throw error;
+  }
+}
+
+/**
+ * Removes encryption from a document the user can already open.
+ *
+ * `password` may be an empty string: that is the owner-password-only case, where
+ * the content is not encrypted against reading and no password is required to
+ * strip the restrictions.
+ */
+async function unlock({ bytes, password }) {
+  // No ignoreEncryption — the whole point is to make the library derive the key.
+  const src = await PDFDocument.load(bytes, { password: password || "" });
+
+  const hadEncryption = Boolean(src.context?.isDecrypted);
+  const out = await rebuildWithoutEncryption(src);
+
+  const result = await out.save({ useObjectStreams: true });
+  return {
+    message: {
+      bytes: result.buffer,
+      pageCount: out.getPageCount(),
+      hadEncryption,
+    },
+    transfer: [result.buffer],
+  };
+}
+
+/**
+ * Applies password protection and/or permission restrictions.
+ *
+ * The document is rebuilt first, for a reason that only shows up on a file that
+ * was ALREADY encrypted: re-encrypting in place would append to bytes that still
+ * carry the previous /Encrypt dictionary, leaving two security dictionaries in
+ * one file and readers disagreeing about which applies. Rebuilding first means
+ * this always writes onto a clean document, whether the input was protected or
+ * not.
+ *
+ * `userPassword` may be empty — that is the "restrict, but let anyone open it"
+ * case. `ownerPassword` is what guards the restrictions themselves; without a
+ * distinct one the permissions could be lifted by anyone who can open the file.
+ */
+async function protect({ bytes, password, userPassword, ownerPassword, permissions }) {
+  // The document may itself be encrypted (someone changing an existing
+  // password), so it is opened with whatever the user supplied for it.
+  const src = await PDFDocument.load(bytes, { password: password || "" });
+  const out = await rebuildWithoutEncryption(src);
+
+  out.encrypt({
+    // Empty strings are omitted rather than passed: pdf-lib treats a present
+    // empty userPassword as "no password needed to open", which is what we want,
+    // but being explicit keeps the two cases from depending on that behaviour.
+    ...(userPassword ? { userPassword } : {}),
+    ...(ownerPassword ? { ownerPassword } : {}),
+    permissions: toSecurityPermissions(permissions || {}),
+  });
+
+  const result = await out.save({ useObjectStreams: true });
+  return {
+    message: {
+      bytes: result.buffer,
+      pageCount: out.getPageCount(),
+    },
+    transfer: [result.buffer],
   };
 }

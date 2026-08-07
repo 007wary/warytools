@@ -21,6 +21,9 @@ export const ops = {
   ADD_PAGE_NUMBERS: "add_page_numbers",
   WATERMARK: "watermark",
   SIGN: "sign",
+  INSPECT_ENCRYPTION: "inspect_encryption",
+  UNLOCK: "unlock",
+  PROTECT: "protect",
 };
 
 /** Message kinds the worker sends back. */
