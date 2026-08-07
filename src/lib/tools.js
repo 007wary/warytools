@@ -197,6 +197,17 @@ export const categories = [
         href: "/image/convert",
         icon: "RefreshCw",
       },
+      {
+        // Shares the Droplets icon with Watermark PDF, deliberately: they are
+        // the same action on two file types, and a reader scanning the grid
+        // should recognise the pair. The icon was already in ToolIcon's map, so
+        // unlike most new tools this one needed no fourth edit there.
+        slug: "watermark",
+        title: "Watermark Image",
+        description: "Add a text or logo watermark to photos in bulk — free, nothing uploaded.",
+        href: "/image/watermark",
+        icon: "Droplets",
+      },
     ],
   },
   {

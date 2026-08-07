@@ -6,7 +6,7 @@ import { colors } from "@/lib/theme";
 import { formatBytes } from "@/lib/formatBytes";
 import { iconButtonStyle } from "@/components/ToolButton";
 
-// The file list shared by all three image tools once they became multi-file.
+// The file list shared by every image tool once they became multi-file.
 //
 // Shows each queued image with a thumbnail, and — once processed — its
 // before/after size side by side. That comparison is the point: the old tools

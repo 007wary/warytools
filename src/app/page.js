@@ -29,12 +29,17 @@ const faqs = [
   {
     question: "Are these tools really free?",
     answer:
-      "Yes. Every tool on WaryTools is free to use with no sign-up, no account, no watermarks, and no usage limits.",
+      // "No watermarks" means we never stamp our own branding on your output —
+      // the promise every other free tool breaks. Worded as "of our own" now
+      // that a Watermark Image tool exists, so the two can't be read as
+      // contradicting each other: one adds a mark you asked for, the other is
+      // about a mark you didn't.
+      "Yes. Every tool on WaryTools is free to use with no sign-up, no account, no watermarks of our own on your files, and no usage limits.",
   },
   {
     question: "What free online PDF and image tools are available?",
     answer:
-      "You can merge, split, compress, rotate, and reorder PDF files, and compress, resize, or convert images between PNG, JPG, and WebP. There are also calculators for age, percentage, GST, interest, unit conversion, and date differences, plus a free URL shortener.",
+      "You can merge, split, compress, rotate, and reorder PDF files, and compress, resize, convert, or watermark images between PNG, JPG, and WebP. There are also calculators for age, percentage, GST, interest, unit conversion, and date differences, plus a free URL shortener.",
   },
   {
     question: "Are my files uploaded to a server?",

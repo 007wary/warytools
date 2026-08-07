@@ -6,13 +6,17 @@ import { useImageWorker } from "./imageWorkerClient";
 import { outputFilename } from "./imageResampling";
 import { events, trackEvent } from "./analytics";
 
-// The queue-plus-worker state shared by Compress, Resize and Convert.
+// The queue-plus-worker state shared by Compress, Resize, Convert and
+// Watermark.
 //
-// All three do the same thing structurally — accept files, validate them, run
+// All four do the same thing structurally — accept files, validate them, run
 // one settings object over the batch, hand back downloadable results — and
 // only differ in which settings they expose. Keeping that shape here means a
-// fix to the batch semantics lands in all three at once, which is exactly
+// fix to the batch semantics lands in all of them at once, which is exactly
 // what didn't happen when each tool owned its own copy of the logic.
+//
+// Watermark is the one that proves the shape was right: it added a whole
+// settings sub-object and a preview without touching this file at all.
 
 let nextId = 0;
 

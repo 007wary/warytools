@@ -5,9 +5,9 @@ import { categories } from "@/lib/tools";
 import { jsonLdGraph, collectionPageJsonLd, breadcrumbJsonLd } from "@/lib/jsonLd";
 import { pageMetadata } from "@/lib/pageMetadata";
 
-const title = "Free Image Tools — Compress, Resize, Convert";
+const title = "Free Image Tools — Compress, Resize, Convert, Watermark";
 const description =
-  "Free online image tools to compress, resize, and convert JPG, PNG, and WebP files. No sign-up — everything runs in your browser, nothing uploaded.";
+  "Free online image tools to compress, resize, convert, and watermark JPG, PNG, and WebP files. No sign-up — everything runs in your browser, nothing uploaded.";
 
 export const metadata = pageMetadata({ title, description, path: "/image" });
 

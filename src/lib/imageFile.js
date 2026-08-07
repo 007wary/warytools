@@ -1,4 +1,5 @@
-// Shared helpers for client-side image tools (compress, resize, convert).
+// Shared helpers for client-side image tools (compress, resize, convert,
+// watermark).
 
 // Re-exported so the image tools can keep importing it from here alongside
 // loadImage/canvasToBlob; the implementation is shared with the PDF

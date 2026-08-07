@@ -17,6 +17,7 @@
 
 import { planDownscaleSteps, needsMatte } from "@/lib/imageResampling";
 import { replies, createProgress } from "@/lib/pdfWorkerProtocol";
+import { drawWatermark } from "@/lib/imageWatermarkDraw";
 
 const cancelled = new Set();
 
@@ -77,25 +78,43 @@ async function processBatch(id, { files, settings }) {
   const failures = [];
   const total = files.length;
 
-  for (let i = 0; i < total; i++) {
-    throwIfCancelled(id);
-    report(id, i, total, "Processing image");
+  // The watermark logo is decoded ONCE for the whole batch rather than per
+  // file. Decoding it inside the loop would repeat the same work for every
+  // image — on a fifty-file batch that is fifty identical decodes of the same
+  // PNG, which is pure waste and visibly slows the run.
+  let logo = null;
+  if (settings?.watermark?.mode === "image" && settings.watermark.logoBlob) {
+    logo = await createImageBitmap(settings.watermark.logoBlob, {
+      imageOrientation: "from-image",
+    });
+  }
 
-    const entry = files[i];
-    try {
-      const output = await processOne(entry, settings);
-      // The source index travels with the result. Matching on array position
-      // breaks as soon as one file fails (every later result shifts onto the
-      // wrong source), and matching on filename breaks when a batch contains
-      // two files with the same name from different folders.
-      outputs.push({ ...output, index: i });
-      transfer.push(output.bytes);
-    } catch (error) {
-      // One unreadable file in a batch of twenty must not lose the other
-      // nineteen results. Failures are collected and reported alongside the
-      // successes rather than aborting the run.
-      failures.push({ index: i, name: entry.name, message: String(error?.message || error) });
+  try {
+    for (let i = 0; i < total; i++) {
+      throwIfCancelled(id);
+      report(id, i, total, "Processing image");
+
+      const entry = files[i];
+      try {
+        const output = await processOne(entry, settings, logo);
+        // The source index travels with the result. Matching on array position
+        // breaks as soon as one file fails (every later result shifts onto the
+        // wrong source), and matching on filename breaks when a batch contains
+        // two files with the same name from different folders.
+        outputs.push({ ...output, index: i });
+        transfer.push(output.bytes);
+      } catch (error) {
+        // One unreadable file in a batch of twenty must not lose the other
+        // nineteen results. Failures are collected and reported alongside the
+        // successes rather than aborting the run.
+        failures.push({ index: i, name: entry.name, message: String(error?.message || error) });
+      }
     }
+  } finally {
+    // Closed even when the batch throws or is cancelled mid-run. A decoded
+    // bitmap can be tens of megabytes and letting GC find it is too slow when
+    // the user is churning through settings and re-running.
+    logo?.close?.();
   }
 
   throwIfCancelled(id);
@@ -104,7 +123,7 @@ async function processBatch(id, { files, settings }) {
   return { message: { outputs, failures }, transfer };
 }
 
-async function processOne(entry, settings) {
+async function processOne(entry, settings, logo = null) {
   const { blob, name } = entry;
 
   // "from-image" is what fixes sideways phone photos. Without it the bitmap
@@ -165,6 +184,15 @@ async function processOne(entry, settings) {
     }
     outCtx.drawImage(current, 0, 0);
     current.close?.();
+
+    // Drawn after every resize step and before the encode, which is the only
+    // correct point in the pipeline. Watermarking first and then downscaling
+    // would resample the mark along with the photo — softening the crisp text
+    // edges the outline exists to provide — and would shrink a mark sized
+    // against the source rather than the output.
+    if (settings.watermark) {
+      drawWatermark(outCtx, outCanvas.width, outCanvas.height, settings.watermark, logo);
+    }
 
     const encoded = await outCanvas.convertToBlob({
       type: settings.format,
