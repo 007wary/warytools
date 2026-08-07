@@ -153,6 +153,21 @@ export const categories = [
         href: "/pdf/powerpoint-to-pdf",
         icon: "Presentation",
       },
+      {
+        slug: "excel-to-pdf",
+        // The fourth tool here that can't say "nothing uploaded", for the same
+        // reason as the other two Office converters: laying out a spreadsheet
+        // needs a spreadsheet layout engine, which a browser doesn't have.
+        // Same honesty rule.
+        //
+        // The description leads with columns rather than with speed or
+        // formatting, because "it cut off my columns" is how people actually
+        // describe the problem this conversion has — see the tool page.
+        title: "Excel to PDF",
+        description: "Convert Excel to PDF online, free — fits every column on the page.",
+        href: "/pdf/excel-to-pdf",
+        icon: "Sheet",
+      },
     ],
   },
   {

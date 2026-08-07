@@ -159,7 +159,7 @@ export default function WordToPdfClient() {
 
   return (
     <div>
-      {/* Shown before the file picker, not after: this is one of only three
+      {/* Shown before the file picker, not after: this is one of only four
           tools on the site that upload, and the moment to say so is before
           someone chooses a document, not after. */}
       <div

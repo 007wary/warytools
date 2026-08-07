@@ -27,7 +27,7 @@ const faqs = [
   {
     question: "Is my document uploaded to convert it?",
     answer:
-      "Yes. This, PDF to Word, and PowerPoint to PDF are the only three tools on WaryTools that upload anything. Turning a Word file into a PDF means running a Word layout engine — resolving styles, flowing text, breaking tables across pages — which a browser cannot do. Your file is sent to our converter over an encrypted connection, converted, and deleted immediately. It is never stored, logged, or shared. If a document is confidential, Word and LibreOffice both export PDFs locally.",
+      "Yes. This, PDF to Word, PowerPoint to PDF, and Excel to PDF are the only four tools on WaryTools that upload anything. Turning a Word file into a PDF means running a Word layout engine — resolving styles, flowing text, breaking tables across pages — which a browser cannot do. Your file is sent to our converter over an encrypted connection, converted, and deleted immediately. It is never stored, logged, or shared. If a document is confidential, Word and LibreOffice both export PDFs locally.",
   },
   {
     question: "Will the PDF look exactly like my document?",

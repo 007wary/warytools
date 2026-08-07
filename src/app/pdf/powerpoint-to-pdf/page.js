@@ -27,7 +27,7 @@ const faqs = [
   {
     question: "Is my presentation uploaded to convert it?",
     answer:
-      "Yes. This and the two Word converters are the only three tools on WaryTools that upload anything. Turning a deck into a PDF means running a presentation layout engine — resolving slide masters, theme fonts, placeholders, and embedded charts — which a browser cannot do. Your file is sent to our converter over an encrypted connection, converted, and deleted immediately. It is never stored, logged, or shared. If a deck is confidential, PowerPoint and LibreOffice both export PDFs locally.",
+      "Yes. This, the two Word converters, and Excel to PDF are the only four tools on WaryTools that upload anything. Turning a deck into a PDF means running a presentation layout engine — resolving slide masters, theme fonts, placeholders, and embedded charts — which a browser cannot do. Your file is sent to our converter over an encrypted connection, converted, and deleted immediately. It is never stored, logged, or shared. If a deck is confidential, PowerPoint and LibreOffice both export PDFs locally.",
   },
   {
     question: "Will the PDF look exactly like my slides?",

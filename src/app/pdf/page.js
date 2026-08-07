@@ -29,7 +29,7 @@ export default function PdfHubPage() {
         categorySlug="pdf"
         icon={category.icon}
         title="Free PDF Tools"
-        description="Every PDF tool here runs in your browser, with three exceptions — PDF to Word, Word to PDF, and PowerPoint to PDF convert on our server, and each says so before you pick a file."
+        description="Every PDF tool here runs in your browser, with four exceptions — PDF to Word, Word to PDF, PowerPoint to PDF, and Excel to PDF convert on our server, and each says so before you pick a file."
       />
 
       <div

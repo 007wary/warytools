@@ -7,7 +7,7 @@ const privacyTitle = "Privacy Policy";
 // Trimmed to ~155 chars: the previous 220-char version was cut off mid-clause
 // in search results, hiding the part that actually matters to readers.
 const privacyDescription =
-  "How WaryTools handles your data: nearly all files are processed in your browser and never uploaded. What we do and don't store, and the three tools that convert on a server.";
+  "How WaryTools handles your data: nearly all files are processed in your browser and never uploaded. What we do and don't store, and the four tools that convert on a server.";
 
 export const metadata = pageMetadata({
   title: privacyTitle,
@@ -86,15 +86,16 @@ export default function PrivacyPage() {
           </p>
           <p>
             <strong>
-              Three tools are an exception: PDF to Word, Word to PDF, and PowerPoint to PDF.
+              Four tools are an exception: PDF to Word, Word to PDF, PowerPoint to PDF, and Excel
+              to PDF.
             </strong>{" "}
             They are covered separately below.
           </p>
         </Section>
 
-        <Section id="pdf-to-word" title="The document converters (the three tools that upload)">
+        <Section id="pdf-to-word" title="The document converters (the four tools that upload)">
           <p style={{ marginBottom: "10px" }}>
-            Three tools convert between PDF and an Office format, and all of them need a server.
+            Four tools convert between PDF and an Office format, and all of them need a server.
           </p>
           <p style={{ marginBottom: "10px" }}>
             <strong>PDF to Word</strong> has to rebuild paragraphs, headings, and tables from
@@ -102,9 +103,11 @@ export default function PrivacyPage() {
             PDF</strong> has to do the reverse: resolve styles, flow text through sections, break
             tables across pages, and paginate the result. <strong>PowerPoint to PDF</strong> has
             to render slides — resolving slide masters, theme fonts, placeholders, and embedded
-            charts. None of these is something a browser can do — the first needs layout
-            analysis, the other two need a real office layout engine — so these three tools, and
-            no others on the site, send your file to a server we operate.
+            charts. <strong>Excel to PDF</strong> has to lay out a grid that has no page size of
+            its own — resolving column widths, number formats, and charts, then deciding where the
+            sheet is cut into pages. None of these is something a browser can do — the first needs
+            layout analysis, the other three need a real office layout engine — so these four
+            tools, and no others on the site, send your file to a server we operate.
           </p>
           <p style={{ marginBottom: "10px" }}>
             What happens: your file is sent over an encrypted connection to our converter, which
@@ -121,10 +124,10 @@ export default function PrivacyPage() {
             hash cannot be reversed to an IP, and it is discarded after a day.
           </p>
           <p>
-            All three tools state this on the page before you choose a file. If a document is
+            All four tools state this on the page before you choose a file. If a document is
             confidential enough that sending it to any server is unacceptable, use desktop
-            software such as Word, PowerPoint, or LibreOffice, which convert in every one of these
-            directions locally.
+            software such as Word, PowerPoint, Excel, or LibreOffice, which convert in every one
+            of these directions locally.
           </p>
         </Section>
 
@@ -282,7 +285,7 @@ export default function PrivacyPage() {
             device, the biggest category of risk in an online tool — your files sitting on
             someone else&rsquo;s server — mostly doesn&rsquo;t apply here. For those tools there
             is no upload endpoint to secure and no file storage to breach, because the file
-            never leaves your browser. The three document converters are the exception: they
+            never leaves your browser. The four document converters are the exception: they
             receive files, so each holds a file only for the length of the conversion, deletes it
             immediately afterwards, accepts requests only from this site, and stores nothing.
           </p>

@@ -246,7 +246,7 @@ export async function validatePresentationFile(file) {
   if (format === "xlsx") {
     return {
       ok: false,
-      error: "That's an Excel spreadsheet, not a presentation. This tool converts .pptx, .ppt, .ppsx, and .odp files.",
+      error: "That's an Excel spreadsheet, not a presentation. Use the Excel to PDF tool for that.",
     };
   }
 

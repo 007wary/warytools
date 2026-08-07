@@ -182,7 +182,7 @@ export default function PowerPointToPdfClient() {
 
   return (
     <div>
-      {/* Shown before the file picker, not after: this is one of only three
+      {/* Shown before the file picker, not after: this is one of only four
           tools on the site that upload, and the moment to say so is before
           someone chooses a file, not after. */}
       <div
@@ -202,9 +202,9 @@ export default function PowerPointToPdfClient() {
           style={{ color: colors.textMuted, flexShrink: 0, marginTop: "1px" }}
         />
         <p style={{ fontSize: "13px", color: colors.textSecondary, lineHeight: 1.5, margin: 0 }}>
-          <strong style={{ color: colors.text }}>This tool uploads your file.</strong> Like the two
-          Word converters, and unlike everything else here, laying out a presentation can&apos;t run
-          in a browser — your file is sent to our converter, rendered to PDF, and deleted
+          <strong style={{ color: colors.text }}>This tool uploads your file.</strong> Like the
+          other three document converters, and unlike everything else here, laying out a
+          presentation can&apos;t run in a browser — your file is sent to our converter, rendered to PDF, and deleted
           immediately afterwards. Nothing is stored or logged. If the deck is confidential,
           PowerPoint and LibreOffice both export PDFs locally.
         </p>

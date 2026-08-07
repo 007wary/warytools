@@ -217,7 +217,7 @@ export async function validateDocumentFile(file) {
   // Named formats get named errors. A user who picked the wrong file out of a
   // folder needs to know *which* wrong file it was.
   if (format === "xlsx") {
-    return { ok: false, error: "That's an Excel spreadsheet, not a Word document. This tool converts .docx, .doc, .odt, and .rtf files." };
+    return { ok: false, error: "That's an Excel spreadsheet, not a Word document. Use the Excel to PDF tool for that." };
   }
   if (format === "pptx") {
     return { ok: false, error: "That's a PowerPoint presentation, not a Word document. This tool converts .docx, .doc, .odt, and .rtf files." };

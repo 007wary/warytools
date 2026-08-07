@@ -29,6 +29,7 @@ const ALLOWLISTED_IN_DATABASE = [
   "image/resize",
   "pdf/compress",
   "pdf/crop",
+  "pdf/excel-to-pdf",
   "pdf/jpg-to-pdf",
   "pdf/merge",
   "pdf/page-numbers",
@@ -103,12 +104,17 @@ describe("tool usage allowlist", () => {
 
   it("includes every server-side converter", () => {
     // Named explicitly because these are the newest tools and the ones whose
-    // absence prompted this test. They are also the three that upload, so the
-    // list doubles as the check that the privacy copy's "three tools" claim
+    // absence prompted this test. They are also the four that upload, so the
+    // list doubles as the check that the privacy copy's "four tools" claim
     // still matches the registry.
+    //
+    // If a fifth converter is ever added here, the copy audit is part of the
+    // work: /privacy, /about, the homepage, /pdf, llms.txt, and each
+    // converter's own FAQ all state the count.
     expect(TOOL_USAGE_SLUGS).toContain("pdf/to-word");
     expect(TOOL_USAGE_SLUGS).toContain("pdf/word-to-pdf");
     expect(TOOL_USAGE_SLUGS).toContain("pdf/powerpoint-to-pdf");
+    expect(TOOL_USAGE_SLUGS).toContain("pdf/excel-to-pdf");
   });
 });
 

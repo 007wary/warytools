@@ -20,6 +20,7 @@ import {
   FileType2,
   FileOutput,
   Presentation,
+  Sheet,
   Crop,
   Images,
   Hash,
@@ -57,6 +58,10 @@ const iconMap = {
   FileType2,
   FileOutput,
   Presentation,
+  // Excel to PDF, the fourth converter. A grid rather than another document
+  // glyph: it is what distinguishes a spreadsheet from the three document
+  // formats beside it in the same category.
+  Sheet,
   // Crop PDF and PDF to JPG. JPG to PDF reuses FileText above, which is
   // correct rather than a fallback: a PDF is what it produces.
   Crop,
