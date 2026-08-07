@@ -50,6 +50,16 @@ const isDev = process.env.NODE_ENV === "development";
 //     google.de, and so on. There is no wildcard shape for a TLD, so the
 //     common mirrors are listed explicitly; an unlisted one costs only the
 //     signals ping, never the page_view above.
+//   - `stats.g.doubleclick.net` gets the same signals ping and is on yet
+//     another domain. Found via the Sentry CSP reports, not the console —
+//     it only fires for a subset of visitors, so a single local session
+//     never shows it.
+//
+// The CSP report-uri above is what makes this list maintainable: a host we
+// miss arrives as a Sentry issue tagged `blocked-host` rather than as
+// silently absent analytics. Check there before adding guesses here.
+const gaSignalsHosts = ["https://stats.g.doubleclick.net"];
+
 const gaRegionalSignalsHosts = [
   "https://www.google.com",
   "https://www.google.co.in",
@@ -64,9 +74,16 @@ const gaRegionalSignalsHosts = [
   "https://www.google.com.br",
   "https://www.google.co.jp",
   "https://www.google.com.sg",
-].join(" ");
+];
 
-const gaCollectHosts = `https://www.google-analytics.com https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com ${gaRegionalSignalsHosts}`;
+const gaCollectHosts = [
+  "https://www.google-analytics.com",
+  "https://*.google-analytics.com",
+  "https://analytics.google.com",
+  "https://*.analytics.google.com",
+  ...gaSignalsHosts,
+  ...gaRegionalSignalsHosts,
+].join(" ");
 
 const gaEnabled = Boolean(process.env.NEXT_PUBLIC_GA_ID);
 const gaScriptSrc = gaEnabled ? " https://www.googletagmanager.com" : "";
