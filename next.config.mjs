@@ -37,13 +37,44 @@ const isDev = process.env.NODE_ENV === "development";
 // hits to the google-analytics.com/google.com collect endpoints, and falls
 // back to a GIF pixel on those same hosts when sendBeacon/fetch is
 // unavailable (hence the img-src entries).
+//
+// Three of these hosts are easy to get wrong and each fails as a blocked
+// hit rather than an error, so the page_view simply never arrives:
+//   - `analytics.google.com` is sent to *bare*, and a `*.` wildcard matches
+//     subdomains only, never the apex — so it needs its own entry alongside
+//     `*.analytics.google.com`.
+//   - `www.google.com/g/collect` is the Google-signals ping, fired whenever
+//     signals/ads features are on for the property. It is not a
+//     google-analytics.com host at all.
+//   - that ping follows the visitor's region, so it goes to google.co.in,
+//     google.de, and so on. There is no wildcard shape for a TLD, so the
+//     common mirrors are listed explicitly; an unlisted one costs only the
+//     signals ping, never the page_view above.
+const gaRegionalSignalsHosts = [
+  "https://www.google.com",
+  "https://www.google.co.in",
+  "https://www.google.co.uk",
+  "https://www.google.ca",
+  "https://www.google.com.au",
+  "https://www.google.de",
+  "https://www.google.fr",
+  "https://www.google.es",
+  "https://www.google.it",
+  "https://www.google.nl",
+  "https://www.google.com.br",
+  "https://www.google.co.jp",
+  "https://www.google.com.sg",
+].join(" ");
+
+const gaCollectHosts = `https://www.google-analytics.com https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com ${gaRegionalSignalsHosts}`;
+
 const gaEnabled = Boolean(process.env.NEXT_PUBLIC_GA_ID);
 const gaScriptSrc = gaEnabled ? " https://www.googletagmanager.com" : "";
 const gaConnectSrc = gaEnabled
-  ? " https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com"
+  ? ` ${gaCollectHosts} https://www.googletagmanager.com`
   : "";
 const gaImgSrc = gaEnabled
-  ? " https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com"
+  ? ` ${gaCollectHosts} https://www.googletagmanager.com`
   : "";
 
 const securityHeaders = [
