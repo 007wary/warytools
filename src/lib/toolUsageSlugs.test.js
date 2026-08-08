@@ -5,8 +5,9 @@ import { allTools } from "./tools";
 // Snapshot of the `tool_usage_slugs` table, verified against the live database
 // on 2026-08-06 (and again when PowerPoint to PDF was added, and again when
 // Crop PDF, PDF to JPG, and JPG to PDF were added, and again for Watermark PDF,
-// and again for Watermark Image on 2026-08-08 — each time by selecting the
-// table back after the insert rather than assuming it landed). Hand-maintained
+// and again for Watermark Image, and again for Delete Pages and Extract Pages
+// on 2026-08-08 — each time by selecting the table back after the insert rather
+// than assuming it landed). Hand-maintained
 // on purpose: this is the only representation of the DB state that lives in the
 // repo, so it is what makes a missing allowlist row visible without a network
 // call.
@@ -16,18 +17,6 @@ import { allTools } from "./tools";
 // pass while the tool's usage is still being silently discarded, which is
 // exactly the failure being guarded against. Do not "fix" it by editing this
 // list alone.
-//
-// ⚠️ PENDING as of 2026-08-08: `pdf/delete-pages` and `pdf/extract-pages` are
-// listed below but their rows have NOT been inserted yet — the deploy went out
-// ahead of the SQL by explicit decision, so this file is knowingly ahead of the
-// database. Until this runs against Postgres, both tools record nothing and can
-// never trend, exactly as Word to PDF did:
-//
-//   insert into tool_usage_slugs (tool_slug)
-//   values ('pdf/delete-pages'), ('pdf/extract-pages')
-//   on conflict (tool_slug) do nothing;
-//
-// Delete this notice once the insert is confirmed by selecting the table back.
 const ALLOWLISTED_IN_DATABASE = [
   "calculators/age",
   "calculators/date-difference",
