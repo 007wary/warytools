@@ -28,6 +28,8 @@ import {
   PenLine,
   LockKeyholeOpen,
   LockKeyhole,
+  FileMinus,
+  FileStack,
 } from "lucide-react";
 
 // Resolves the string icon names stored in tools.js to actual lucide
@@ -78,6 +80,13 @@ const iconMap = {
   // two directions at a glance, which is what they are.
   LockKeyholeOpen,
   LockKeyhole,
+  // Delete Pages and Extract Pages. A subtraction and a stack: the pair reads
+  // as "one page fewer" against "these pages, pulled out", which is the
+  // distinction people get wrong between the two tools. Deliberately NOT
+  // Scissors — that belongs to Split PDF, and three tools sharing one glyph in
+  // the same category is how a grid stops being scannable.
+  FileMinus,
+  FileStack,
 };
 
 export default function ToolIcon({ name, size = 20, strokeWidth = 1.75, style, ...props }) {

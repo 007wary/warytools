@@ -36,6 +36,20 @@ export const categories = [
         icon: "Scissors",
       },
       {
+        slug: "delete-pages",
+        title: "Delete PDF Pages",
+        description: "Remove pages from a PDF by clicking them — free, private, no upload.",
+        href: "/pdf/delete-pages",
+        icon: "FileMinus",
+      },
+      {
+        slug: "extract-pages",
+        title: "Extract PDF Pages",
+        description: "Pull selected pages out of a PDF into a new file — free, nothing uploaded.",
+        href: "/pdf/extract-pages",
+        icon: "FileStack",
+      },
+      {
         slug: "compress",
         title: "Compress PDF",
         description: "Reduce PDF file size online for free, without watermarks or sign-up.",

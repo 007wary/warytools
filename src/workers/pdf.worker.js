@@ -192,6 +192,15 @@ async function merge(id, { files }) {
 // Takes an explicit list of 1-based page numbers, so it serves both the
 // simple "pages 3 to 9" case and a scattered selection like "1-3, 7, 12-15"
 // with one code path. Order is honoured as given.
+//
+// Backs Split PDF, Extract Pages, and Delete Pages — the last of those by
+// extracting the complement of the selection, since removing page 4 and
+// keeping 1,2,3,5,6 produce the same document and a separate "delete" op would
+// be a second way to write the same loop.
+//
+// The catalog is carried across explicitly (see below). copyPages copies the
+// page tree and nothing hanging off the catalog, so without this a document
+// comes back with its bookmarks, form fields, and internal link targets gone.
 async function extractRange({ bytes, pages }) {
   const source = await loadPdf(bytes);
   const target = await PDFDocument.create();
@@ -201,6 +210,8 @@ async function extractRange({ bytes, pages }) {
   const copied = await target.copyPages(source, indices);
   copied.forEach((page) => target.addPage(page));
 
+  copyCatalogEntries(source, target);
+
   const out = await target.save({ useObjectStreams: true });
   return {
     message: { bytes: out.buffer, pageCount: target.getPageCount() },
@@ -208,9 +219,50 @@ async function extractRange({ bytes, pages }) {
   };
 }
 
+/**
+ * Carries the document-level catalog entries onto a copyPages-built document.
+ *
+ * copyPages copies pages. Everything a reader needs that is NOT stored on a
+ * page — the outline tree, AcroForm fields, named destinations, page labels,
+ * the structure tree screen readers navigate by — hangs off the catalog and is
+ * simply absent from a fresh PDFDocument.create(). The result opens fine and
+ * looks right, so the loss is invisible until someone goes to click a bookmark
+ * or fill a field, which is what makes it worth fixing rather than documenting.
+ *
+ * Entries are copied as-is rather than filtered to the surviving pages. A
+ * bookmark pointing at a page that was extracted away resolves to nothing —
+ * the same as it did before this ran, when the whole outline was missing — so
+ * this is strictly better in every case, and rewriting the outline tree to
+ * prune dead branches is a much larger job for a much smaller benefit.
+ * PRESERVED_CATALOG_KEYS is shared with the encryption ops, which need exactly
+ * the same set for exactly the same reason.
+ */
+function copyCatalogEntries(source, target) {
+  try {
+    const copier = PDFObjectCopier.for(source.context, target.context);
+    for (const key of PRESERVED_CATALOG_KEYS) {
+      const ref = source.catalog.get(PDFName.of(key));
+      // copy() returns a ref already registered in the destination context, so
+      // it is set directly rather than registered a second time.
+      if (ref) target.catalog.set(PDFName.of(key), copier.copy(ref));
+    }
+  } catch {
+    // A malformed catalog entry must not fail the extraction itself. Losing a
+    // bookmark tree is a degraded result; losing the pages the user asked for
+    // is a failed one, and the pages are already safely copied by this point.
+  }
+}
+
 // Returns each page as its own document. Zipping stays on the main thread:
 // JSZip's compression is already async and yields, and keeping it out of here
 // means the worker bundle doesn't carry a second large dependency.
+//
+// Deliberately does NOT call copyCatalogEntries, unlike extractRange and
+// reorder. A whole document's outline tree copied onto every one-page file
+// would give each of 300 files a full set of bookmarks pointing at 299 pages
+// it doesn't contain — larger files and a worse reading experience than no
+// bookmarks at all. The catalog is worth carrying when the output is still
+// recognisably the document; it isn't when the output is one page.
 async function splitAll(id, { bytes }) {
   const source = await loadPdf(bytes);
   const total = source.getPageCount();
@@ -255,6 +307,12 @@ async function reorder({ bytes, order }) {
 
   const copied = await target.copyPages(source, order);
   copied.forEach((page) => target.addPage(page));
+
+  // Same reasoning as extractRange, and it matters most here: a reorder
+  // usually keeps every page, so a document losing its form fields and
+  // bookmarks purely because the pages were shuffled is the least expected
+  // outcome of the three tools this pattern serves.
+  copyCatalogEntries(source, target);
 
   const out = await target.save({ useObjectStreams: true });
   return {

@@ -16,6 +16,18 @@ import { allTools } from "./tools";
 // pass while the tool's usage is still being silently discarded, which is
 // exactly the failure being guarded against. Do not "fix" it by editing this
 // list alone.
+//
+// ⚠️ PENDING as of 2026-08-08: `pdf/delete-pages` and `pdf/extract-pages` are
+// listed below but their rows have NOT been inserted yet — the deploy went out
+// ahead of the SQL by explicit decision, so this file is knowingly ahead of the
+// database. Until this runs against Postgres, both tools record nothing and can
+// never trend, exactly as Word to PDF did:
+//
+//   insert into tool_usage_slugs (tool_slug)
+//   values ('pdf/delete-pages'), ('pdf/extract-pages')
+//   on conflict (tool_slug) do nothing;
+//
+// Delete this notice once the insert is confirmed by selecting the table back.
 const ALLOWLISTED_IN_DATABASE = [
   "calculators/age",
   "calculators/date-difference",
@@ -30,7 +42,9 @@ const ALLOWLISTED_IN_DATABASE = [
   "image/watermark",
   "pdf/compress",
   "pdf/crop",
+  "pdf/delete-pages",
   "pdf/excel-to-pdf",
+  "pdf/extract-pages",
   "pdf/jpg-to-pdf",
   "pdf/merge",
   "pdf/page-numbers",
