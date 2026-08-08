@@ -74,6 +74,36 @@ const gaRegionalSignalsHosts = [
   "https://www.google.com.br",
   "https://www.google.co.jp",
   "https://www.google.com.sg",
+  // Added from real Sentry `blocked-host` reports rather than guessed:
+  // google.com.sa arrived from a Dammam visitor on 2026-08-08. The rest are
+  // the mirrors for the next-largest slices of this site's traffic, which
+  // the same ping would otherwise keep reporting one country at a time.
+  "https://www.google.com.sa",
+  "https://www.google.ae",
+  "https://www.google.com.pk",
+  "https://www.google.com.bd",
+  "https://www.google.com.ph",
+  "https://www.google.com.my",
+  "https://www.google.co.id",
+  "https://www.google.com.vn",
+  "https://www.google.com.tr",
+  "https://www.google.com.mx",
+  "https://www.google.com.ar",
+  "https://www.google.co.za",
+  "https://www.google.com.ng",
+  "https://www.google.com.eg",
+  "https://www.google.pl",
+  "https://www.google.se",
+  "https://www.google.ch",
+  "https://www.google.be",
+  "https://www.google.at",
+  "https://www.google.ie",
+  "https://www.google.pt",
+  "https://www.google.gr",
+  "https://www.google.co.kr",
+  "https://www.google.com.tw",
+  "https://www.google.com.hk",
+  "https://www.google.co.nz",
 ];
 
 const gaCollectHosts = [
