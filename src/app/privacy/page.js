@@ -75,10 +75,10 @@ export default function PrivacyPage() {
       <section style={{ maxWidth: "720px", margin: "0 auto", padding: "48px 20px 80px" }}>
         <Section id="pdf-image" title="PDF and image tools">
           <p style={{ marginBottom: "10px" }}>
-            Every PDF and image tool (merge, split, compress, rotate, reorder, resize, convert)
-            processes your file entirely inside your browser tab, using the pdf-lib and Canvas
-            APIs. The file is read into memory, transformed, and handed back to you as a
-            download — it is never sent to a WaryTools server or any third party.
+            Every PDF and image tool (merge, split, compress, rotate, reorder, resize, convert,
+            watermark, EXIF stripper) processes your file entirely inside your browser tab. The
+            file is read into memory, transformed, and handed back to you as a download — it is
+            never sent to a WaryTools server or any third party.
           </p>
           <p style={{ marginBottom: "10px" }}>
             Closing or refreshing the tab discards everything. We have no record of what you

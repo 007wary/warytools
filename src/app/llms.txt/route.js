@@ -28,7 +28,7 @@ export async function GET() {
 
 > Free, browser-based PDF, image, calculator, and URL-shortener tools —
 > ${allTools.length} tools total. PDF and image tools run entirely
-> client-side (pdf-lib, canvas): files are processed on-device and never
+> client-side: files are processed on-device and never
 > uploaded to a server. The exceptions are the four document converters — PDF
 > to Word, Word to PDF, PowerPoint to PDF, and Excel to PDF — which convert
 > server-side because a browser has no layout engine for those directions.

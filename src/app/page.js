@@ -39,7 +39,7 @@ const faqs = [
   {
     question: "What free online PDF and image tools are available?",
     answer:
-      "You can merge, split, compress, rotate, and reorder PDF files, and compress, resize, convert, or watermark images between PNG, JPG, and WebP. There are also calculators for age, percentage, GST, interest, unit conversion, and date differences, plus a free URL shortener.",
+      "You can merge, split, compress, rotate, and reorder PDF files, and compress, resize, convert, or watermark images between PNG, JPG, and WebP. There's also an EXIF stripper that removes GPS and camera metadata from photos. Plus calculators for age, percentage, GST, interest, unit conversion, and date differences, and a free URL shortener.",
   },
   {
     question: "Are my files uploaded to a server?",

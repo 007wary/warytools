@@ -27,6 +27,7 @@ const ALLOWLISTED_IN_DATABASE = [
   "calculators/unit-converter",
   "image/compress",
   "image/convert",
+  "image/exif",
   "image/resize",
   "image/watermark",
   "pdf/compress",

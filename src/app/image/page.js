@@ -7,7 +7,7 @@ import { pageMetadata } from "@/lib/pageMetadata";
 
 const title = "Free Image Tools — Compress, Resize, Convert, Watermark";
 const description =
-  "Free online image tools to compress, resize, convert, and watermark JPG, PNG, and WebP files. No sign-up — everything runs in your browser, nothing uploaded.";
+  "Free online image tools to compress, resize, convert, watermark, and strip EXIF data from JPG, PNG, and WebP files. No sign-up — everything runs in your browser, nothing uploaded.";
 
 export const metadata = pageMetadata({ title, description, path: "/image" });
 
@@ -25,11 +25,17 @@ export default function ImageHubPage() {
           ])
         )}
       />
+      {/* The description previously said "using the Canvas API", which stopped
+          being true when EXIF Stripper shipped — it edits the file container
+          directly and never decodes to a canvas, which is the whole reason it
+          can strip metadata without re-compressing the image. Naming the
+          mechanism was never the point; "in your browser" is the claim that
+          actually matters to a reader. */}
       <HubHeader
         categorySlug="image"
         icon={category.icon}
         title="Free Image Tools"
-        description="All image tools run 100% in your browser using the Canvas API. Files are never uploaded to a server."
+        description="All image tools run 100% in your browser. Files are never uploaded to a server."
       />
 
       <div

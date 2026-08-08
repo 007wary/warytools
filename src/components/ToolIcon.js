@@ -30,6 +30,7 @@ import {
   LockKeyhole,
   FileMinus,
   FileStack,
+  ShieldCheck,
 } from "lucide-react";
 
 // Resolves the string icon names stored in tools.js to actual lucide
@@ -87,6 +88,10 @@ const iconMap = {
   // the same category is how a grid stops being scannable.
   FileMinus,
   FileStack,
+  // EXIF Stripper. A shield rather than an eraser or a scissors: what the tool
+  // sells is the state you end up in, not the deletion itself — and it's the
+  // only image tool whose output is about safety rather than appearance.
+  ShieldCheck,
 };
 
 export default function ToolIcon({ name, size = 20, strokeWidth = 1.75, style, ...props }) {

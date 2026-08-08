@@ -222,6 +222,23 @@ export const categories = [
         href: "/image/watermark",
         icon: "Droplets",
       },
+      {
+        // Named "EXIF Stripper" rather than "Remove Image Metadata": EXIF is
+        // the term people actually search, and the ones who don't know it are
+        // served by the description, which leads with "GPS location" — the
+        // concrete consequence rather than the format's name.
+        //
+        // Under Image Tools rather than a privacy category of its own. The
+        // input and output are both images, it reuses the whole image
+        // pipeline, and a one-tool hub reads as unfinished. Every tool here is
+        // private already; making one *category* "privacy" would imply the
+        // rest aren't.
+        slug: "exif",
+        title: "EXIF Stripper",
+        description: "Remove GPS location and camera metadata from photos — no quality loss.",
+        href: "/image/exif",
+        icon: "ShieldCheck",
+      },
     ],
   },
   {
