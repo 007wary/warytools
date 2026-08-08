@@ -41,6 +41,11 @@ export const METADATA_KINDS = {
   comment: "Embedded comments",
   thumbnail: "Embedded preview thumbnail",
   other: "Other application data",
+  // Only reachable from a partial (head-only) scan, where a segment's
+  // identifier ran past the end of the window. It is still application data
+  // and is still removed — we just can't name it in the report, and saying so
+  // is better than guessing "Other" or, worse, mislabelling EXIF.
+  unknown: "Application data (type not read)",
 };
 
 // JPEG markers. All are preceded by 0xFF.
@@ -69,14 +74,30 @@ function isStandaloneMarker(marker) {
  */
 function classifyAppSegment(bytes, start, length) {
   // Read the identifier, which is an ASCII string terminated by NUL.
-  const limit = Math.min(start + Math.min(length, 32), bytes.length);
+  //
+  // `wanted` is where the identifier ends if the whole segment is present;
+  // `limit` is how far the buffer actually goes. On a partial scan those
+  // differ, and the difference is load-bearing: an identifier cut in half
+  // matches none of the prefixes below and would fall through to "other",
+  // silently relabelling a photo's EXIF as "Other application data" and
+  // taking GPS detection down with it. So a truncated identifier that has
+  // not yet matched returns null-and-unknown rather than a confident guess.
+  const wanted = start + Math.min(length, 32);
+  const limit = Math.min(wanted, bytes.length);
+
   let id = "";
+  let terminated = false;
   for (let i = start; i < limit; i++) {
     const byte = bytes[i];
-    if (byte === 0x00) break;
+    if (byte === 0x00) {
+      terminated = true;
+      break;
+    }
     id += String.fromCharCode(byte);
   }
 
+  // Prefix matches are safe to return early even from a partial read: once
+  // "ICC_PROFILE" has been seen in full, more bytes cannot change the answer.
   if (id.startsWith("Exif")) return "exif";
   if (id.startsWith("http://ns.adobe.com/xap")) return "xmp";
   if (id.startsWith("http://ns.adobe.com/xmp")) return "xmp";
@@ -84,6 +105,12 @@ function classifyAppSegment(bytes, start, length) {
   if (id.startsWith("Photoshop")) return "iptc";
   if (id.startsWith("ICC_PROFILE")) return "icc";
   if (id.startsWith("JFIF") || id.startsWith("JFXX")) return null; // structural
+
+  // Nothing matched. If the identifier ran off the end of the buffer before
+  // its NUL, we genuinely do not know what this is — say so, rather than
+  // asserting "other".
+  if (!terminated && limit < wanted) return "unknown";
+
   return "other";
 }
 
@@ -131,10 +158,22 @@ function readUint16(bytes, offset) {
  * about what is about to be removed, and a preview that differs from the
  * result is the worst kind of preview.
  *
+ * `partial` marks `bytes` as a PREFIX of the real file rather than the whole
+ * thing, which is how the client scans: only the head is read, because
+ * metadata lives at the front of both formats and reading whole files just to
+ * report on them would hold a batch's worth of photos in memory. Under it, a
+ * segment running past the end of the buffer is reported (with `truncated`)
+ * and the walk stops, instead of being called damage. Ranges from a partial
+ * walk describe the real file's offsets — the prefix starts at byte 0 — but
+ * must NOT be fed to removeRanges against the prefix, only against full bytes.
+ *
  * @param {Uint8Array} bytes
- * @returns {{ok: true, segments: Array<{kind: string, start: number, end: number, size: number}>} | {ok: false, error: string}}
+ * @param {{partial?: boolean}} [options]
+ * @returns {{ok: true, segments: Array<{kind: string, start: number, end: number, size: number, truncated?: boolean}>} | {ok: false, error: string}}
  */
-export function findJpegMetadata(bytes) {
+export function findJpegMetadata(bytes, options = {}) {
+  const partial = options.partial === true;
+
   if (!bytes || bytes.length < 4) {
     return { ok: false, error: "That file is too small to be a JPEG." };
   }
@@ -169,11 +208,13 @@ export function findJpegMetadata(bytes) {
 
     const lengthOffset = markerOffset + 1;
     if (lengthOffset + 2 > bytes.length) {
+      if (partial) break;
       return { ok: false, error: "This JPEG ends unexpectedly and can't be edited safely." };
     }
 
     // The length field includes its own two bytes, so anything under 2 is
-    // malformed and would make the walk loop forever.
+    // malformed and would make the walk loop forever. This is a genuine
+    // structural defect, not a truncation, so `partial` does not excuse it.
     const length = readUint16(bytes, lengthOffset);
     if (length < 2) {
       return { ok: false, error: "This JPEG's structure is damaged and can't be edited safely." };
@@ -181,6 +222,39 @@ export function findJpegMetadata(bytes) {
 
     const segmentEnd = lengthOffset + length;
     if (segmentEnd > bytes.length) {
+      // Under `partial` this is the expected way a head scan ends: the caller
+      // handed us a prefix, and a segment legitimately continues past it. The
+      // segment is still REPORTED — its kind and declared length are both
+      // known from the header we did read — but the walk stops, since the
+      // next marker lies beyond the window.
+      //
+      // Without this, a photo whose EXIF is larger than the scan window was
+      // reported as "This JPEG ends unexpectedly", i.e. a valid file told the
+      // user it was damaged. Embedded thumbnails and full ICC profiles push
+      // EXIF past any window worth reading, so this is routine, not exotic.
+      if (partial) {
+        if (marker >= APP0 && marker <= APP15) {
+          const kind = classifyAppSegment(bytes, lengthOffset + 2, length - 2);
+          if (kind) {
+            segments.push({
+              kind,
+              start: markerOffset - 1,
+              end: segmentEnd,
+              size: segmentEnd - (markerOffset - 1),
+              truncated: true,
+            });
+          }
+        } else if (marker === COM) {
+          segments.push({
+            kind: "comment",
+            start: markerOffset - 1,
+            end: segmentEnd,
+            size: segmentEnd - (markerOffset - 1),
+            truncated: true,
+          });
+        }
+        break;
+      }
       return { ok: false, error: "This JPEG ends unexpectedly and can't be edited safely." };
     }
 
@@ -206,10 +280,14 @@ export function findJpegMetadata(bytes) {
 /**
  * Walks a PNG's chunk stream and reports which chunks carry metadata.
  *
+ * See findJpegMetadata for what `partial` means and why it exists.
+ *
  * @param {Uint8Array} bytes
- * @returns {{ok: true, segments: Array<{kind: string, start: number, end: number, size: number}>} | {ok: false, error: string}}
+ * @param {{partial?: boolean}} [options]
+ * @returns {{ok: true, segments: Array<{kind: string, start: number, end: number, size: number, truncated?: boolean}>} | {ok: false, error: string}}
  */
-export function findPngMetadata(bytes) {
+export function findPngMetadata(bytes, options = {}) {
+  const partial = options.partial === true;
   const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
   if (!bytes || bytes.length < 8) {
     return { ok: false, error: "That file is too small to be a PNG." };
@@ -224,19 +302,36 @@ export function findPngMetadata(bytes) {
   while (offset + 8 <= bytes.length) {
     const length = readUint32(bytes, offset);
 
-    // A chunk is: 4 length + 4 type + data + 4 CRC. A length that overruns the
-    // buffer means the file is truncated or lying, and either way the safe
-    // answer is to refuse rather than to read past the end.
+    // A chunk is: 4 length + 4 type + data + 4 CRC. The type is read before the
+    // length is range-checked so that a chunk continuing past a partial
+    // window can still be classified and reported — the four type bytes sit
+    // immediately after the length and are always present here.
     const chunkEnd = offset + 12 + length;
-    if (length > bytes.length || chunkEnd > bytes.length) {
-      return { ok: false, error: "This PNG ends unexpectedly and can't be edited safely." };
-    }
-
     const type =
       String.fromCharCode(bytes[offset + 4]) +
       String.fromCharCode(bytes[offset + 5]) +
       String.fromCharCode(bytes[offset + 6]) +
       String.fromCharCode(bytes[offset + 7]);
+
+    // A length that overruns the buffer means the file is truncated or lying.
+    // On a whole file that is damage and the safe answer is to refuse. On a
+    // deliberate prefix it is the expected end of the window — see
+    // findJpegMetadata for the full reasoning.
+    if (length > bytes.length || chunkEnd > bytes.length) {
+      if (partial) {
+        if (PNG_METADATA_CHUNKS[type]) {
+          segments.push({
+            kind: PNG_METADATA_CHUNKS[type],
+            start: offset,
+            end: chunkEnd,
+            size: chunkEnd - offset,
+            truncated: true,
+          });
+        }
+        break;
+      }
+      return { ok: false, error: "This PNG ends unexpectedly and can't be edited safely." };
+    }
 
     if (PNG_METADATA_CHUNKS[type]) {
       segments.push({
@@ -259,10 +354,11 @@ export function findPngMetadata(bytes) {
  *
  * @param {Uint8Array} bytes
  * @param {string} mime From sniffImageType in imageValidation.js.
+ * @param {{partial?: boolean}} [options] See findJpegMetadata.
  */
-export function findMetadata(bytes, mime) {
-  if (mime === "image/jpeg") return findJpegMetadata(bytes);
-  if (mime === "image/png") return findPngMetadata(bytes);
+export function findMetadata(bytes, mime, options = {}) {
+  if (mime === "image/jpeg") return findJpegMetadata(bytes, options);
+  if (mime === "image/png") return findPngMetadata(bytes, options);
   return {
     ok: false,
     error:
@@ -322,6 +418,12 @@ export function removeRanges(bytes, ranges) {
  * @returns {{ok: true, bytes: Uint8Array, removed: Array, bytesRemoved: number} | {ok: false, error: string}}
  */
 export function stripMetadata(bytes, mime, options = {}) {
+  // Deliberately NOT forwarding `partial`. Stripping always walks the whole
+  // file: a prefix walk's ranges can name bytes the prefix doesn't contain,
+  // and splicing those out of a truncated buffer would write a corrupt image
+  // that still opens in some viewers. The client scans a head for the report
+  // and re-reads the full file for this — the two walks are separate on
+  // purpose, and this is the one place that separation has to be enforced.
   const found = findMetadata(bytes, mime);
   if (!found.ok) return found;
 

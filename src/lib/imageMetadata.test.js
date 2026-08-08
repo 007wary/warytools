@@ -369,12 +369,118 @@ describe("stripMetadata", () => {
   });
 });
 
+describe("partial scans (head-only reads)", () => {
+  // The client reads only the first 256 KB of each file to build its report,
+  // because metadata lives at the front of both formats and holding whole
+  // files would put a batch of photos in memory at once. That makes "the
+  // buffer ends mid-segment" a NORMAL condition rather than damage — and
+  // getting it wrong told users a valid photo was corrupt.
+
+  it("reports a JPEG segment that continues past the window", () => {
+    const bytes = buildJpeg([exifSegment]);
+    // Cut after the "Exif" identifier but well inside the payload — the
+    // realistic case, since the identifier is the first few bytes of a
+    // segment that can run to tens of kilobytes.
+    const head = bytes.subarray(0, 12);
+
+    expect(findJpegMetadata(head).ok).toBe(false);
+
+    const partial = findJpegMetadata(head, { partial: true });
+    expect(partial.ok).toBe(true);
+    expect(partial.segments).toHaveLength(1);
+    expect(partial.segments[0].kind).toBe("exif");
+    expect(partial.segments[0].truncated).toBe(true);
+  });
+
+  it("says 'unknown' rather than guessing when the identifier is cut off", () => {
+    // Cutting mid-identifier used to fall through to "other", which
+    // relabelled a photo's EXIF as "Other application data" and took GPS
+    // detection down with it — a silent wrong answer, which is worse than an
+    // honest "we couldn't read this far".
+    const bytes = buildJpeg([exifSegment]);
+    const head = bytes.subarray(0, 6);
+
+    const partial = findJpegMetadata(head, { partial: true });
+    expect(partial.ok).toBe(true);
+    expect(partial.segments[0].kind).toBe("unknown");
+    expect(partial.segments[0].truncated).toBe(true);
+  });
+
+  it("still removes an unknown segment — it is application data either way", () => {
+    // "We couldn't name it" must not become "we left it in the file".
+    const bytes = buildJpeg([exifSegment]);
+    const full = stripMetadata(bytes, "image/jpeg");
+    expect(findJpegMetadata(full.bytes).segments).toEqual([]);
+  });
+
+  it("reports the segment's FULL size from its header, not the bytes it read", () => {
+    // The declared length is in the segment header, so a tiny window still
+    // yields an exact size. This is what makes the report trustworthy at any
+    // window size rather than only a generous one.
+    const bytes = buildJpeg([exifSegment]);
+    const full = findJpegMetadata(bytes).segments[0];
+    const partial = findJpegMetadata(bytes.subarray(0, 12), { partial: true }).segments[0];
+
+    expect(partial.size).toBe(full.size);
+    expect(partial.start).toBe(full.start);
+    expect(partial.end).toBe(full.end);
+  });
+
+  it("reports a PNG chunk that continues past the window", () => {
+    const bytes = buildPng([pngChunk("eXIf", [0x49, 0x49, 0x2a, 0x00, 1, 2, 3, 4])]);
+    const cut = bytes.subarray(0, 8 + 25 + 10);
+
+    expect(findPngMetadata(cut).ok).toBe(false);
+
+    const partial = findPngMetadata(cut, { partial: true });
+    expect(partial.ok).toBe(true);
+    expect(partial.segments.some((s) => s.kind === "exif" && s.truncated)).toBe(true);
+  });
+
+  it("still refuses a genuinely damaged length even in partial mode", () => {
+    // A zero-length JPEG segment is structural nonsense, not a truncation —
+    // partial must not become a blanket "ignore all problems" flag, or the
+    // infinite-loop guard it was protecting goes away.
+    const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe1, 0x00, 0x00, 0xff, 0xd9]);
+    expect(findJpegMetadata(bytes, { partial: true }).ok).toBe(false);
+  });
+
+  it("agrees with a full scan when the window covers the whole file", () => {
+    const bytes = buildJpeg([exifSegment, xmpSegment, commentSegment]);
+    const full = findJpegMetadata(bytes);
+    const partial = findJpegMetadata(bytes, { partial: true });
+
+    expect(partial.segments).toEqual(full.segments);
+  });
+
+  it("never lets a partial walk drive a strip", () => {
+    // stripMetadata deliberately does not forward `partial`: splicing ranges
+    // that name bytes a prefix doesn't contain would write a corrupt file
+    // that still opens in some viewers. Stripping a prefix must fail loudly.
+    const bytes = buildJpeg([exifSegment]);
+    const head = bytes.subarray(0, 6);
+
+    const result = stripMetadata(head, "image/jpeg");
+    expect(result.ok).toBe(false);
+  });
+});
+
 describe("findMetadata", () => {
   it("dispatches on the sniffed type", () => {
     expect(findMetadata(buildJpeg([exifSegment]), "image/jpeg").segments).toHaveLength(1);
     expect(
       findMetadata(buildPng([pngChunk("tEXt", ascii("a\0b"))]), "image/png").segments
     ).toHaveLength(1);
+  });
+
+  it("forwards the partial option to both walkers", () => {
+    const jpeg = buildJpeg([exifSegment]).subarray(0, 6);
+    expect(findMetadata(jpeg, "image/jpeg").ok).toBe(false);
+    expect(findMetadata(jpeg, "image/jpeg", { partial: true }).ok).toBe(true);
+
+    const png = buildPng([pngChunk("eXIf", [1, 2, 3, 4, 5, 6, 7, 8])]).subarray(0, 8 + 25 + 8);
+    expect(findMetadata(png, "image/png").ok).toBe(false);
+    expect(findMetadata(png, "image/png", { partial: true }).ok).toBe(true);
   });
 });
 
@@ -467,6 +573,19 @@ describe("hasGpsData", () => {
     const bytes = buildJpeg([commentSegment]);
     const { segments } = findJpegMetadata(bytes);
     expect(hasGpsData(bytes, segments)).toBe(false);
+  });
+
+  it("is safe on a partial scan whose segment runs past the buffer", () => {
+    // On a head-only read, exif.end points past the bytes we hold. The IFD
+    // walk is bounded by exif.end, so it must not be fooled into reading
+    // undefined entries and reporting a confident answer from them.
+    const bytes = buildJpeg([exifWithTags([0x010f, 0x8825])]);
+    const head = bytes.subarray(0, 20);
+    const { segments } = findJpegMetadata(head, { partial: true });
+
+    expect(() => hasGpsData(head, segments)).not.toThrow();
+    // Whatever it returns, it must not throw and must be a boolean.
+    expect(typeof hasGpsData(head, segments)).toBe("boolean");
   });
 
   it("is false rather than throwing on a truncated EXIF block", () => {

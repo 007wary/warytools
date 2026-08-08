@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { ShieldCheck, MapPin, Camera, X } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
+import ProgressBar from "@/components/ProgressBar";
 import ErrorBanner from "@/components/ErrorBanner";
 import { PrimaryButton, SecondaryButton, iconButtonStyle } from "@/components/ToolButton";
 import { validateImageFiles, describeImageRejections } from "@/lib/imageValidation";
@@ -32,7 +33,12 @@ import { colors } from "@/lib/theme";
 
 let nextId = 0;
 
-const MAX_FILES = 30;
+// Only the file's head is read to produce the report. Metadata lives at the
+// front of both formats — JPEG puts its APPn segments before the scan data,
+// PNG puts its ancillary chunks before IDAT — so a scan never needs the whole
+// file. 256 KB comfortably covers even a large embedded thumbnail or ICC
+// profile, and means dropping fifty 40 MB photos reads 12 MB, not 2 GB.
+const SCAN_BYTES = 256 * 1024;
 
 export default function ExifStripperClient() {
   const [items, setItems] = useState([]);
@@ -40,68 +46,73 @@ export default function ExifStripperClient() {
   const [notice, setNotice] = useState("");
   const [keepColourProfile, setKeepColourProfile] = useState(true);
   const [isWorking, setIsWorking] = useState(false);
+  const [progress, setProgress] = useState(null);
 
   const zipRef = useRef(null);
 
-  // Every accepted file's bytes are held for the lifetime of the row so the
-  // strip doesn't have to re-read from disk. Capped by MAX_FILES above,
-  // because unlike the other image tools nothing here streams — a hundred
-  // 40 MB photos would sit in memory at once.
-  const addFiles = useCallback(
-    async (fileList) => {
-      setError("");
-      setNotice("");
+  // NOTHING holds a whole file. A row keeps the File handle (a reference to
+  // disk, not bytes) plus the few hundred bytes of its scan report; the full
+  // bytes are read on demand in handleStrip and released when it returns.
+  //
+  // The first version retained every file's bytes for the lifetime of its row,
+  // which forced a 30-file cap to stop a large batch exhausting the tab — and
+  // was worse than it looked, because stripMetadata allocates a second
+  // full-size output buffer, so a stripped file sat in memory twice. Reading
+  // from a File is cheap and the handle stays valid, so there is no reason to
+  // pay that. There is now no file-count cap at all.
+  const addFiles = useCallback(async (fileList) => {
+    setError("");
+    setNotice("");
 
-      const { accepted, rejected } = await validateImageFiles(fileList);
+    const { accepted, rejected } = await validateImageFiles(fileList);
 
-      if (accepted.length === 0) {
-        setError(
-          rejected.length > 0 ? describeImageRejections(rejected) : "Please choose an image file."
-        );
-        return;
-      }
-
-      const notices = [];
-      if (rejected.length > 0) notices.push(describeImageRejections(rejected));
-
-      let room = MAX_FILES - items.length;
-      if (room <= 0) {
-        setError(`You can scan ${MAX_FILES} images at a time. Remove some first.`);
-        return;
-      }
-
-      const taking = accepted.slice(0, room);
-      if (taking.length < accepted.length) {
-        notices.push(`Only the first ${MAX_FILES} images were added.`);
-      }
-
-      const scanned = await Promise.all(
-        taking.map(async ({ file, type }) => {
-          const bytes = new Uint8Array(await file.arrayBuffer());
-          const found = findMetadata(bytes, type);
-
-          return {
-            id: nextId++,
-            file,
-            type,
-            bytes,
-            // A file we can't parse is kept in the list with its reason shown
-            // rather than dropped: "nothing happened" is indistinguishable
-            // from a broken tool, and the user chose this file deliberately.
-            ok: found.ok,
-            reason: found.ok ? "" : found.error,
-            segments: found.ok ? found.segments : [],
-            gps: found.ok ? hasGpsData(bytes, found.segments) : false,
-            result: null,
-          };
-        })
+    if (accepted.length === 0) {
+      setError(
+        rejected.length > 0 ? describeImageRejections(rejected) : "Please choose an image file."
       );
+      return;
+    }
 
-      if (notices.length > 0) setNotice(notices.join(" "));
-      setItems((prev) => [...prev, ...scanned]);
-    },
-    [items.length]
-  );
+    if (rejected.length > 0) setNotice(describeImageRejections(rejected));
+
+    const scanned = await Promise.all(
+      accepted.map(async ({ file, type }) => {
+        // Read only the head. `slice` past the end of a file is not an error —
+        // it just yields fewer bytes — so small files need no special case.
+        const head = new Uint8Array(await file.slice(0, SCAN_BYTES).arrayBuffer());
+        // `partial` tells the walker this is a prefix, so a segment running
+        // past the window is reported rather than called damage. Without it a
+        // photo whose EXIF is bigger than the window — routine, once an
+        // embedded thumbnail is involved — told the user their valid file was
+        // corrupt.
+        const found = findMetadata(head, type, { partial: true });
+
+        return {
+          id: nextId++,
+          file,
+          type,
+          // A file we can't parse is kept in the list with its reason shown
+          // rather than dropped: "nothing happened" is indistinguishable
+          // from a broken tool, and the user chose this file deliberately.
+          ok: found.ok,
+          reason: found.ok ? "" : found.error,
+          // Ranges are offsets into the head, which for the report's purposes
+          // (kind and size per segment) are the same offsets they'd have in
+          // the whole file — the head starts at byte 0. The strip re-walks the
+          // full bytes rather than reusing these, so a segment that ran past
+          // SCAN_BYTES is still removed correctly.
+          segments: found.ok ? found.segments : [],
+          gps: found.ok ? hasGpsData(head, found.segments) : false,
+          result: null,
+        };
+      })
+    );
+
+    // Appended with a functional update rather than read-then-write. The
+    // previous version computed remaining capacity from a closed-over
+    // items.length, so two drops in quick succession both saw the old count.
+    setItems((prev) => [...prev, ...scanned]);
+  }, []);
 
   const removeItem = useCallback((id) => {
     setItems((prev) => prev.filter((item) => item.id !== id));
@@ -123,19 +134,74 @@ export default function ExifStripperClient() {
 
   async function handleStrip() {
     setIsWorking(true);
+    setProgress({ ratio: 0, completed: 0, total: items.length });
     setError("");
 
     try {
-      const next = items.map((item) => {
-        if (!item.ok) return item;
-        const result = stripMetadata(item.bytes, item.type, { keepColourProfile });
-        if (!result.ok) return { ...item, ok: false, reason: result.error, result: null };
-        return { ...item, result };
-      });
+      // Sequential, not Promise.all. Each iteration holds one source buffer
+      // plus one output buffer, and both fall out of scope before the next
+      // file is read — so peak memory is two files regardless of batch size.
+      // Reading fifty in parallel would hold all hundred at once, which is
+      // the exact problem the old file cap existed to paper over.
+      const next = [];
+      let failures = 0;
+      let done = 0;
 
-      setItems(next);
+      for (const item of items) {
+        if (!item.ok || item.segments.length === 0) {
+          next.push(item);
+          done += 1;
+          continue;
+        }
+
+        try {
+          const bytes = new Uint8Array(await item.file.arrayBuffer());
+          const result = stripMetadata(bytes, item.type, { keepColourProfile });
+
+          if (!result.ok) {
+            failures += 1;
+            next.push({ ...item, ok: false, reason: result.error, result: null });
+          } else {
+            next.push({ ...item, result });
+          }
+        } catch {
+          // One unreadable file must not lose the rest of the batch. A file
+          // can genuinely vanish between the drop and the click — moved,
+          // deleted, or an unmounted drive — and the handle goes stale.
+          failures += 1;
+          next.push({
+            ...item,
+            ok: false,
+            reason: "Could not read this file again. It may have been moved or deleted.",
+            result: null,
+          });
+        }
+
+        // The splice itself is synchronous and CPU-bound. Without a progress
+        // report the bar would jump from 0 to 100, and without the await on
+        // the file read above the loop would never yield at all — the same
+        // frozen-tab problem the PDF tools moved to a worker to solve. Here
+        // the read is genuinely async, so the paint happens for free.
+        done += 1;
+        setProgress({ ratio: done / items.length, completed: done, total: items.length });
+      }
+
+      // Merged by id rather than assigned wholesale. The loop above awaits, so
+      // the list can change under it — a row removed mid-run would otherwise
+      // be resurrected by this write, and a file added mid-run would vanish.
+      // Rows the run didn't touch keep whatever they became.
+      const byId = new Map(next.map((item) => [item.id, item]));
+      setItems((prev) => prev.map((item) => byId.get(item.id) || item));
 
       const cleaned = next.filter((item) => item.result);
+      if (failures > 0) {
+        setNotice(
+          failures === 1
+            ? "One image could not be processed — see the list above."
+            : `${failures} images could not be processed — see the list above.`
+        );
+      }
+
       trackEvent(events.TOOL_RUN, {
         file_count: items.length,
         succeeded: cleaned.length,
@@ -290,6 +356,8 @@ export default function ExifStripperClient() {
               </span>
             </span>
           </label>
+
+          {isWorking && <ProgressBar progress={progress} label="Removing metadata" />}
 
           <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginTop: "20px" }}>
             <PrimaryButton onClick={handleStrip} disabled={isWorking || withMetadata.length === 0}>
