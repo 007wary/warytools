@@ -12,6 +12,7 @@ import { validatePdfFile, describePdfError } from "@/lib/pdfFile";
 import { validateImageFile } from "@/lib/imageValidation";
 import { usePdfThumbnails } from "@/lib/pdfThumbnails";
 import { usePdfWorker, ops } from "@/lib/pdfWorkerClient";
+import { useObjectUrl } from "@/lib/useObjectUrl";
 import { planEmbed } from "@/lib/pdfImageEmbed";
 import { parsePageSelection, formatPageSelection } from "@/lib/pdfPageRange";
 import {
@@ -975,8 +976,9 @@ function WatermarkPreview({
  * JpgToPdfClient's ImageRow, for the same reason.
  */
 function LogoMark({ logo }) {
-  const url = useMemo(() => (logo ? URL.createObjectURL(logo.file) : null), [logo]);
-  useEffect(() => () => url && URL.revokeObjectURL(url), [url]);
+  // Keyed on the File rather than the `logo` wrapper, so a new wrapper holding
+  // the same file doesn't churn the URL. The hook already handles a null source.
+  const url = useObjectUrl(logo?.file);
 
   if (!url) return null;
 
@@ -985,8 +987,7 @@ function LogoMark({ logo }) {
 }
 
 function LogoThumbnail({ logo }) {
-  const url = useMemo(() => URL.createObjectURL(logo.file), [logo]);
-  useEffect(() => () => URL.revokeObjectURL(url), [url]);
+  const url = useObjectUrl(logo.file);
 
   return (
     <span
@@ -1001,7 +1002,7 @@ function LogoThumbnail({ logo }) {
       }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+      {url && <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />}
     </span>
   );
 }

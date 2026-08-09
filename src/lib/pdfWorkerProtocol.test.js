@@ -4,6 +4,7 @@ import {
   replies,
   createRequest,
   createProgress,
+  createChunk,
   formatProgress,
   isProgressiveOp,
 } from "./pdfWorkerProtocol";
@@ -57,6 +58,36 @@ describe("createProgress", () => {
     expect(createProgress("req-1", -5, 10).completed).toBe(0);
     expect(createProgress("req-1", NaN, 10).completed).toBe(0);
     expect(createProgress("req-1", 5, NaN).ratio).toBe(0);
+  });
+});
+
+describe("createChunk", () => {
+  it("carries the request id, the position and the payload", () => {
+    const chunk = createChunk("req-1", 0, { name: "page-1.pdf", bytes: new ArrayBuffer(8) });
+
+    expect(chunk.type).toBe(replies.CHUNK);
+    expect(chunk.id).toBe("req-1");
+    expect(chunk.index).toBe(0);
+    expect(chunk.name).toBe("page-1.pdf");
+    expect(chunk.bytes.byteLength).toBe(8);
+  });
+
+  // A chunk is one item of many, so it must be distinguishable from the RESULT
+  // that ends the request. The client keys on exactly this: a CHUNK leaves the
+  // promise pending, anything else settles it. If these two ever shared a type
+  // the first page of a split would resolve the whole operation and the
+  // remaining pages would arrive with nothing listening.
+  it("is not confusable with a result", () => {
+    expect(replies.CHUNK).not.toBe(replies.RESULT);
+    expect(createChunk("req-1", 0).type).not.toBe(replies.RESULT);
+  });
+
+  it("defaults its payload so an index-only chunk is still well formed", () => {
+    expect(createChunk("req-1", 3)).toEqual({
+      type: replies.CHUNK,
+      id: "req-1",
+      index: 3,
+    });
   });
 });
 

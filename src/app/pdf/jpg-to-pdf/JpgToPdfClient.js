@@ -9,6 +9,7 @@ import ErrorBanner from "@/components/ErrorBanner";
 import { PrimaryButton, SecondaryButton, iconButtonStyle } from "@/components/ToolButton";
 import { validateImageFiles, describeImageRejections } from "@/lib/imageValidation";
 import { usePdfWorker, ops } from "@/lib/pdfWorkerClient";
+import { useObjectUrl } from "@/lib/useObjectUrl";
 import {
   PAGE_SIZES,
   MARGINS,
@@ -496,14 +497,11 @@ function ImageRow({
   onMove,
   onRemove,
 }) {
-  // Derived, not stateful: the URL is a pure function of the file, so an
-  // effect would only add a render pass with no thumbnail in it.
-  const preview = useMemo(() => URL.createObjectURL(item.file), [item.file]);
-
   // Revoked on unmount and whenever the file changes, rather than only on an
   // explicit reset — otherwise every preview blob lives for the tab's lifetime
-  // as the user adds and removes files.
-  useEffect(() => () => URL.revokeObjectURL(preview), [preview]);
+  // as the user adds and removes files. The hook creates the URL in an effect
+  // so a render React discards before commit cannot strand one.
+  const preview = useObjectUrl(item.file);
 
   return (
     <li

@@ -31,7 +31,34 @@ export const replies = {
   PROGRESS: "progress",
   RESULT: "result",
   ERROR: "error",
+  // One finished item from an op that produces many. See createChunk.
+  CHUNK: "chunk",
 };
+
+/**
+ * Wraps one finished item from a multi-output operation.
+ *
+ * Split is the reason this exists. Accumulating every one-page document in the
+ * worker and posting them as a single array meant a 300-page document held the
+ * source, all 300 saved outputs, and then JSZip's copy of them, all resident at
+ * once — and each one-page save carries its own font and resource subset, so
+ * the outputs together routinely outweigh the source several times over. That
+ * is the same "hold every file's bytes" mistake EXIF Stripper already had to
+ * undo, and it is what put a practical ceiling on the page count Split could
+ * survive.
+ *
+ * Emitting each page as it is produced lets the caller hand it straight to
+ * JSZip and drop it, so peak memory is the source plus one page plus the
+ * growing zip rather than the source plus everything. The bytes are transferred
+ * with the message, so the worker does not retain a copy either.
+ *
+ * @param {string} id    The request these chunks belong to.
+ * @param {number} index 0-based position in the output sequence.
+ * @param {object} data  Operation-specific payload (for split: name + bytes).
+ */
+export function createChunk(id, index, data = {}) {
+  return { type: replies.CHUNK, id, index, ...data };
+}
 
 /**
  * Builds a request envelope.

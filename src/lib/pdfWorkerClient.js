@@ -55,6 +55,15 @@ class PdfWorkerHandle {
       return;
     }
 
+    // A chunk is one finished item from a multi-output op, not the result, so
+    // the request stays pending. Consuming it here — rather than collecting
+    // chunks into an array to hand over at the end — is the whole point: it
+    // lets the caller zip and release each page instead of holding all of them.
+    if (message.type === replies.CHUNK) {
+      entry.onChunk?.(message);
+      return;
+    }
+
     this.pending.delete(message.id);
 
     if (message.type === replies.ERROR) entry.reject(new Error(message.message));
@@ -68,12 +77,12 @@ class PdfWorkerHandle {
     this.worker = null;
   }
 
-  run(op, payload, { onProgress, transfer = [] } = {}) {
+  run(op, payload, { onProgress, onChunk, transfer = [] } = {}) {
     const worker = this.ensureWorker();
     const id = `req-${this.nextId++}`;
 
     return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject, onProgress });
+      this.pending.set(id, { resolve, reject, onProgress, onChunk });
       worker.postMessage(createRequest(id, op, payload), transfer);
     });
   }

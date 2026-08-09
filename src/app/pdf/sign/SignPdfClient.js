@@ -14,6 +14,7 @@ import { validatePdfFile, describePdfError } from "@/lib/pdfFile";
 import { validateImageFile } from "@/lib/imageValidation";
 import { usePdfThumbnails } from "@/lib/pdfThumbnails";
 import { usePdfWorker, ops } from "@/lib/pdfWorkerClient";
+import { useObjectUrl } from "@/lib/useObjectUrl";
 import { planEmbed } from "@/lib/pdfImageEmbed";
 import {
   SOURCES,
@@ -894,8 +895,12 @@ function strokePath(stroke) {
  * placement, and leaking a blob per placement per edit would accumulate fast.
  */
 function ImagePreview({ file }) {
-  const url = useMemo(() => URL.createObjectURL(file), [file]);
-  useEffect(() => () => URL.revokeObjectURL(url), [url]);
+  const url = useObjectUrl(file);
+
+  // Null for the one render before the URL-creating effect commits. Rendering
+  // the <img> anyway would leave it with no src, which the browser resolves
+  // against the page URL and refetches the document itself.
+  if (!url) return null;
 
   return (
     // eslint-disable-next-line @next/next/no-img-element
@@ -908,8 +913,10 @@ function ImagePreview({ file }) {
 }
 
 function UploadedThumbnail({ image }) {
-  const url = useMemo(() => URL.createObjectURL(image.file), [image]);
-  useEffect(() => () => URL.revokeObjectURL(url), [url]);
+  // Keyed on the File, not the `image` wrapper the old memo used: a new wrapper
+  // carrying the same File would otherwise mint a fresh URL and revoke the old
+  // one on unrelated state changes, churning blobs for no visible reason.
+  const url = useObjectUrl(image.file);
 
   return (
     <span
@@ -924,7 +931,7 @@ function UploadedThumbnail({ image }) {
       }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+      {url && <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />}
     </span>
   );
 }

@@ -95,17 +95,15 @@ export default function MergePdfClient() {
     clearResult();
 
     try {
-      // Read every file up front so the worker receives plain ArrayBuffers it
-      // can take ownership of. Transferring rather than cloning matters here:
-      // a ten-file merge would otherwise duplicate every byte across the
-      // thread boundary.
-      const buffers = await Promise.all(items.map((item) => item.file.arrayBuffer()));
-
-      const result = await run(
-        ops.MERGE,
-        { files: buffers },
-        { transfer: buffers }
-      );
+      // The File handles cross the boundary, not their bytes. A File is
+      // cloneable by reference — the browser passes the underlying blob handle
+      // without copying the data — so the worker reads each one as it reaches
+      // it and drops it again. Reading all of them here first (the previous
+      // Promise.all) meant every file was fully in memory before the merge even
+      // started, on top of the parsed documents the worker then built from
+      // them, which is the same "decode everything at once" trap the image
+      // worker sequences its batch to avoid.
+      const result = await run(ops.MERGE, { files: items.map((item) => item.file) });
 
       setMergedBlob(new Blob([result.bytes], { type: "application/pdf" }));
       trackEvent(events.TOOL_RUN, {

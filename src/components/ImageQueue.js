@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { X, ArrowRight } from "lucide-react";
 import { colors } from "@/lib/theme";
 import { formatBytes } from "@/lib/formatBytes";
+import { useObjectUrl } from "@/lib/useObjectUrl";
 import { iconButtonStyle } from "@/components/ToolButton";
 
 // The file list shared by every image tool once they became multi-file.
@@ -31,14 +32,10 @@ export default function ImageQueue({ items, results, onRemove, disabled }) {
 }
 
 function QueueRow({ item, result, onRemove, disabled }) {
-  // Derived rather than held in state: the URL is a pure function of the
-  // file, so an effect would only add a render pass with no thumbnail.
-  const thumbnail = useMemo(() => URL.createObjectURL(item.file), [item.file]);
-
-  // Revoked when the row unmounts or the file changes. The old tools revoked
-  // only on explicit reset, so churning through files left every preview blob
-  // alive for the tab's lifetime.
-  useEffect(() => () => URL.revokeObjectURL(thumbnail), [thumbnail]);
+  // Created and revoked by the shared hook, which ties the URL to a committed
+  // render. Deriving it with useMemo instead leaks on any render React discards
+  // before commit, since the revoking effect never mounts — see useObjectUrl.
+  const thumbnail = useObjectUrl(item.file);
 
   const savedPercent =
     result && item.file.size > 0

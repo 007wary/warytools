@@ -76,13 +76,24 @@ export default function ResizeImageClient() {
       // Default to keeping the source format rather than forcing JPG, which
       // is what silently discarded WebP sources (and their transparency).
       setFormat(firstType || "image/jpeg");
-      URL.revokeObjectURL(url);
     };
-    img.onerror = () => URL.revokeObjectURL(url);
+
+    // Revoked in exactly one place — the cleanup below — rather than in each
+    // handler as well. Revoking on load and again on cleanup double-revoked
+    // the same URL on every successful read, and the error path didn't check
+    // `cancelled` at all, so the ordering only happened to work. Cleanup always
+    // runs, on both the success and failure paths, so one revoke there covers
+    // every case.
     img.src = url;
 
     return () => {
       cancelled = true;
+      // Detach the pending decode before dropping the URL. Without this a
+      // large image still being decoded when the user picks another file keeps
+      // that work (and its buffer) alive until it finishes for nothing.
+      img.onload = null;
+      img.onerror = null;
+      img.src = "";
       URL.revokeObjectURL(url);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

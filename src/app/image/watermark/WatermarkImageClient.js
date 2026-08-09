@@ -10,6 +10,7 @@ import WarningBanner from "@/components/WarningBanner";
 import ImageQueue from "@/components/ImageQueue";
 import { PrimaryButton, SecondaryButton } from "@/components/ToolButton";
 import { useImageBatch } from "@/lib/useImageBatch";
+import { useObjectUrl } from "@/lib/useObjectUrl";
 import { useSupportedFormats, findFormat } from "@/lib/imageFormats";
 import { validateImageFile } from "@/lib/imageValidation";
 import { outputFilename, clampQuality } from "@/lib/imageResampling";
@@ -824,8 +825,9 @@ function usePreviewMarkCount(dimensions, settings, logo) {
 }
 
 function LogoThumbnail({ logo }) {
-  const url = useMemo(() => URL.createObjectURL(logo.file), [logo]);
-  useEffect(() => () => URL.revokeObjectURL(url), [url]);
+  // Keyed on the File, not the `logo` wrapper: the wrapper is rebuilt whenever
+  // the decoded bitmap is replaced, which would needlessly churn the URL.
+  const url = useObjectUrl(logo.file);
 
   return (
     <span
@@ -840,7 +842,7 @@ function LogoThumbnail({ logo }) {
       }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+      {url && <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />}
     </span>
   );
 }

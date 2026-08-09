@@ -39,7 +39,7 @@ import {
   findInkColor,
   hexToRgb01 as signatureHexToRgb01,
 } from "@/lib/pdfSignature";
-import { ops, replies, createProgress } from "@/lib/pdfWorkerProtocol";
+import { ops, replies, createProgress, createChunk } from "@/lib/pdfWorkerProtocol";
 import { layoutImagePage } from "@/lib/pdfPageSizes";
 import { toPdfBox } from "@/lib/cropGeometry";
 import { formatPageLabel, placeNumber } from "@/lib/pdfPageNumbers";
@@ -166,6 +166,10 @@ async function inspect({ bytes }) {
   };
 }
 
+// `files` are File handles, not ArrayBuffers. Each one's bytes are read here,
+// at the point they are needed, so a ten-file merge holds one file's bytes at a
+// time rather than all ten before the first page is copied. A File clones by
+// reference across the worker boundary, so nothing is duplicated to get it here.
 async function merge(id, { files }) {
   const merged = await PDFDocument.create();
   const total = files.length;
@@ -174,7 +178,8 @@ async function merge(id, { files }) {
     throwIfCancelled(id);
     report(id, i, total, "Merging file");
 
-    const source = await loadPdf(files[i]);
+    const bytes = await files[i].arrayBuffer();
+    const source = await loadPdf(bytes);
     const copied = await merged.copyPages(source, source.getPageIndices());
     copied.forEach((page) => merged.addPage(page));
   }
@@ -257,6 +262,16 @@ function copyCatalogEntries(source, target) {
 // JSZip's compression is already async and yields, and keeping it out of here
 // means the worker bundle doesn't carry a second large dependency.
 //
+// Each page is posted as its own CHUNK the moment it is saved, rather than
+// collected into an array returned at the end. Accumulating them meant a
+// 300-page document held the source, all 300 saved outputs, and then JSZip's
+// copy of those, all at once — and a one-page save carries its own font and
+// resource subset, so the outputs together routinely outweigh the source
+// several times over. Streaming keeps peak memory at the source plus one page
+// plus the growing zip, which is what lets a large document finish at all.
+// The page's buffer is transferred with its message, so the worker releases it
+// immediately instead of holding a reference until the op returns.
+//
 // Deliberately does NOT call copyCatalogEntries, unlike extractRange and
 // reorder. A whole document's outline tree copied onto every one-page file
 // would give each of 300 files a full set of bookmarks pointing at 299 pages
@@ -266,8 +281,6 @@ function copyCatalogEntries(source, target) {
 async function splitAll(id, { bytes }) {
   const source = await loadPdf(bytes);
   const total = source.getPageCount();
-  const documents = [];
-  const transfer = [];
 
   for (let i = 0; i < total; i++) {
     throwIfCancelled(id);
@@ -278,14 +291,16 @@ async function splitAll(id, { bytes }) {
     target.addPage(page);
 
     const out = await target.save({ useObjectStreams: true });
-    documents.push({ name: `page-${i + 1}.pdf`, bytes: out.buffer });
-    transfer.push(out.buffer);
+    self.postMessage(createChunk(id, i, { name: `page-${i + 1}.pdf`, bytes: out.buffer }), [
+      out.buffer,
+    ]);
   }
 
   throwIfCancelled(id);
   report(id, total, total, "Splitting page");
 
-  return { message: { documents, pageCount: total }, transfer };
+  // No documents in the result: the caller already has them all as chunks.
+  return { message: { pageCount: total }, transfer: [] };
 }
 
 // pdf-lib cannot re-encode embedded images, so this is a structural

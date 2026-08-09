@@ -126,19 +126,30 @@ export default function SplitPdfClient() {
     setResult(null);
 
     try {
-      const split = await run(
-        ops.SPLIT_ALL,
-        { bytes: bytesRef.current.slice(0) },
-        { transfer: [] }
-      );
-
       // Zipping stays on the main thread: JSZip's generateAsync already
       // yields between chunks, so it doesn't block, and keeping it here means
       // the worker bundle doesn't carry a second heavy dependency.
-      setIsZipping(true);
+      //
+      // Loaded BEFORE the run, not after: pages now arrive as chunks while the
+      // worker is still splitting, so the zip has to exist to receive them.
       const { default: JSZip } = await import("jszip");
       const zip = new JSZip();
-      split.documents.forEach((doc) => zip.file(doc.name, doc.bytes));
+
+      const split = await run(
+        ops.SPLIT_ALL,
+        { bytes: bytesRef.current.slice(0) },
+        {
+          transfer: [],
+          // Each page is filed and immediately dropped. Holding the array the
+          // worker used to return meant every one-page document stayed
+          // resident until the zip was built — the source, all N outputs, and
+          // JSZip's copy of them all at once, which is what made a large split
+          // fail rather than merely be slow.
+          onChunk: (chunk) => zip.file(chunk.name, chunk.bytes),
+        }
+      );
+
+      setIsZipping(true);
       const zipBlob = await zip.generateAsync({ type: "blob" });
 
       setResult({ blob: zipBlob, filename: "split-pages.zip" });
