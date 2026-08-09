@@ -28,6 +28,7 @@ const ALLOWLISTED_IN_DATABASE = [
   "image/compress",
   "image/convert",
   "image/exif",
+  "image/favicon",
   "image/resize",
   "image/watermark",
   "pdf/compress",

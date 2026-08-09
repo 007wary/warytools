@@ -223,6 +223,23 @@ export const categories = [
         icon: "Droplets",
       },
       {
+        // Under Image Tools because the input is an image and it reuses the
+        // image pipeline's validation and decode. The output is arguably a
+        // developer asset rather than an image, but a "developer tools"
+        // category holding one item reads as unfinished — the same call made
+        // for the EXIF Stripper below.
+        //
+        // The description says "set" and names .ico deliberately: the field is
+        // full of generators that hand back a single file, and the whole scope
+        // decision here is that a favicon is a set of files plus the markup
+        // that wires them up.
+        slug: "favicon",
+        title: "Favicon Generator",
+        description: "Generate a full favicon set — .ico, PNGs, and the HTML — from any image.",
+        href: "/image/favicon",
+        icon: "AppWindow",
+      },
+      {
         // Named "EXIF Stripper" rather than "Remove Image Metadata": EXIF is
         // the term people actually search, and the ones who don't know it are
         // served by the description, which leads with "GPS location" — the

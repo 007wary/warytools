@@ -31,6 +31,7 @@ import {
   FileMinus,
   FileStack,
   ShieldCheck,
+  AppWindow,
 } from "lucide-react";
 
 // Resolves the string icon names stored in tools.js to actual lucide
@@ -92,6 +93,11 @@ const iconMap = {
   // sells is the state you end up in, not the deletion itself — and it's the
   // only image tool whose output is about safety rather than appearance.
   ShieldCheck,
+  // Favicon Generator. A browser window rather than an image or a star: what
+  // the tool produces is the thing in the tab, and the window frame is the
+  // only glyph here that says "browser" at a glance. Deliberately NOT Image —
+  // that reads as another photo editor, which is what this isn't.
+  AppWindow,
 };
 
 export default function ToolIcon({ name, size = 20, strokeWidth = 1.75, style, ...props }) {

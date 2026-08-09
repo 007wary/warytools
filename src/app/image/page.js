@@ -5,9 +5,14 @@ import { categories } from "@/lib/tools";
 import { jsonLdGraph, collectionPageJsonLd, breadcrumbJsonLd } from "@/lib/jsonLd";
 import { pageMetadata } from "@/lib/pageMetadata";
 
-const title = "Free Image Tools — Compress, Resize, Convert, Watermark";
+// The title names four of the six tools — all six would truncate in SERPs.
+// "Favicon" displaces "Watermark" because it is the higher-intent search of
+// the two: someone typing it is building a site and wants a file, whereas
+// "watermark" is browsed as often as it is needed. The full set is in the
+// description, which has room for it.
+const title = "Free Image Tools — Compress, Resize, Convert, Favicon";
 const description =
-  "Free online image tools to compress, resize, convert, watermark, and strip EXIF data from JPG, PNG, and WebP files. No sign-up — everything runs in your browser, nothing uploaded.";
+  "Free online image tools to compress, resize, convert, and watermark images, generate favicons, and strip EXIF data from JPG, PNG, and WebP files. No sign-up — everything runs in your browser, nothing uploaded.";
 
 export const metadata = pageMetadata({ title, description, path: "/image" });
 
