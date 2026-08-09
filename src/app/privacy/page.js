@@ -15,7 +15,7 @@ export const metadata = pageMetadata({
   path: "/privacy",
 });
 
-const LAST_UPDATED = "August 6, 2026";
+const LAST_UPDATED = "August 10, 2026";
 
 function Section({ id, title, children }) {
   return (
@@ -254,6 +254,29 @@ export default function PrivacyPage() {
               aboutads.info
             </a>{" "}
             opt-out covers other participating ad networks.
+          </p>
+        </Section>
+
+        <Section id="consent" title="Consent (EEA, UK, and Switzerland)">
+          <p style={{ marginBottom: "10px" }}>
+            If you&rsquo;re visiting from the European Economic Area, the UK, or Switzerland,
+            you&rsquo;ll see a consent message before personalized ads are shown. It&rsquo;s
+            served through Google&rsquo;s certified Consent Management Platform, and it asks
+            whether you agree to cookies and data being used for personalized advertising and
+            the related measurement.
+          </p>
+          <p style={{ marginBottom: "10px" }}>
+            You can consent, refuse, or open &ldquo;Manage options&rdquo; to make a choice
+            per purpose and per vendor. Refusing is a single click, exactly like accepting —
+            there&rsquo;s no penalty for saying no, and every tool on WaryTools works
+            identically either way, because none of them need advertising cookies to run. If
+            you refuse, you&rsquo;ll still see ads; they just won&rsquo;t be personalized.
+          </p>
+          <p>
+            Your choice is stored in your browser so you&rsquo;re not asked on every page, and
+            it&rsquo;s passed to Google&rsquo;s advertising services as a consent signal.
+            Clearing your browser&rsquo;s cookies and site data for WaryTools clears the stored
+            choice, and the message will appear again on your next visit so you can change it.
           </p>
         </Section>
 

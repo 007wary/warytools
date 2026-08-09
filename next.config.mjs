@@ -175,6 +175,26 @@ const adsenseHostList = [
   "https://*.doubleclick.net",
   "https://adservice.google.com",
   "https://*.adtrafficquality.google",
+
+  // Google's certified CMP (Privacy & messaging → the GDPR consent message),
+  // enabled 2026-08-10. It is delivered by adsbygoogle.js rather than by a
+  // separate snippet, so there is nothing to add to the page — but it fetches
+  // its message config and records the consent choice from its own hosts,
+  // which no entry above covers.
+  //
+  // This is the most deceptive blocked-host case on the site, and the reason
+  // it is added before anyone reports a problem: the CMP only renders for
+  // EEA/UK/Swiss visitors. Blocked from here in India, the banner simply never
+  // appears, every local check looks perfectly healthy, and the failure is
+  // invisible to the only people who can see the feature. The consequence is
+  // not a missing banner either — with no consent signal, ad serving to those
+  // visitors is restricted, so it reads as an unexplained European revenue
+  // hole rather than as a CSP error.
+  //
+  // fundingchoicesmessages.google.com serves the message itself (Funding
+  // Choices is the product Google's CMP grew out of, hence the name).
+  "https://fundingchoicesmessages.google.com",
+  "https://*.fundingchoicesmessages.google.com",
 ];
 
 const adsenseHosts = adsenseHostList.join(" ");
@@ -196,7 +216,19 @@ const adsenseHosts = adsenseHostList.join(" ");
 // www.google.com already appears in the GA regional-signals list, but that
 // list only ever reaches img-src and connect-src. Directives do not share
 // entries, so it has to be named again here.
-const adsenseFrameHosts = [...adsenseHostList, "https://www.google.com"].join(" ");
+//
+// consent.google.com is the CMP's own frame — the "Manage options" vendor
+// list opens as an embedded frame from there rather than as page markup. It
+// is framing-only, which is why it is here and not in adsenseHostList: the
+// consent message itself renders fine without it, so blocking it breaks only
+// the detailed-choices screen. That is the half of the banner the "as easy to
+// refuse as to accept" requirement actually rests on, and it fails for EEA
+// visitors only — see the note on the funding-choices hosts above.
+const adsenseFrameHosts = [
+  ...adsenseHostList,
+  "https://www.google.com",
+  "https://consent.google.com",
+].join(" ");
 
 // Ad serving follows the same production-only gate as the tag itself
 // (lib/adsense.js). Opening these holes on previews would let a stray tag
