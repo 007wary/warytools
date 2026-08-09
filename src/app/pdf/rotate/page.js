@@ -1,9 +1,16 @@
 import RotatePdfClient from "./RotatePdfClient";
 import JsonLd from "@/components/JsonLd";
 import FaqSection from "@/components/FaqSection";
+import HowToSteps from "@/components/HowToSteps";
 import RelatedTools from "@/components/RelatedTools";
 import { categories } from "@/lib/tools";
-import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
+import {
+  jsonLdGraph,
+  toolSoftwareAppJsonLd,
+  breadcrumbJsonLd,
+  faqJsonLd,
+  howToJsonLd,
+} from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
 import { pageMetadata } from "@/lib/pageMetadata";
 
@@ -18,6 +25,16 @@ export const metadata = pageMetadata({
   description,
   path: href,
 });
+
+// Rendered by <HowToSteps /> AND emitted as HowTo structured data. Google
+// requires the steps to be visible on the page, so these are one source for
+// both rather than schema-only markup describing something nobody can see.
+const howToName = "How to rotate PDF pages";
+const howToSteps = [
+  { name: "Open your PDF", text: "Drag the file onto the drop zone, or click it to browse." },
+  { name: "Turn the pages you need", text: "Rotate a single page with the buttons on its thumbnail, or rotate every page at once." },
+  { name: "Save and download", text: "Click Rotate PDF and download the document with the new orientation applied." },
+];
 
 const faqs = [
   {
@@ -47,7 +64,8 @@ export default function RotatePdfPage() {
             { name: "PDF Tools", href: "/pdf" },
             { name: appName, href },
           ]),
-          faqJsonLd(faqs)
+          faqJsonLd(faqs),
+          howToJsonLd({ name: howToName, steps: howToSteps, href })
         )}
       />
       <h1 style={{ fontSize: "28px", fontWeight: 700, color: colors.text, marginBottom: "12px" }}>
@@ -64,6 +82,8 @@ export default function RotatePdfPage() {
       </p>
 
       <RotatePdfClient />
+
+      <HowToSteps title={howToName} steps={howToSteps} />
 
       <FaqSection items={faqs} />
       <RelatedTools

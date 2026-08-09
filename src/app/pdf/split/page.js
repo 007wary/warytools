@@ -1,9 +1,16 @@
 import SplitPdfClient from "./SplitPdfClient";
 import JsonLd from "@/components/JsonLd";
 import FaqSection from "@/components/FaqSection";
+import HowToSteps from "@/components/HowToSteps";
 import RelatedTools from "@/components/RelatedTools";
 import { categories } from "@/lib/tools";
-import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
+import {
+  jsonLdGraph,
+  toolSoftwareAppJsonLd,
+  breadcrumbJsonLd,
+  faqJsonLd,
+  howToJsonLd,
+} from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
 import { pageMetadata } from "@/lib/pageMetadata";
 
@@ -18,6 +25,16 @@ export const metadata = pageMetadata({
   description,
   path: href,
 });
+
+// Rendered by <HowToSteps /> AND emitted as HowTo structured data. Google
+// requires the steps to be visible on the page, so these are one source for
+// both rather than schema-only markup describing something nobody can see.
+const howToName = "How to split a PDF";
+const howToSteps = [
+  { name: "Open your PDF", text: "Drag the file onto the drop zone, or click it to browse." },
+  { name: "Choose what to extract", text: "Type a page range like 1-3, 7, 12-15, or switch to splitting every page into its own file." },
+  { name: "Download the result", text: "Click Extract pages or Split PDF and download the new file, or the zip of files." },
+];
 
 const faqs = [
   {
@@ -49,7 +66,8 @@ export default function SplitPdfPage() {
             { name: "PDF Tools", href: "/pdf" },
             { name: appName, href },
           ]),
-          faqJsonLd(faqs)
+          faqJsonLd(faqs),
+          howToJsonLd({ name: howToName, steps: howToSteps, href })
         )}
       />
       <h1 style={{ fontSize: "28px", fontWeight: 700, color: colors.text, marginBottom: "12px" }}>
@@ -66,6 +84,8 @@ export default function SplitPdfPage() {
       </p>
 
       <SplitPdfClient />
+
+      <HowToSteps title={howToName} steps={howToSteps} />
 
       <FaqSection items={faqs} />
       <RelatedTools

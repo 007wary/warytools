@@ -1,15 +1,28 @@
 import SignPdfClient from "./SignPdfClient";
 import JsonLd from "@/components/JsonLd";
 import FaqSection from "@/components/FaqSection";
+import HowToSteps from "@/components/HowToSteps";
 import RelatedTools from "@/components/RelatedTools";
 import { categories } from "@/lib/tools";
-import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
+import {
+  jsonLdGraph,
+  toolSoftwareAppJsonLd,
+  breadcrumbJsonLd,
+  faqJsonLd,
+  howToJsonLd,
+} from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
 import { pageMetadata } from "@/lib/pageMetadata";
 
-const title = "Sign PDF Online Free — Draw or Type Your Signature";
+// 46 chars with the layout's " — WaryTools" suffix. The earlier
+// "…— Draw or Type Your Signature" ran to 62 and was truncated; the dropped
+// clause is recovered in the description, where there is room for it.
+const title = "Sign PDF Online Free — eSign a PDF";
+// Trimmed from 222 chars. Google renders roughly 155, so the old copy was cut
+// at "…then drag it into" and lost the privacy claim entirely — which on a tool
+// people use for contracts is the single most persuasive thing it had to say.
 const description =
-  "Sign a PDF online, free and without sign-up. Draw your signature with a mouse or finger, type it, or upload a photo of it, then drag it into place. Runs entirely in your browser, so the document you sign is never uploaded.";
+  "Sign a PDF online free — draw your signature, type it, or upload a photo, then drag it into place. Runs in your browser, so the document is never uploaded.";
 const appName = "Sign PDF";
 const href = "/pdf/sign";
 
@@ -18,6 +31,16 @@ export const metadata = pageMetadata({
   description,
   path: href,
 });
+
+// Rendered by <HowToSteps /> AND emitted as HowTo structured data. Google
+// requires the steps to be visible on the page, so these are one source for
+// both rather than schema-only markup describing something nobody can see.
+const howToName = "How to sign a PDF";
+const howToSteps = [
+  { name: "Open your PDF", text: "Drag the file onto the drop zone, or click it to browse." },
+  { name: "Create your signature", text: "Draw it with a mouse or finger, type it and pick a style, or upload a photo of your signature." },
+  { name: "Place it and download", text: "Drag the signature onto the page and resize it, then click Sign PDF and download the signed document." },
+];
 
 const faqs = [
   {
@@ -80,7 +103,8 @@ export default function SignPdfPage() {
             { name: "PDF Tools", href: "/pdf" },
             { name: appName, href },
           ]),
-          faqJsonLd(faqs)
+          faqJsonLd(faqs),
+          howToJsonLd({ name: howToName, steps: howToSteps, href })
         )}
       />
       <h1 style={{ fontSize: "28px", fontWeight: 700, color: colors.text, marginBottom: "12px" }}>
@@ -100,6 +124,8 @@ export default function SignPdfPage() {
       </p>
 
       <SignPdfClient />
+
+      <HowToSteps title={howToName} steps={howToSteps} />
 
       <FaqSection items={faqs} />
       <RelatedTools

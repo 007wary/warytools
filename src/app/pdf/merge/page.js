@@ -1,9 +1,16 @@
 import MergePdfClient from "./MergePdfClient";
 import JsonLd from "@/components/JsonLd";
 import FaqSection from "@/components/FaqSection";
+import HowToSteps from "@/components/HowToSteps";
 import RelatedTools from "@/components/RelatedTools";
 import { categories } from "@/lib/tools";
-import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
+import {
+  jsonLdGraph,
+  toolSoftwareAppJsonLd,
+  breadcrumbJsonLd,
+  faqJsonLd,
+  howToJsonLd,
+} from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
 import { pageMetadata } from "@/lib/pageMetadata";
 
@@ -22,6 +29,16 @@ export const metadata = pageMetadata({
   description,
   path: href,
 });
+
+// Rendered by <HowToSteps /> AND emitted as HowTo structured data. Google
+// requires the steps to be visible on the page, so these are one source for
+// both rather than schema-only markup describing something nobody can see.
+const howToName = "How to merge PDF files";
+const howToSteps = [
+  { name: "Add your PDFs", text: "Drag the files onto the drop zone, or click it to browse. You can add as many as you need." },
+  { name: "Put them in order", text: "Drag the files into the order you want them combined, or use the arrow buttons." },
+  { name: "Merge and download", text: "Click Merge PDFs and download the single combined document." },
+];
 
 const faqs = [
   {
@@ -56,7 +73,8 @@ export default function MergePdfPage() {
             { name: "PDF Tools", href: "/pdf" },
             { name: appName, href },
           ]),
-          faqJsonLd(faqs)
+          faqJsonLd(faqs),
+          howToJsonLd({ name: howToName, steps: howToSteps, href })
         )}
       />
       <h1 style={{ fontSize: "28px", fontWeight: 700, color: colors.text, marginBottom: "12px" }}>
@@ -74,6 +92,8 @@ export default function MergePdfPage() {
       </p>
 
       <MergePdfClient />
+
+      <HowToSteps title={howToName} steps={howToSteps} />
 
       <FaqSection items={faqs} />
       <RelatedTools

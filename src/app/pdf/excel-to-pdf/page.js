@@ -1,9 +1,16 @@
 import ExcelToPdfClient from "./ExcelToPdfClient";
 import JsonLd from "@/components/JsonLd";
 import FaqSection from "@/components/FaqSection";
+import HowToSteps from "@/components/HowToSteps";
 import RelatedTools from "@/components/RelatedTools";
 import { categories } from "@/lib/tools";
-import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
+import {
+  jsonLdGraph,
+  toolSoftwareAppJsonLd,
+  breadcrumbJsonLd,
+  faqJsonLd,
+  howToJsonLd,
+} from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
 import { pageMetadata } from "@/lib/pageMetadata";
 
@@ -23,6 +30,16 @@ export const metadata = pageMetadata({
   description,
   path: href,
 });
+
+// Rendered by <HowToSteps /> AND emitted as HowTo structured data. Google
+// requires the steps to be visible on the page, so these are one source for
+// both rather than schema-only markup describing something nobody can see.
+const howToName = "How to convert Excel to PDF";
+const howToSteps = [
+  { name: "Open your spreadsheet", text: "Drag in your .xlsx, .xls, or .ods file, or click to browse. This tool converts on our server, which the page says before you choose a file." },
+  { name: "Choose how it fits the page", text: "Pick Fit to width so no columns are cut off, set the orientation, and choose which sheets to include." },
+  { name: "Convert and download", text: "Click Convert to PDF and download the result." },
+];
 
 const faqs = [
   {
@@ -100,7 +117,8 @@ export default function ExcelToPdfPage() {
             { name: "PDF Tools", href: "/pdf" },
             { name: appName, href },
           ]),
-          faqJsonLd(faqs)
+          faqJsonLd(faqs),
+          howToJsonLd({ name: howToName, steps: howToSteps, href })
         )}
       />
       <h1 style={{ fontSize: "28px", fontWeight: 700, color: colors.text, marginBottom: "12px" }}>
@@ -121,6 +139,8 @@ export default function ExcelToPdfPage() {
       </p>
 
       <ExcelToPdfClient />
+
+      <HowToSteps title={howToName} steps={howToSteps} />
 
       <FaqSection items={faqs} />
       <RelatedTools

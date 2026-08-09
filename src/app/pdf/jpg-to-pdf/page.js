@@ -1,9 +1,16 @@
 import JpgToPdfClient from "./JpgToPdfClient";
 import JsonLd from "@/components/JsonLd";
 import FaqSection from "@/components/FaqSection";
+import HowToSteps from "@/components/HowToSteps";
 import RelatedTools from "@/components/RelatedTools";
 import { categories } from "@/lib/tools";
-import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
+import {
+  jsonLdGraph,
+  toolSoftwareAppJsonLd,
+  breadcrumbJsonLd,
+  faqJsonLd,
+  howToJsonLd,
+} from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
 import { pageMetadata } from "@/lib/pageMetadata";
 
@@ -21,6 +28,16 @@ export const metadata = pageMetadata({
   description,
   path: href,
 });
+
+// Rendered by <HowToSteps /> AND emitted as HowTo structured data. Google
+// requires the steps to be visible on the page, so these are one source for
+// both rather than schema-only markup describing something nobody can see.
+const howToName = "How to convert JPG to PDF";
+const howToSteps = [
+  { name: "Add your images", text: "Drag in your JPG, PNG, WebP, or AVIF files, or click to browse. Add as many as you like." },
+  { name: "Order them and set the page", text: "Drag the images into the order you want, then choose the page size, orientation, and margin." },
+  { name: "Create and download", text: "Click Create PDF and download the single document containing every image." },
+];
 
 const faqs = [
   {
@@ -68,7 +85,8 @@ export default function JpgToPdfPage() {
             { name: "PDF Tools", href: "/pdf" },
             { name: appName, href },
           ]),
-          faqJsonLd(faqs)
+          faqJsonLd(faqs),
+          howToJsonLd({ name: howToName, steps: howToSteps, href })
         )}
       />
       <h1 style={{ fontSize: "28px", fontWeight: 700, color: colors.text, marginBottom: "12px" }}>
@@ -84,7 +102,9 @@ export default function JpgToPdfPage() {
         pages back into a readable file, or bundling scans for an application form.
       </p>
 
-      <JpgToPdfClient />
+      <JpgToPdfClient />
+
+      <HowToSteps title={howToName} steps={howToSteps} />
 
       <FaqSection items={faqs} />
       <RelatedTools

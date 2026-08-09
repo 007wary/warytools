@@ -1,15 +1,25 @@
 import WatermarkPdfClient from "./WatermarkPdfClient";
 import JsonLd from "@/components/JsonLd";
 import FaqSection from "@/components/FaqSection";
+import HowToSteps from "@/components/HowToSteps";
 import RelatedTools from "@/components/RelatedTools";
 import { categories } from "@/lib/tools";
-import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
+import {
+  jsonLdGraph,
+  toolSoftwareAppJsonLd,
+  breadcrumbJsonLd,
+  faqJsonLd,
+  howToJsonLd,
+} from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
 import { pageMetadata } from "@/lib/pageMetadata";
 
 const title = "Watermark PDF Online Free — Text or Image";
+// Trimmed from 216 chars. Google renders roughly 155, so the old copy was cut
+// at "…set the angle, colour, and" — losing the privacy claim, which is the
+// strongest differentiator this page has against the incumbents ranking above it.
 const description =
-  "Add a text or image watermark to a PDF online, free and without sign-up. Tile it across every page or place a single mark, and set the angle, colour, and opacity. Runs in your browser, so your file is never uploaded.";
+  "Add a text or image watermark to a PDF free — tile it across every page or place one mark, and set the angle, colour, and opacity. Nothing is uploaded.";
 const appName = "Watermark PDF";
 const href = "/pdf/watermark";
 
@@ -18,6 +28,16 @@ export const metadata = pageMetadata({
   description,
   path: href,
 });
+
+// Rendered by <HowToSteps /> AND emitted as HowTo structured data. Google
+// requires the steps to be visible on the page, so these are one source for
+// both rather than schema-only markup describing something nobody can see.
+const howToName = "How to watermark a PDF";
+const howToSteps = [
+  { name: "Open your PDF", text: "Drag the file onto the drop zone, or click it to browse." },
+  { name: "Set up your mark", text: "Type your text or upload a logo, then set the position, angle, colour, size, and opacity. The preview updates as you go." },
+  { name: "Apply and download", text: "Choose which pages to mark, click Add watermark, and download the result." },
+];
 
 const faqs = [
   {
@@ -75,7 +95,8 @@ export default function WatermarkPdfPage() {
             { name: "PDF Tools", href: "/pdf" },
             { name: appName, href },
           ]),
-          faqJsonLd(faqs)
+          faqJsonLd(faqs),
+          howToJsonLd({ name: howToName, steps: howToSteps, href })
         )}
       />
       <h1 style={{ fontSize: "28px", fontWeight: 700, color: colors.text, marginBottom: "12px" }}>
@@ -93,6 +114,8 @@ export default function WatermarkPdfPage() {
       </p>
 
       <WatermarkPdfClient />
+
+      <HowToSteps title={howToName} steps={howToSteps} />
 
       <FaqSection items={faqs} />
       <RelatedTools

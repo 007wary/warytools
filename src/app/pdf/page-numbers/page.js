@@ -1,15 +1,23 @@
 import AddPageNumbersClient from "./AddPageNumbersClient";
 import JsonLd from "@/components/JsonLd";
 import FaqSection from "@/components/FaqSection";
+import HowToSteps from "@/components/HowToSteps";
 import RelatedTools from "@/components/RelatedTools";
 import { categories } from "@/lib/tools";
-import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
+import {
+  jsonLdGraph,
+  toolSoftwareAppJsonLd,
+  breadcrumbJsonLd,
+  faqJsonLd,
+  howToJsonLd,
+} from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
 import { pageMetadata } from "@/lib/pageMetadata";
 
 const title = "Add Page Numbers to PDF Online Free";
+// 152 chars — was 161, which Google cut at "never".
 const description =
-  "Add page numbers to a PDF online, free and without sign-up. Choose the position, format, and starting page. Runs in your browser, so your file is never uploaded.";
+  "Add page numbers to a PDF online, free and with no sign-up. Choose the position, format, and starting page. Runs in your browser — nothing is uploaded.";
 const appName = "Add Page Numbers";
 const href = "/pdf/page-numbers";
 
@@ -18,6 +26,16 @@ export const metadata = pageMetadata({
   description,
   path: href,
 });
+
+// Rendered by <HowToSteps /> AND emitted as HowTo structured data. Google
+// requires the steps to be visible on the page, so these are one source for
+// both rather than schema-only markup describing something nobody can see.
+const howToName = "How to add page numbers to a PDF";
+const howToSteps = [
+  { name: "Open your PDF", text: "Drag the file onto the drop zone, or click it to browse." },
+  { name: "Choose position and format", text: "Pick where the number sits, the format such as Page 3 of 12, which page to start on, and what number to start from." },
+  { name: "Add and download", text: "Click Add page numbers and download the numbered document." },
+];
 
 const faqs = [
   {
@@ -65,7 +83,8 @@ export default function AddPageNumbersPage() {
             { name: "PDF Tools", href: "/pdf" },
             { name: appName, href },
           ]),
-          faqJsonLd(faqs)
+          faqJsonLd(faqs),
+          howToJsonLd({ name: howToName, steps: howToSteps, href })
         )}
       />
       <h1 style={{ fontSize: "28px", fontWeight: 700, color: colors.text, marginBottom: "12px" }}>
@@ -82,6 +101,8 @@ export default function AddPageNumbersPage() {
       </p>
 
       <AddPageNumbersClient />
+
+      <HowToSteps title={howToName} steps={howToSteps} />
 
       <FaqSection items={faqs} />
       <RelatedTools

@@ -119,6 +119,50 @@ export function webPageJsonLd({ name, description, href, type = "WebPage" }) {
   };
 }
 
+/**
+ * The steps for completing one task, e.g. "How to merge PDF files".
+ *
+ * Every tool page here is a step-based task page, which is exactly what
+ * schema.org/HowTo describes — and none of them declared it, so the only
+ * structured data explaining what the page *does* was a one-line
+ * SoftwareApplication description. HowTo gives a crawler the actual procedure,
+ * which is what "how to merge PDF files" queries are asking for and what the
+ * incumbents ranking for them already publish.
+ *
+ * Deliberately minimal: `name`, `step`, and nothing else. `totalTime`,
+ * `estimatedCost`, `supply` and `tool` are all valid HowTo properties, but
+ * inventing a "PT2M" for something bounded by the user's file size and device
+ * would be a fabricated claim in structured data — which is the category of
+ * thing that earns a manual action, not a rich result. Cost is genuinely zero,
+ * but `estimatedCost: 0` on a HowTo reads as a purchase price and the free
+ * claim already lives in the SoftwareApplication `offers`.
+ *
+ * Steps must match what the page visibly says. Google requires HowTo content to
+ * be present on the page for the user, not only in the markup, so these are
+ * rendered by <HowToSteps /> rather than being schema-only.
+ *
+ * @param {object} args
+ * @param {string} args.name  The task, phrased as a user would search it.
+ * @param {{name: string, text: string}[]} args.steps
+ * @param {string} args.href  The tool's root-relative path, for the @id.
+ */
+export function howToJsonLd({ name, steps, href }) {
+  return {
+    "@type": "HowTo",
+    "@id": `${absoluteUrl(href)}#howto`,
+    name,
+    step: steps.map((step, index) => ({
+      "@type": "HowToStep",
+      position: index + 1,
+      name: step.name,
+      text: step.text,
+      // Anchors the step to the section rendered on the page, so the markup and
+      // the visible content are demonstrably the same thing.
+      url: `${absoluteUrl(href)}#how-to`,
+    })),
+  };
+}
+
 export function faqJsonLd(qa) {
   return {
     "@type": "FAQPage",

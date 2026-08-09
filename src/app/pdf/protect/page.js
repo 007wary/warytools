@@ -1,13 +1,25 @@
 import ProtectPdfClient from "./ProtectPdfClient";
 import JsonLd from "@/components/JsonLd";
 import FaqSection from "@/components/FaqSection";
+import HowToSteps from "@/components/HowToSteps";
 import RelatedTools from "@/components/RelatedTools";
 import { categories } from "@/lib/tools";
-import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
+import {
+  jsonLdGraph,
+  toolSoftwareAppJsonLd,
+  breadcrumbJsonLd,
+  faqJsonLd,
+  howToJsonLd,
+} from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
 import { pageMetadata } from "@/lib/pageMetadata";
 
-const title = "Protect PDF Online Free — Add a Password to a PDF";
+// 49 chars with the layout's " — WaryTools" suffix, inside the ~60 Google
+// renders. The earlier "…— Add a Password to a PDF" ran to 61 and was cut
+// mid-phrase, which spends the most valuable pixels in the result on an
+// ellipsis. "Password Protect" is also the higher-volume head term than the
+// verb "Protect" alone, so it earns the space the trimmed clause freed.
+const title = "Password Protect PDF Online Free";
 const description =
   "Add a password and encryption to a PDF, free and without sign-up. Runs entirely in your browser — the file and the password are never uploaded.";
 const appName = "Protect PDF";
@@ -18,6 +30,16 @@ export const metadata = pageMetadata({
   description,
   path: href,
 });
+
+// Rendered by <HowToSteps /> AND emitted as HowTo structured data. Google
+// requires the steps to be visible on the page, so these are one source for
+// both rather than schema-only markup describing something nobody can see.
+const howToName = "How to password protect a PDF";
+const howToSteps = [
+  { name: "Open your PDF", text: "Drag the file onto the drop zone, or click it to browse." },
+  { name: "Set a password", text: "Enter the password needed to open the document, and optionally restrict printing, copying, or editing." },
+  { name: "Encrypt and download", text: "Click Protect PDF and download the encrypted copy. Keep the original safe — a forgotten password cannot be recovered." },
+];
 
 const faqs = [
   {
@@ -65,7 +87,8 @@ export default function ProtectPdfPage() {
             { name: "PDF Tools", href: "/pdf" },
             { name: appName, href },
           ]),
-          faqJsonLd(faqs)
+          faqJsonLd(faqs),
+          howToJsonLd({ name: howToName, steps: howToSteps, href })
         )}
       />
       <h1 style={{ fontSize: "28px", fontWeight: 700, color: colors.text, marginBottom: "12px" }}>
@@ -89,6 +112,8 @@ export default function ProtectPdfPage() {
       </p>
 
       <ProtectPdfClient />
+
+      <HowToSteps title={howToName} steps={howToSteps} />
 
       <FaqSection items={faqs} />
       <RelatedTools

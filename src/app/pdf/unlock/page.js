@@ -1,9 +1,16 @@
 import UnlockPdfClient from "./UnlockPdfClient";
 import JsonLd from "@/components/JsonLd";
 import FaqSection from "@/components/FaqSection";
+import HowToSteps from "@/components/HowToSteps";
 import RelatedTools from "@/components/RelatedTools";
 import { categories } from "@/lib/tools";
-import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
+import {
+  jsonLdGraph,
+  toolSoftwareAppJsonLd,
+  breadcrumbJsonLd,
+  faqJsonLd,
+  howToJsonLd,
+} from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
 import { pageMetadata } from "@/lib/pageMetadata";
 import { UNLOCK_SCOPE_NOTE } from "@/lib/pdfEncryption";
@@ -23,6 +30,16 @@ export const metadata = pageMetadata({
 // The first FAQ is the scope question, deliberately. It is the single thing
 // someone arriving from a search for "unlock PDF" most needs answered, and
 // burying it below the fold would be a way of not quite saying it.
+// Rendered by <HowToSteps /> AND emitted as HowTo structured data. Google
+// requires the steps to be visible on the page, so these are one source for
+// both rather than schema-only markup describing something nobody can see.
+const howToName = "How to remove a password from a PDF";
+const howToSteps = [
+  { name: "Open your PDF", text: "Drag the file onto the drop zone, or click it to browse." },
+  { name: "Enter the password", text: "Type the password you already use to open the document. If the file only carries printing or copying restrictions, no password is needed." },
+  { name: "Remove and download", text: "Click Remove password and download the copy that opens without one." },
+];
+
 const faqs = [
   {
     question: "Can this open a PDF if I don't know the password?",
@@ -64,7 +81,8 @@ export default function UnlockPdfPage() {
             { name: "PDF Tools", href: "/pdf" },
             { name: appName, href },
           ]),
-          faqJsonLd(faqs)
+          faqJsonLd(faqs),
+          howToJsonLd({ name: howToName, steps: howToSteps, href })
         )}
       />
       <h1 style={{ fontSize: "28px", fontWeight: 700, color: colors.text, marginBottom: "12px" }}>
@@ -90,6 +108,8 @@ export default function UnlockPdfPage() {
       </p>
 
       <UnlockPdfClient />
+
+      <HowToSteps title={howToName} steps={howToSteps} />
 
       <FaqSection items={faqs} />
       <RelatedTools

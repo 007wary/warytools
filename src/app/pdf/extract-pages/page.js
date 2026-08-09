@@ -1,15 +1,23 @@
 import ExtractPagesClient from "./ExtractPagesClient";
 import JsonLd from "@/components/JsonLd";
 import FaqSection from "@/components/FaqSection";
+import HowToSteps from "@/components/HowToSteps";
 import RelatedTools from "@/components/RelatedTools";
 import { categories } from "@/lib/tools";
-import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
+import {
+  jsonLdGraph,
+  toolSoftwareAppJsonLd,
+  breadcrumbJsonLd,
+  faqJsonLd,
+  howToJsonLd,
+} from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
 import { pageMetadata } from "@/lib/pageMetadata";
 
 const title = "Extract Pages from PDF Online Free";
+// 154 chars — was 166, which Google cut mid-clause at "nothing is".
 const description =
-  "Pull specific pages out of a PDF online, free and without sign-up. Pick pages visually, save as one PDF or separate files. Runs in your browser — nothing is uploaded.";
+  "Pull specific pages out of a PDF online, free and with no sign-up. Pick pages visually and save as one PDF or separate files. Nothing is ever uploaded.";
 const appName = "Extract PDF Pages";
 const href = "/pdf/extract-pages";
 
@@ -18,6 +26,16 @@ export const metadata = pageMetadata({
   description,
   path: href,
 });
+
+// Rendered by <HowToSteps /> AND emitted as HowTo structured data. Google
+// requires the steps to be visible on the page, so these are one source for
+// both rather than schema-only markup describing something nobody can see.
+const howToName = "How to extract pages from a PDF";
+const howToSteps = [
+  { name: "Open your PDF", text: "Drag the file onto the drop zone, or click it to browse." },
+  { name: "Choose the pages you want", text: "Click the page thumbnails, or type numbers like 1, 4-6. Typing an order such as 5, 1, 9 exports them in that order." },
+  { name: "Extract and download", text: "Click Extract pages and download them as one PDF, or as separate files." },
+];
 
 const faqs = [
   {
@@ -65,7 +83,8 @@ export default function ExtractPagesPage() {
             { name: "PDF Tools", href: "/pdf" },
             { name: appName, href },
           ]),
-          faqJsonLd(faqs)
+          faqJsonLd(faqs),
+          howToJsonLd({ name: howToName, steps: howToSteps, href })
         )}
       />
       <h1 style={{ fontSize: "28px", fontWeight: 700, color: colors.text, marginBottom: "12px" }}>
@@ -83,6 +102,8 @@ export default function ExtractPagesPage() {
       </p>
 
       <ExtractPagesClient />
+
+      <HowToSteps title={howToName} steps={howToSteps} />
 
       <FaqSection items={faqs} />
       <RelatedTools
