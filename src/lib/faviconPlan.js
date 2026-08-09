@@ -25,13 +25,15 @@ export const ICON_SIZES = [
     filename: "favicon-32x32.png",
     purpose: "Browser tab at 2x, and Windows taskbar shortcuts.",
   },
-  {
-    size: 48,
-    filename: "favicon-48x48.png",
-    // Chrome's desktop shortcut and the Windows site tile both reach for this
-    // one. Cheap to include and visibly better than an upscaled 32.
-    purpose: "Chrome desktop shortcuts and Windows tiles.",
-  },
+  // No standalone favicon-48x48.png. 48px matters — Chrome's desktop shortcut
+  // and the Windows desktop both reach for it — but it is already carried
+  // inside favicon.ico (see ICO_SIZES), which is where Windows actually reads
+  // it from. Shipping it a second time as a loose PNG meant a file nothing in
+  // headSnippet() referenced and no browser ever requested: one more thing to
+  // upload, silently unused. The rule this encodes is that every file in the
+  // zip must be reachable from the markup or by a documented fixed filename
+  // (favicon.ico, apple-touch-icon.png, the manifest's own icon entries) —
+  // asserted by the "produces no file the markup never references" test.
   {
     size: 180,
     filename: "apple-touch-icon.png",
@@ -119,6 +121,16 @@ export function headSnippet({ themeColor = "#ffffff" } = {}) {
  * to a parser, so the name is JSON-escaped by `JSON.stringify` rather than by
  * hand — the site name is user input and lands in a file the user publishes.
  *
+ * The name fields are OMITTED when blank rather than emitted empty, and that
+ * distinction is load-bearing. Chrome requires a non-empty `name` or
+ * `short_name` before it will offer to install a site, and `"name": ""`
+ * satisfies neither — it reads as "present and empty", which is a declared
+ * answer rather than an absent one. Since the site name is an optional field in
+ * the UI, emitting it empty meant the default path shipped a manifest that
+ * silently disqualified itself from the install prompt this set exists to
+ * enable, with nothing in any tool or log to say why. Same class of failure as
+ * the missing 512px icon documented above: Chrome declines quietly.
+ *
  * @param {object} [options]
  * @param {string} [options.name] Site name shown under the home-screen icon.
  * @param {string} [options.themeColor]
@@ -134,8 +146,7 @@ export function manifestJson({
 
   return `${JSON.stringify(
     {
-      name: trimmed,
-      short_name: trimmed,
+      ...(trimmed ? { name: trimmed, short_name: trimmed } : {}),
       icons: [
         { src: "/android-chrome-192x192.png", sizes: "192x192", type: "image/png" },
         {

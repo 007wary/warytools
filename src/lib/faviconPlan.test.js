@@ -86,6 +86,36 @@ describe("headSnippet", () => {
     hrefs.forEach((href) => expect(produced.has(href)).toBe(true));
   });
 
+  // The inverse of the test above, and the one that actually failed: that one
+  // checks every href names a produced file, which says nothing about a
+  // produced file no href names. favicon-48x48.png was generated, documented in
+  // the README, and referenced by nothing — a file the user uploaded and no
+  // browser ever requested. 48px still ships inside favicon.ico, which is where
+  // Windows reads it from.
+  //
+  // Three filenames are reachable without appearing in the markup, by fixed
+  // convention rather than by link: favicon.ico (requested at the root by
+  // default), apple-touch-icon.png (iOS fetches this exact path by name), and
+  // the manifest's own icon entries.
+  it("produces no file the markup never references", () => {
+    const html = headSnippet();
+    const hrefs = new Set([...html.matchAll(/href="\/([^"]+)"/g)].map((match) => match[1]));
+
+    const reachableByConvention = new Set([
+      ICO_FILENAME,
+      "apple-touch-icon.png",
+      ...JSON.parse(manifestJson({ name: "Acme" })).icons.map((icon) =>
+        icon.src.replace(/^\//, "")
+      ),
+    ]);
+
+    const orphans = ICON_SIZES.map((icon) => icon.filename).filter(
+      (filename) => !hrefs.has(filename) && !reachableByConvention.has(filename)
+    );
+
+    expect(orphans).toEqual([]);
+  });
+
   it("omits the dead IE and Windows 8 markup", () => {
     const html = headSnippet();
 
@@ -121,9 +151,34 @@ describe("manifestJson", () => {
     expect(JSON.parse(json).name).toBe('He said "hi"\nthen left');
   });
 
-  it("trims the name and tolerates it being absent", () => {
+  it("trims the name", () => {
     expect(JSON.parse(manifestJson({ name: "  Acme  " })).name).toBe("Acme");
-    expect(JSON.parse(manifestJson()).name).toBe("");
+  });
+
+  // The site name is optional in the UI, so this is the DEFAULT path, not an
+  // edge case. Chrome needs a non-empty name or short_name before it offers to
+  // install a site; `"name": ""` reads as present-and-empty and satisfies
+  // neither, so emitting it disqualified the manifest from the install prompt
+  // the 192/512 icons exist to serve — silently, since Chrome just declines.
+  it("omits the name fields entirely when no site name was given", () => {
+    [manifestJson(), manifestJson({ name: "" }), manifestJson({ name: "   " })].forEach(
+      (json) => {
+        const parsed = JSON.parse(json);
+        expect(parsed).not.toHaveProperty("name");
+        expect(parsed).not.toHaveProperty("short_name");
+      }
+    );
+  });
+
+  // A manifest with no name must still be installable on the strength of its
+  // icons, which is the whole reason the fields are dropped rather than blanked.
+  it("still names both Android icons when the name is omitted", () => {
+    const parsed = JSON.parse(manifestJson());
+
+    expect(parsed.icons.map((icon) => icon.src)).toEqual([
+      "/android-chrome-192x192.png",
+      "/android-chrome-512x512.png",
+    ]);
   });
 
   it("carries the colours through", () => {

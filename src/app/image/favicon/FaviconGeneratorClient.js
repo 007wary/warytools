@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Sparkles, Copy, Check } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
@@ -71,6 +71,10 @@ export default function FaviconGeneratorClient() {
   // which would leak the very bitmap it was meant to track.
   const sourceRef = useRef(null);
 
+  // Tracks an in-flight zip build synchronously — see buildZip for why the
+  // isBuilding state below cannot do this job on its own.
+  const buildingRef = useRef(false);
+
   useEffect(() => {
     return () => {
       sourceRef.current?.close?.();
@@ -89,14 +93,26 @@ export default function FaviconGeneratorClient() {
 
   // Everything the draw call needs, assembled in one place so the preview and
   // the export cannot drift apart in what they pass.
-  const drawSettings = {
-    mode,
-    background,
-    roundness: settings.roundness,
-    padding: settings.padding,
-    fit: settings.fit,
-    text: settings.text,
-  };
+  //
+  // Memoised rather than rebuilt each render, and that is what lets renderPng
+  // below depend on this object directly instead of re-listing its fields with
+  // an exhaustive-deps suppression. A hand-listed dep array is a second copy of
+  // this object's shape: adding a field here and forgetting it there would let
+  // the export keep drawing with the previous value while the preview showed
+  // the new one — the preview/export drift faviconDraw.js is structured to make
+  // impossible. With one memo, both consumers track the same identity and the
+  // linter can verify it.
+  const drawSettings = useMemo(
+    () => ({
+      mode,
+      background,
+      roundness: settings.roundness,
+      padding: settings.padding,
+      fit: settings.fit,
+      text: settings.text,
+    }),
+    [mode, background, settings.roundness, settings.padding, settings.fit, settings.text]
+  );
 
   const ready = mode === "text" ? settings.text.trim() !== "" : Boolean(source);
 
@@ -158,18 +174,26 @@ export default function FaviconGeneratorClient() {
       const blob = await canvasToBlob(canvas, "image/png");
       return { size, blob, bytes: await blob.arrayBuffer() };
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mode, background, settings.roundness, settings.padding, settings.fit, settings.text, source]
+    [drawSettings, source]
   );
 
   /**
    * Builds the complete zip.
    *
    * Passed to DownloadButton as an async getBlob, so the work happens on the
-   * click rather than on every settings change — the set is nine encodes plus
-   * a zip, which is wasted effort for a user still moving the padding slider.
+   * click rather than on every settings change — the set is six encodes plus a
+   * zip, which is wasted effort for a user still moving the padding slider.
    */
   const buildZip = useCallback(async () => {
+    // Guarded by a ref, not by the isBuilding state that drives the label.
+    // DownloadButton's `disabled` prop is read from the render that has already
+    // committed, so a second click landing before React re-renders — which is
+    // every click during the first await — runs a whole second six-encode
+    // build. The ref is written synchronously, so it is already true by the
+    // time that second handler reads it.
+    if (buildingRef.current) return null;
+    buildingRef.current = true;
+
     setIsBuilding(true);
     setError("");
 
@@ -224,6 +248,7 @@ export default function FaviconGeneratorClient() {
       setError(describeImageError(err, "Could not generate the favicon set."));
       return null;
     } finally {
+      buildingRef.current = false;
       setIsBuilding(false);
     }
   }, [renderPng, settings.siteName, themeColor, mode]);
@@ -336,6 +361,13 @@ export default function FaviconGeneratorClient() {
                   setSource(null);
                   setSettings(DEFAULTS);
                   setError("");
+                  // Back to the image tab too, not just cleared state. In text
+                  // mode, blanking `text` makes `ready` false, which unmounts
+                  // this whole panel — including this button — leaving the user
+                  // staring at an empty text field with nothing confirming the
+                  // reset happened. Returning to the default tab makes "start
+                  // over" land somewhere that looks like a start.
+                  setMode("image");
                 }}
               >
                 Start over
