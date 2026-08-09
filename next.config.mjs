@@ -166,7 +166,7 @@ const gaCollectHosts = [
 // a directive-by-directive minimisation buys nothing against a party that
 // already executes script on the page. The Sentry report-uri above is the
 // backstop — an unlisted host arrives as a `blocked-host` issue.
-const adsenseHosts = [
+const adsenseHostList = [
   "https://pagead2.googlesyndication.com",
   "https://*.googlesyndication.com",
   "https://tpc.googlesyndication.com",
@@ -175,7 +175,28 @@ const adsenseHosts = [
   "https://*.doubleclick.net",
   "https://adservice.google.com",
   "https://*.adtrafficquality.google",
-].join(" ");
+];
+
+const adsenseHosts = adsenseHostList.join(" ");
+
+// Framing hosts are the ad hosts *plus* www.google.com, and that addition is
+// not an oversight being corrected loosely — it was observed as a real
+// violation in the console:
+//
+//   Framing 'https://www.google.com/' violates ... "frame-src ..."
+//
+// ep2.adtrafficquality.google embeds a www.google.com frame as part of
+// Google's ad traffic quality / invalid-traffic verification. It is a
+// different host from every serving host above, so no wildcard here covers
+// it. Blocking it does not blank an ad the way a missing serving host does —
+// which is worse, not better: the ads render, the verification silently
+// fails, and the cost shows up as traffic quality problems on the account
+// rather than as anything visibly wrong on the page.
+//
+// www.google.com already appears in the GA regional-signals list, but that
+// list only ever reaches img-src and connect-src. Directives do not share
+// entries, so it has to be named again here.
+const adsenseFrameHosts = [...adsenseHostList, "https://www.google.com"].join(" ");
 
 // Ad serving follows the same production-only gate as the tag itself
 // (lib/adsense.js). Opening these holes on previews would let a stray tag
@@ -184,7 +205,7 @@ const adsenseHosts = [
 // permanently wide and the component alone holding the line.
 const adsEnabledForCsp = !process.env.VERCEL_ENV || process.env.VERCEL_ENV === "production";
 const adsScriptSrc = adsEnabledForCsp ? ` ${adsenseHosts}` : "";
-const adsFrameSrc = adsEnabledForCsp ? ` ${adsenseHosts}` : "";
+const adsFrameSrc = adsEnabledForCsp ? ` ${adsenseFrameHosts}` : "";
 const adsImgSrc = adsEnabledForCsp ? ` ${adsenseHosts}` : "";
 const adsConnectSrc = adsEnabledForCsp ? ` ${adsenseHosts}` : "";
 
