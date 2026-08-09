@@ -9,6 +9,27 @@ function sentryCspReportUri() {
   const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
   if (!dsn) return null;
 
+  // Preview deploys are excluded, and not as a matter of taste: Vercel's
+  // deployment protection 302s every request on a *.vercel.app preview to
+  // vercel.com/sso-api. That redirect is cross-origin, so the browser blocks
+  // it and reports the violation against the *original* same-origin URI —
+  // `/pdf/watermark?_rsc=…`, `/_next/static/chunks/….js`. The reports are
+  // therefore unfixable by construction: they name paths that `'self'`
+  // already allows, and no change to this policy can silence them. One
+  // headless crawler hitting a protected preview filed 49 events in a single
+  // session that way, burying real violations from wary.tools.
+  //
+  // This can't be filtered in `sentry.client.config.js`: `report-uri` is a
+  // POST the *browser* makes directly to Sentry, so the SDK is not in the
+  // path and `beforeSend` never runs on a CSP report. Not emitting the
+  // directive off production is the only place the noise can be stopped.
+  //
+  // Matches robots.js's isNonCanonicalDeploy(): VERCEL_ENV is unset for local
+  // builds and non-Vercel hosts, which stay canonical so a self-hosted
+  // `next build` still reports violations.
+  const vercelEnv = process.env.VERCEL_ENV;
+  if (vercelEnv && vercelEnv !== "production") return null;
+
   try {
     const { username: publicKey, hostname, pathname } = new URL(dsn);
     const projectId = pathname.replace(/^\//, "");
