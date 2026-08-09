@@ -11,7 +11,7 @@ import WarningBanner from "@/components/WarningBanner";
 import { PrimaryButton, SecondaryButton } from "@/components/ToolButton";
 import { formatBytes } from "@/lib/formatBytes";
 import { validatePdfFile, describePdfError } from "@/lib/pdfFile";
-import { usePdfWorker, ops } from "@/lib/pdfWorkerClient";
+import { usePdfWorker, ops, isCancellation } from "@/lib/pdfWorkerClient";
 import { colors } from "@/lib/theme";
 import { events, sizeBucket, trackEvent } from "@/lib/analytics";
 
@@ -54,6 +54,9 @@ export default function CompressPdfClient() {
       setFile(check.file);
       setPageCount(info.pageCount);
     } catch (err) {
+      // A cancel is the user's own action, not a failure — reporting it as an
+      // error banner contradicts the button they just pressed.
+      if (isCancellation(err)) return;
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "compress_read_failed" });
       setError(describePdfError(err, "Could not read this PDF."));
@@ -84,6 +87,9 @@ export default function CompressPdfClient() {
           file.size > 0 ? Math.max(0, Math.round((1 - blob.size / file.size) * 100)) : 0,
       });
     } catch (err) {
+      // A cancel is the user's own action, not a failure — reporting it as an
+      // error banner contradicts the button they just pressed.
+      if (isCancellation(err)) return;
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "compress_failed" });
       setError(describePdfError(err, "Could not compress this PDF."));

@@ -157,7 +157,12 @@ export default function PdfToJpgClient() {
     try {
       const doc = docRef.current;
       const images = [];
-      let clampedAny = false;
+      // The lowest effective DPI any page was actually clamped to, so the
+      // warning describes the render that happened. It used to report the FIRST
+      // page's plan, which in a document that mixes A4 and A3 is exactly the
+      // page that wasn't clamped — so the message named the requested DPI and
+      // read as though nothing had been capped at all.
+      let clampedToDpi = null;
 
       for (let i = 0; i < parsed.pages.length; i++) {
         if (cancelRef.current) return;
@@ -170,7 +175,12 @@ export default function PdfToJpgClient() {
         // A3, and a single plan would either clamp pages that didn't need it
         // or blow the ceiling on the ones that did.
         const pagePlan = planPageRaster(base.width, base.height, dpi);
-        if (pagePlan.clamped) clampedAny = true;
+        if (pagePlan.clamped) {
+          clampedToDpi =
+            clampedToDpi === null
+              ? pagePlan.effectiveDpi
+              : Math.min(clampedToDpi, pagePlan.effectiveDpi);
+        }
 
         const viewport = page.getViewport({ scale: pagePlan.scale });
         const canvas = document.createElement("canvas");
@@ -215,9 +225,9 @@ export default function PdfToJpgClient() {
 
       if (cancelRef.current) return;
 
-      if (clampedAny) {
+      if (clampedToDpi !== null) {
         setWarning(
-          describeClamp({ clamped: true, requestedDpi: dpi, effectiveDpi: plan?.effectiveDpi || dpi })
+          describeClamp({ clamped: true, requestedDpi: dpi, effectiveDpi: clampedToDpi })
         );
       }
 

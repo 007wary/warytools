@@ -11,7 +11,7 @@ import { PrimaryButton, SecondaryButton } from "@/components/ToolButton";
 import { validatePdfFile, describePdfError } from "@/lib/pdfFile";
 import { validateImageFile } from "@/lib/imageValidation";
 import { usePdfThumbnails } from "@/lib/pdfThumbnails";
-import { usePdfWorker, ops } from "@/lib/pdfWorkerClient";
+import { usePdfWorker, ops, isCancellation } from "@/lib/pdfWorkerClient";
 import { useObjectUrl } from "@/lib/useObjectUrl";
 import { planEmbed } from "@/lib/pdfImageEmbed";
 import { parsePageSelection, formatPageSelection } from "@/lib/pdfPageRange";
@@ -120,6 +120,9 @@ export default function WatermarkPdfClient() {
       setPageIndex(0);
       setPagesInput("");
     } catch (err) {
+      // A cancel is the user's own action, not a failure — reporting it as an
+      // error banner contradicts the button they just pressed.
+      if (isCancellation(err)) return;
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "watermark_read_failed" });
       setError(describePdfError(err, "Could not read this PDF."));
@@ -155,6 +158,9 @@ export default function WatermarkPdfClient() {
 
       setLogo({ file: check.file, type: check.type, width, height });
     } catch (err) {
+      // A cancel is the user's own action, not a failure — reporting it as an
+      // error banner contradicts the button they just pressed.
+      if (isCancellation(err)) return;
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "watermark_logo_decode_failed" });
       setError("Could not read that image. Try a PNG or JPG.");
@@ -320,6 +326,9 @@ export default function WatermarkPdfClient() {
         source_page_count: pageCount,
       });
     } catch (err) {
+      // A cancel is the user's own action, not a failure — reporting it as an
+      // error banner contradicts the button they just pressed.
+      if (isCancellation(err)) return;
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "watermark_failed" });
       setError(describePdfError(err, "Could not watermark this PDF."));

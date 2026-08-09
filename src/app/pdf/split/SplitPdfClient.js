@@ -10,7 +10,7 @@ import PdfFileHeader from "@/components/PdfFileHeader";
 import { PrimaryButton, SecondaryButton } from "@/components/ToolButton";
 import { parsePageSelection, formatPageSelection } from "@/lib/pdfPageRange";
 import { validatePdfFile, describePdfError } from "@/lib/pdfFile";
-import { usePdfWorker, ops } from "@/lib/pdfWorkerClient";
+import { usePdfWorker, ops, isCancellation } from "@/lib/pdfWorkerClient";
 import { colors } from "@/lib/theme";
 import { events, trackEvent } from "@/lib/analytics";
 
@@ -81,6 +81,9 @@ export default function SplitPdfClient() {
       setPageCount(info.pageCount);
       setSelection(info.pageCount === 1 ? "1" : `1-${info.pageCount}`);
     } catch (err) {
+      // A cancel is the user's own action, not a failure — reporting it as an
+      // error banner contradicts the button they just pressed.
+      if (isCancellation(err)) return;
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "split_read_failed" });
       setError(describePdfError(err, "Could not read this PDF."));
@@ -115,6 +118,9 @@ export default function SplitPdfClient() {
         source_page_count: pageCount,
       });
     } catch (err) {
+      // A cancel is the user's own action, not a failure — reporting it as an
+      // error banner contradicts the button they just pressed.
+      if (isCancellation(err)) return;
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "split_range_failed" });
       setError(describePdfError(err, "Something went wrong extracting those pages."));
@@ -155,6 +161,9 @@ export default function SplitPdfClient() {
       setResult({ blob: zipBlob, filename: "split-pages.zip" });
       trackEvent(events.TOOL_RUN, { mode: "split_all", page_count: split.pageCount });
     } catch (err) {
+      // A cancel is the user's own action, not a failure — reporting it as an
+      // error banner contradicts the button they just pressed.
+      if (isCancellation(err)) return;
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "split_all_failed" });
       setError(describePdfError(err, "Something went wrong splitting this PDF."));

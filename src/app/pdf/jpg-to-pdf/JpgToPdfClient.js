@@ -8,7 +8,7 @@ import ProgressBar from "@/components/ProgressBar";
 import ErrorBanner from "@/components/ErrorBanner";
 import { PrimaryButton, SecondaryButton, iconButtonStyle } from "@/components/ToolButton";
 import { validateImageFiles, describeImageRejections } from "@/lib/imageValidation";
-import { usePdfWorker, ops } from "@/lib/pdfWorkerClient";
+import { usePdfWorker, ops, isCancellation } from "@/lib/pdfWorkerClient";
 import { useObjectUrl } from "@/lib/useObjectUrl";
 import {
   PAGE_SIZES,
@@ -243,6 +243,9 @@ export default function JpgToPdfClient() {
         transcoded: transcoded.length,
       });
     } catch (err) {
+      // A cancel is the user's own action, not a failure — reporting it as an
+      // error banner contradicts the button they just pressed.
+      if (isCancellation(err)) return;
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "jpg_to_pdf_failed" });
       setError(

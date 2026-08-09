@@ -11,7 +11,7 @@ import PdfPageThumbnail from "@/components/PdfPageThumbnail";
 import { PrimaryButton, SecondaryButton, iconButtonStyle } from "@/components/ToolButton";
 import { validatePdfFile, describePdfError } from "@/lib/pdfFile";
 import { usePdfThumbnails } from "@/lib/pdfThumbnails";
-import { usePdfWorker, ops } from "@/lib/pdfWorkerClient";
+import { usePdfWorker, ops, isCancellation } from "@/lib/pdfWorkerClient";
 import { colors } from "@/lib/theme";
 import { events, trackEvent } from "@/lib/analytics";
 
@@ -69,6 +69,9 @@ export default function RotatePdfClient() {
       setFile(check.file);
       setBytes(buffer);
     } catch (err) {
+      // A cancel is the user's own action, not a failure — reporting it as an
+      // error banner contradicts the button they just pressed.
+      if (isCancellation(err)) return;
       console.error(err);
       setError(describePdfError(err, "Could not read this PDF."));
       resetState();
@@ -114,6 +117,9 @@ export default function RotatePdfClient() {
         rotated_pages: rotations.filter((r) => r).length,
       });
     } catch (err) {
+      // A cancel is the user's own action, not a failure — reporting it as an
+      // error banner contradicts the button they just pressed.
+      if (isCancellation(err)) return;
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "rotate_failed" });
       setError(describePdfError(err, "Could not rotate this PDF."));

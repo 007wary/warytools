@@ -87,18 +87,47 @@ class PdfWorkerHandle {
     });
   }
 
-  cancel(id) {
-    this.pending.delete(id);
-    this.worker?.postMessage({ type: "cancel", id });
+  /**
+   * Stops in-flight work, cooperatively where the op supports it.
+   *
+   * The worker checks a cancel flag between pages, so a long merge/split/
+   * watermark stops within one page and the thread stays alive — which matters
+   * because terminating throws away the warm module graph, and pdf-lib has to be
+   * re-evaluated on the next run. That startup cost is the whole reason one
+   * worker is reused for a component's lifetime, so paying it on every Cancel
+   * press undoes it.
+   *
+   * Each pending promise is rejected with a marked error rather than left
+   * hanging; callers treat `cancelled` as "say nothing", since the user already
+   * knows — they clicked the button.
+   *
+   * The single-shot ops (compress, rotate, crop, unlock…) have no yield point to
+   * check the flag at, so they run to completion inside the worker and their
+   * result is discarded on arrival. Nothing is left to clean up either way.
+   */
+  cancel() {
+    const entries = Array.from(this.pending.entries());
+    this.pending.clear();
+
+    for (const [id, entry] of entries) {
+      this.worker?.postMessage({ type: "cancel", id });
+      // Settled, not abandoned. A pending promise that never resolves leaves the
+      // caller's `await` hanging forever, so its `finally` never runs and the
+      // tool sits on a spinner with the Cancel button it just obeyed still
+      // showing. The flag lets callers skip the error banner.
+      const error = new Error("cancelled");
+      error.cancelled = true;
+      entry.reject(error);
+    }
   }
 
   /**
-   * Hard-stops in-flight work.
+   * Hard-stops in-flight work and releases the thread.
    *
-   * Terminate rather than a cooperative cancel because the user has already
-   * moved on (unmount, or picking a different file): the fastest way to stop
-   * burning CPU on a result nobody will read is to kill the thread. The next
-   * run() lazily spawns a fresh one.
+   * Terminate rather than a cooperative cancel because the caller is going away
+   * entirely (unmount): there is no next run to keep a warm worker for, and the
+   * fastest way to stop burning CPU on a result nobody will read is to kill the
+   * thread. The next run() lazily spawns a fresh one.
    */
   destroy() {
     this.pending.clear();
@@ -156,8 +185,11 @@ export function usePdfWorker() {
     }
   }, []);
 
+  // Cooperative, not destroy(): the worker stops between pages and stays warm
+  // for the next run. run()'s finally clears isRunning when the rejected promise
+  // unwinds, so this only has to handle the case where nothing was pending.
   const cancel = useCallback(() => {
-    handleRef.current.destroy();
+    handleRef.current.cancel();
     if (mountedRef.current) {
       setIsRunning(false);
       setProgress(null);
@@ -165,6 +197,17 @@ export function usePdfWorker() {
   }, []);
 
   return { run, cancel, progress, isRunning };
+}
+
+/**
+ * True when a rejection came from the user pressing Cancel.
+ *
+ * Cancelling is not a failure, so a catch block that renders every rejection as
+ * an error banner tells the user their deliberate action went wrong. Every tool
+ * with a Cancel button checks this before setting an error.
+ */
+export function isCancellation(error) {
+  return Boolean(error?.cancelled) || String(error?.message || "") === "cancelled";
 }
 
 /**

@@ -40,6 +40,7 @@ import {
   hexToRgb01 as signatureHexToRgb01,
 } from "@/lib/pdfSignature";
 import { ops, replies, createProgress, createChunk } from "@/lib/pdfWorkerProtocol";
+import { addPageRotation } from "@/lib/pdfRotation";
 import { layoutImagePage } from "@/lib/pdfPageSizes";
 import { toPdfBox } from "@/lib/cropGeometry";
 import { formatPageLabel, placeNumber } from "@/lib/pdfPageNumbers";
@@ -57,29 +58,46 @@ import {
 // Requests the main thread has cancelled. Checked between pages so a cancelled
 // 500-page split stops promptly instead of running to completion and throwing
 // the result away.
+//
+// Only ids that are actually in flight are recorded. A cancel for an id that has
+// already settled — the common race, since the user clicks Cancel exactly as the
+// last page finishes — would otherwise sit in this Set forever. That is a slow
+// leak, but the sharp edge is reuse: request ids restart at "req-0" whenever the
+// handle spawns a fresh worker, so a stale entry could silently cancel a *future*
+// legitimate request, which surfaces as an operation that produces nothing and
+// reports no error.
+const inFlight = new Set();
 const cancelled = new Set();
 
 self.onmessage = async (event) => {
   const message = event.data;
 
   if (message?.type === "cancel") {
-    cancelled.add(message.id);
+    // Ignored unless the op is still running, so a late cancel cannot poison a
+    // later request that happens to reuse the id.
+    if (inFlight.has(message.id)) cancelled.add(message.id);
     return;
   }
 
   const { id, op, payload } = message;
 
+  inFlight.add(id);
+
   try {
     const result = await runOp(id, op, payload);
     if (cancelled.has(id)) {
-      cancelled.delete(id);
       return;
     }
     // Results are transferred too — the caller receives ownership of the
     // bytes rather than a structured clone of them.
     self.postMessage({ type: replies.RESULT, id, ...result.message }, result.transfer);
   } catch (error) {
-    cancelled.delete(id);
+    // A cancel is not a failure. throwIfCancelled unwinds the op with a marked
+    // error, and reporting that back would surface "cancelled" to the user as an
+    // error banner on an action they deliberately took. The main thread has
+    // already settled the request by this point, so there is nothing to reply to.
+    if (error?.cancelled || cancelled.has(id)) return;
+
     self.postMessage({
       type: replies.ERROR,
       id,
@@ -88,6 +106,10 @@ self.onmessage = async (event) => {
       // by describePdfError() on the main thread.
       message: String(error?.message || error),
     });
+  } finally {
+    // One place, so no exit path can strand an id in either Set.
+    inFlight.delete(id);
+    cancelled.delete(id);
   }
 };
 
@@ -339,6 +361,14 @@ async function reorder({ bytes, order }) {
 // `rotations[i]` is the extra turn to add to page i, on top of whatever
 // rotation the page already carries — so a page that was already landscape
 // stays consistent with what the preview showed.
+//
+// The sum goes through addPageRotation rather than `% 360`. A page's own
+// /Rotate is a multiple of 90 but the spec does not require it to be in range,
+// and real files carry negative values (-90 for a landscape scan is common).
+// JavaScript's % keeps the sign of the dividend, so `(-270 + 90) % 360` is -180
+// rather than 180 — which setRotation accepts without complaint, and which
+// readers then disagree about, so the page looks right to whoever exported it
+// and wrong to whoever received it. See pdfRotation.js.
 async function rotate({ bytes, rotations }) {
   const pdf = await loadPdf(bytes);
   const pages = pdf.getPages();
@@ -346,8 +376,7 @@ async function rotate({ bytes, rotations }) {
   pages.forEach((page, index) => {
     const extra = rotations[index] || 0;
     if (extra === 0) return;
-    const current = page.getRotation().angle;
-    page.setRotation(degrees((current + extra) % 360));
+    page.setRotation(degrees(addPageRotation(page.getRotation().angle, extra)));
   });
 
   const out = await pdf.save({ useObjectStreams: true });

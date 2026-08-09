@@ -12,7 +12,7 @@ import PasswordField from "@/components/PasswordField";
 import { PrimaryButton, SecondaryButton } from "@/components/ToolButton";
 import { validatePdfFile, describePdfError } from "@/lib/pdfFile";
 import { describeEncryptionError, validateOpenPassword } from "@/lib/pdfEncryption";
-import { usePdfWorker, ops } from "@/lib/pdfWorkerClient";
+import { usePdfWorker, ops, isCancellation } from "@/lib/pdfWorkerClient";
 import { colors } from "@/lib/theme";
 import { events, sizeBucket, trackEvent } from "@/lib/analytics";
 
@@ -69,6 +69,9 @@ export default function UnlockPdfClient() {
         needs_password: info.needsPassword,
       });
     } catch (err) {
+      // A cancel is the user's own action, not a failure — reporting it as an
+      // error banner contradicts the button they just pressed.
+      if (isCancellation(err)) return;
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "unlock_read_failed" });
       setError(describeEncryptionError(err) || describePdfError(err, "Could not read this PDF."));
@@ -104,6 +107,9 @@ export default function UnlockPdfClient() {
         needed_password: Boolean(encryption?.needsPassword),
       });
     } catch (err) {
+      // A cancel is the user's own action, not a failure — reporting it as an
+      // error banner contradicts the button they just pressed.
+      if (isCancellation(err)) return;
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "unlock_failed" });
       // describeEncryptionError first: pdfFile's generic mapper turns anything

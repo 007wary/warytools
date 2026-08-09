@@ -10,7 +10,7 @@ import { PrimaryButton, SecondaryButton, iconButtonStyle } from "@/components/To
 import { colors } from "@/lib/theme";
 import { formatBytes } from "@/lib/formatBytes";
 import { validatePdfFiles, describeRejections, describePdfError } from "@/lib/pdfFile";
-import { usePdfWorker, ops } from "@/lib/pdfWorkerClient";
+import { usePdfWorker, ops, isCancellation } from "@/lib/pdfWorkerClient";
 import { events, trackEvent } from "@/lib/analytics";
 
 export default function MergePdfClient() {
@@ -111,6 +111,9 @@ export default function MergePdfClient() {
         page_count: result.pageCount,
       });
     } catch (err) {
+      // A cancel is the user's own action, not a failure — reporting it as an
+      // error banner contradicts the button they just pressed.
+      if (isCancellation(err)) return;
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "merge_failed" });
       setError(

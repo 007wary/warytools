@@ -11,7 +11,7 @@ import PdfPageSelector from "@/components/PdfPageSelector";
 import { PrimaryButton, SecondaryButton } from "@/components/ToolButton";
 import { validatePdfFile, describePdfError } from "@/lib/pdfFile";
 import { usePdfThumbnails } from "@/lib/pdfThumbnails";
-import { usePdfWorker, ops } from "@/lib/pdfWorkerClient";
+import { usePdfWorker, ops, isCancellation } from "@/lib/pdfWorkerClient";
 import {
   applyPageClick,
   validateExtraction,
@@ -93,6 +93,9 @@ export default function ExtractPagesClient() {
       setFile(check.file);
       setBytes(buffer);
     } catch (err) {
+      // A cancel is the user's own action, not a failure — reporting it as an
+      // error banner contradicts the button they just pressed.
+      if (isCancellation(err)) return;
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "extract_pages_read_failed" });
       setError(describePdfError(err, "Could not read this PDF."));
@@ -210,6 +213,9 @@ export default function ExtractPagesClient() {
         source_page_count: pageCount,
       });
     } catch (err) {
+      // A cancel is the user's own action, not a failure — reporting it as an
+      // error banner contradicts the button they just pressed.
+      if (isCancellation(err)) return;
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "extract_pages_failed" });
       setError(describePdfError(err, "Something went wrong extracting those pages."));

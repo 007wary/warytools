@@ -11,7 +11,7 @@ import CropOverlay from "@/components/CropOverlay";
 import { PrimaryButton, SecondaryButton } from "@/components/ToolButton";
 import { validatePdfFile, describePdfError } from "@/lib/pdfFile";
 import { usePdfThumbnails } from "@/lib/pdfThumbnails";
-import { usePdfWorker, ops } from "@/lib/pdfWorkerClient";
+import { usePdfWorker, ops, isCancellation } from "@/lib/pdfWorkerClient";
 import {
   ASPECT_RATIOS,
   FULL_RECT,
@@ -84,6 +84,9 @@ export default function CropPdfClient() {
       setPageIndex(0);
       setRect(FULL_RECT);
     } catch (err) {
+      // A cancel is the user's own action, not a failure — reporting it as an
+      // error banner contradicts the button they just pressed.
+      if (isCancellation(err)) return;
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "crop_read_failed" });
       setError(describePdfError(err, "Could not read this PDF."));
@@ -152,6 +155,9 @@ export default function CropPdfClient() {
         aspect: aspectId,
       });
     } catch (err) {
+      // A cancel is the user's own action, not a failure — reporting it as an
+      // error banner contradicts the button they just pressed.
+      if (isCancellation(err)) return;
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "crop_failed" });
       setError(describePdfError(err, "Could not save the cropped PDF."));

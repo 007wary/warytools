@@ -131,7 +131,15 @@ export function describeClamp(plan) {
  * a file manager. Without padding, "page-10.jpg" sorts before "page-2.jpg" and
  * the zip looks shuffled — a small thing that reads as a broken tool.
  *
- * @param {string} stem      Source filename without extension.
+ * `stem` is taken as already being a stem, and is NOT extension-stripped here.
+ * It used to be, which silently truncated any filename carrying a dot in its
+ * body: the caller strips ".pdf" and hands over "minutes.2024", this stripped
+ * ".2024" as well, and every page of that document exported as "minutes-03.jpg".
+ * Dotted names are ordinary (dates, version numbers), the loss is invisible
+ * until someone looks for the file, and stripping twice can never be right —
+ * whoever knows the real extension has already removed it.
+ *
+ * @param {string} stem      Source filename with its extension already removed.
  * @param {number} pageNumber 1-based.
  * @param {number} totalPages
  * @param {string} extension
@@ -139,7 +147,7 @@ export function describeClamp(plan) {
 export function pageImageName(stem, pageNumber, totalPages, extension = "jpg") {
   const width = String(Math.max(1, totalPages)).length;
   const padded = String(pageNumber).padStart(width, "0");
-  const safeStem = String(stem || "page").replace(/\.[^./\\]+$/, "") || "page";
+  const safeStem = String(stem || "page").trim() || "page";
   return `${safeStem}-${padded}.${extension}`;
 }
 

@@ -21,7 +21,7 @@ import {
   validateNewPassword,
   validateOpenPassword,
 } from "@/lib/pdfEncryption";
-import { usePdfWorker, ops } from "@/lib/pdfWorkerClient";
+import { usePdfWorker, ops, isCancellation } from "@/lib/pdfWorkerClient";
 import { colors } from "@/lib/theme";
 import { events, sizeBucket, trackEvent } from "@/lib/analytics";
 
@@ -81,6 +81,9 @@ export default function ProtectPdfClient() {
 
       trackEvent(events.FILE_SELECTED, { size_bucket: sizeBucket(check.file.size) });
     } catch (err) {
+      // A cancel is the user's own action, not a failure — reporting it as an
+      // error banner contradicts the button they just pressed.
+      if (isCancellation(err)) return;
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "protect_read_failed" });
       setError(describeEncryptionError(err) || describePdfError(err, "Could not read this PDF."));
@@ -151,6 +154,9 @@ export default function ProtectPdfClient() {
         restricted: restrict && !isEveryPermissionGranted(permissions),
       });
     } catch (err) {
+      // A cancel is the user's own action, not a failure — reporting it as an
+      // error banner contradicts the button they just pressed.
+      if (isCancellation(err)) return;
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "protect_failed" });
       setError(describeEncryptionError(err) || describePdfError(err, "Could not protect this PDF."));

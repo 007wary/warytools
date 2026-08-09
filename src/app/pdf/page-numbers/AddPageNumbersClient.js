@@ -10,7 +10,7 @@ import PdfFileHeader from "@/components/PdfFileHeader";
 import { PrimaryButton, SecondaryButton } from "@/components/ToolButton";
 import { validatePdfFile, describePdfError } from "@/lib/pdfFile";
 import { usePdfThumbnails } from "@/lib/pdfThumbnails";
-import { usePdfWorker, ops } from "@/lib/pdfWorkerClient";
+import { usePdfWorker, ops, isCancellation } from "@/lib/pdfWorkerClient";
 import {
   POSITIONS,
   FORMATS,
@@ -82,6 +82,9 @@ export default function AddPageNumbersClient() {
       setFromPageInput("1");
       setStartNumberInput("1");
     } catch (err) {
+      // A cancel is the user's own action, not a failure — reporting it as an
+      // error banner contradicts the button they just pressed.
+      if (isCancellation(err)) return;
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "page_numbers_read_failed" });
       setError(describePdfError(err, "Could not read this PDF."));
@@ -154,6 +157,9 @@ export default function AddPageNumbersClient() {
         source_page_count: pageCount,
       });
     } catch (err) {
+      // A cancel is the user's own action, not a failure — reporting it as an
+      // error banner contradicts the button they just pressed.
+      if (isCancellation(err)) return;
       console.error(err);
       trackEvent(events.TOOL_ERROR, { reason: "page_numbers_failed" });
       setError(describePdfError(err, "Could not add page numbers to this PDF."));

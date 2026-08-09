@@ -132,8 +132,19 @@ describe("pageImageName", () => {
     expect(pageImageName("memo", 3, 9)).toBe("memo-3.jpg");
   });
 
-  it("strips the source extension from the stem", () => {
-    expect(pageImageName("contract.pdf", 1, 1)).toBe("contract-1.jpg");
+  it("keeps dots inside the stem, which the caller has already stripped", () => {
+    // This used to strip a trailing ".<something>" a second time. The caller
+    // removes the real extension and hands over a stem, so a dotted name —
+    // dates and version numbers are entirely ordinary — lost its last segment:
+    // "minutes.2024.pdf" became a stem of "minutes.2024" and exported every page
+    // as "minutes-03.jpg". Nothing errored; the files were simply misnamed.
+    expect(pageImageName("minutes.2024", 3, 10)).toBe("minutes.2024-03.jpg");
+    expect(pageImageName("2024.08.09 budget", 3, 10)).toBe("2024.08.09 budget-03.jpg");
+    expect(pageImageName("v1.2", 1, 1)).toBe("v1.2-1.jpg");
+  });
+
+  it("still names a plain stem normally", () => {
+    expect(pageImageName("contract", 1, 1)).toBe("contract-1.jpg");
   });
 
   it("honours the output extension", () => {
