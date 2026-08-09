@@ -26,8 +26,31 @@ export const events = {
   TOOL_ERROR: "tool_error",
 };
 
-export function isAnalyticsEnabled() {
-  return typeof window !== "undefined" && typeof window.gtag === "function";
+/**
+ * Queues a GA4 hit, whether or not gtag.js has finished loading.
+ *
+ * gtag.js is loaded with `lazyOnload` (see components/Analytics.js — it is
+ * ~167 KB and was costing the mobile Lighthouse score outright), so there is a
+ * real window early in a visit where `window.gtag` does not exist yet. Calling
+ * it directly in that window silently drops the hit, which on a tool people
+ * often use within a second or two of landing means losing exactly the events
+ * worth having.
+ *
+ * dataLayer is an ordinary array that exists before the tag does, and gtag.js
+ * replays everything it finds on load, so a queued hit arrives intact. The
+ * `arguments` shape is what gtag's own shim pushes — a replayed hit is
+ * indistinguishable from a live one. If the tag is blocked entirely this is
+ * just an array append, which is the same no-op the old guard produced.
+ */
+export function pushHit(name, params) {
+  if (typeof window === "undefined") return;
+  window.dataLayer = window.dataLayer || [];
+  // A real `arguments` object, not an array: gtag.js inspects the pushed value
+  // and an array literal is not replayed the same way. This is the exact shim
+  // Google's own snippet installs.
+  (function gtag() {
+    window.dataLayer.push(arguments);
+  })("event", name, params);
 }
 
 /**
@@ -51,8 +74,8 @@ export function currentToolSlug() {
 export function trackEvent(name, params = {}) {
   const slug = currentToolSlug();
 
-  // Usage counting is deliberately OUTSIDE the isAnalyticsEnabled() guard and
-  // runs first. GA is blocked for a large share of visitors by ad blockers,
+  // Usage counting runs first and independently of GA entirely. GA is blocked
+  // for a large share of visitors by ad blockers,
   // and that blocking is biased rather than random — ranking the homepage's
   // trending section on gtag data would systematically under-count exactly
   // the audiences most likely to block it. The Supabase counter is a
@@ -61,13 +84,12 @@ export function trackEvent(name, params = {}) {
     recordToolUsage(slug);
   }
 
-  if (!isAnalyticsEnabled()) return;
-
+  // Queued rather than gated on window.gtag existing. The old
+  // `if (!isAnalyticsEnabled()) return` dropped every event fired before the
+  // tag finished loading — a window that `lazyOnload` deliberately widens, and
+  // one that covers a visitor who lands and immediately runs a tool.
   try {
-    window.gtag("event", name, {
-      tool_slug: slug,
-      ...params,
-    });
+    pushHit(name, { tool_slug: slug, ...params });
   } catch {
     // Analytics must never break a tool.
   }

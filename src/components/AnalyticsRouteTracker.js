@@ -2,21 +2,32 @@
 
 import { Suspense, useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { events, trackEvent } from "@/lib/analytics";
+import { events, trackEvent, pushHit } from "@/lib/analytics";
 
 function Tracker({ gaId }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    if (typeof window.gtag !== "function") return;
     const query = searchParams.toString();
-    window.gtag("event", "page_view", {
-      page_path: query ? `${pathname}?${query}` : pathname,
+    const path = query ? `${pathname}?${query}` : pathname;
+
+    // Captured now, not when the tag finally loads. A deferred send that read
+    // document.title later would attribute the hit to whatever page the user
+    // had navigated to by then.
+    const payload = {
+      page_path: path,
       page_location: window.location.href,
       page_title: document.title,
       send_to: gaId,
-    });
+    };
+
+    // Queued via the shared helper rather than calling window.gtag directly.
+    // gtag.js loads with `lazyOnload`, so on a first visit it is normally NOT
+    // ready when this effect runs, and the previous `typeof window.gtag !==
+    // "function"` bail dropped the initial page_view outright — the one hit
+    // every session has — silently. See pushHit for why the queue is safe.
+    pushHit("page_view", payload);
   }, [gaId, pathname, searchParams]);
 
   return null;
