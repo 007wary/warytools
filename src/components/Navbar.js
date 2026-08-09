@@ -119,6 +119,13 @@ export default function Navbar() {
             // right edge to risk its dropdown overflowing — align just
             // that one's panel to its button's right edge instead of left.
             const alignRight = categoryIndex === categories.length - 1;
+
+            // A single column of 19 PDF tools is ~700px tall, which runs off
+            // the bottom of any laptop viewport and ends up behind the OS
+            // taskbar. Long menus go two-up so the panel stays roughly the
+            // height of the longest half; the maxHeight below is the backstop
+            // for short viewports and for the list growing again later.
+            const twoColumn = category.tools.length > 10;
             return (
               <div
                 key={category.slug}
@@ -160,8 +167,16 @@ export default function Navbar() {
                       border: `1px solid ${colors.border}`,
                       borderRadius: "12px",
                       boxShadow: "var(--shadow-dropdown)",
-                      minWidth: "240px",
+                      minWidth: twoColumn ? "480px" : "240px",
                       padding: "6px",
+                      // Never taller than the space under the header, so the
+                      // last entries can't land under the taskbar. 24px keeps
+                      // the panel's bottom edge off the viewport edge.
+                      maxHeight: "calc(100vh - 64px - 24px)",
+                      overflowY: "auto",
+                      ...(twoColumn
+                        ? { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 4px" }
+                        : null),
                     }}
                   >
                     {category.tools.map((tool) => (
