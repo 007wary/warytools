@@ -24,8 +24,16 @@ const principles = [
   {
     icon: EyeOff,
     title: "Private by default",
+    // Two things here are deliberately not said. It does NOT name the mechanism
+    // ("pdf-lib and canvas"), because the EXIF Stripper uses neither — it edits
+    // the file container directly, which is the whole reason it can strip
+    // metadata without recompressing. The image hub's copy was narrowed for
+    // exactly this and this card was missed. And it says "the four document
+    // converters" WITHOUT "only", because the URL shortener is a fifth
+    // server-touching feature — the prose above counts five, so an "only four"
+    // here contradicted the same page two sections up.
     body:
-      "PDF and image tools process files with pdf-lib and canvas, right in your browser tab — close the tab and it's gone. Only the four document converters — PDF to Word, Word to PDF, PowerPoint to PDF, and Excel to PDF — need a server, and each says so before you pick a file.",
+      "PDF and image tools do the work right in your browser tab — close the tab and it's gone. The four document converters — PDF to Word, Word to PDF, PowerPoint to PDF, and Excel to PDF — are the ones that need a server, and each says so before you pick a file.",
     accent: categoryColors.image,
   },
   {
