@@ -25,11 +25,15 @@ export default function CalculatorsHubPage() {
           ])
         )}
       />
+      {/* The description says "no sign-up, no clutter" and deliberately not
+          "no ads" — the site runs AdSense; see the homepage description and
+          lib/adsense.js. "No clutter" remains honest: it describes the tools
+          themselves, which carry no interstitials or upsells. */}
       <HubHeader
         categorySlug="calculators"
         icon={category.icon}
         title="Free Online Calculators"
-        description="Quick, free calculators for everyday math — no ads, no clutter."
+        description="Quick, free calculators for everyday math — no sign-up, no clutter."
       />
 
       <div

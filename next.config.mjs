@@ -136,6 +136,58 @@ const gaCollectHosts = [
   ...gaRegionalSignalsHosts,
 ].join(" ");
 
+// Google AdSense needs holes in five directives, and unlike the GA list above
+// these are not optional-if-you-want-analytics — a missed host here means ads
+// silently do not render, with an approved account and correct tag code. The
+// AdSense dashboard reports this as no impressions and offers no diagnosis.
+//
+// The failure modes differ per directive, which is why all five are needed:
+//   - script-src: pagead2 serves adsbygoogle.js itself. Blocked = nothing at
+//     all happens, the only variant that is obvious in the console.
+//   - frame-src: EVERY ad renders inside an iframe from googlesyndication or
+//     doubleclick. This site had no frame-src at all, so it fell back to
+//     `default-src 'self'` and would have blocked all of them while the script
+//     loaded fine — slots present in the DOM, permanently empty. This is the
+//     single most likely way to lose a week to a "why are there no ads" hunt.
+//   - img-src: creatives and tracking pixels. Blocked = broken/blank ads that
+//     still count as served, so it also depresses measured performance.
+//   - connect-src: the ad request itself plus viewability beacons.
+//   - fenced-frame-src: Chrome's Privacy Sandbox renders a growing share of
+//     inventory in fenced frames, which do NOT fall back to frame-src. Absent
+//     it, that slice goes blank on Chrome only — an intermittent, browser-
+//     specific gap that looks like flaky fill rather than a policy error.
+//
+// tpc.googlesyndication.com is the third-party-cookie-less serving host and is
+// separate from pagead2; adservice.google.com handles ad selection. Both are
+// easy to omit because a first test impression can render without them.
+//
+// Kept as one list applied to several directives rather than five tuned ones:
+// the hosts overlap heavily, ad serving moves between them without notice, and
+// a directive-by-directive minimisation buys nothing against a party that
+// already executes script on the page. The Sentry report-uri above is the
+// backstop — an unlisted host arrives as a `blocked-host` issue.
+const adsenseHosts = [
+  "https://pagead2.googlesyndication.com",
+  "https://*.googlesyndication.com",
+  "https://tpc.googlesyndication.com",
+  "https://googleads.g.doubleclick.net",
+  "https://*.g.doubleclick.net",
+  "https://*.doubleclick.net",
+  "https://adservice.google.com",
+  "https://*.adtrafficquality.google",
+].join(" ");
+
+// Ad serving follows the same production-only gate as the tag itself
+// (lib/adsense.js). Opening these holes on previews would let a stray tag
+// actually serve, which is the invalid-traffic risk that gate exists to
+// prevent — so the policy and the component agree rather than the CSP being
+// permanently wide and the component alone holding the line.
+const adsEnabledForCsp = !process.env.VERCEL_ENV || process.env.VERCEL_ENV === "production";
+const adsScriptSrc = adsEnabledForCsp ? ` ${adsenseHosts}` : "";
+const adsFrameSrc = adsEnabledForCsp ? ` ${adsenseHosts}` : "";
+const adsImgSrc = adsEnabledForCsp ? ` ${adsenseHosts}` : "";
+const adsConnectSrc = adsEnabledForCsp ? ` ${adsenseHosts}` : "";
+
 const gaEnabled = Boolean(process.env.NEXT_PUBLIC_GA_ID);
 const gaScriptSrc = gaEnabled ? " https://www.googletagmanager.com" : "";
 const gaConnectSrc = gaEnabled
@@ -150,11 +202,18 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}${gaScriptSrc}`,
+      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}${gaScriptSrc}${adsScriptSrc}`,
       "style-src 'self' 'unsafe-inline'",
-      `img-src 'self' data: blob:${gaImgSrc}`,
+      `img-src 'self' data: blob:${gaImgSrc}${adsImgSrc}`,
       "font-src 'self' data:",
-      `connect-src 'self' https://*.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io${gaConnectSrc}`,
+      `connect-src 'self' https://*.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io${gaConnectSrc}${adsConnectSrc}`,
+      // Ad iframes. Omitted entirely when ads are off, so the policy keeps
+      // falling back to default-src 'self' and stays as tight as before —
+      // this site embeds no other third-party frames.
+      ...(adsFrameSrc ? [`frame-src 'self'${adsFrameSrc}`] : []),
+      // Privacy Sandbox fenced frames do not inherit frame-src, so Chrome
+      // needs this named separately or that inventory renders blank there.
+      ...(adsFrameSrc ? [`fenced-frame-src${adsFrameSrc}`] : []),
       "worker-src 'self' blob:",
       "frame-ancestors 'none'",
       "base-uri 'self'",

@@ -10,8 +10,17 @@ import { fetchToolUsageSnapshot } from "@/lib/toolUsage";
 import { rankTools } from "@/lib/toolRanking";
 
 const title = "Free Online PDF, Image & Calculator Tools";
+// Says "no sign-up, no watermarks" and deliberately not "no ads": the site
+// runs AdSense (see lib/adsense.js and the /privacy advertising section), so
+// the old claim became false the moment the tag shipped. It mattered more
+// here than anywhere else on the site — this is the meta description Google
+// renders in the search snippet, so an ad-free promise would have been the
+// first thing a visitor read and the first thing the page disproved.
+//
+// The two surviving claims are still true and are the ones people search on,
+// so nothing of value was lost by dropping the third.
 const description =
-  "Free PDF, image, calculator, and URL shortener tools. Almost everything runs in your browser — no sign-up, no ads, no watermarks.";
+  "Free PDF, image, calculator, and URL shortener tools. Almost everything runs in your browser — no sign-up, no watermarks.";
 
 // Next normalizes the canonical and strips the trailing slash, so this emits
 // "https://wary.tools" regardless of the form written here; the sitemap is the
