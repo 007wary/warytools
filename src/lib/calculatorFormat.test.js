@@ -62,6 +62,24 @@ describe("formatPercent", () => {
   it("returns a dash for non-finite input", () => {
     expect(formatPercent(Infinity)).toBe("—");
   });
+
+  it("never renders a non-zero percentage as zero", () => {
+    // The misleading-zero failure formatNumber() already guards against, which
+    // reached the effective-annual-rate row: a real 0.0001% read as "0%", and
+    // a small negative rounded to the nonsense string "-0%".
+    expect(formatPercent(0.0001)).not.toBe("0%");
+    expect(formatPercent(-0.004)).not.toBe("-0%");
+    expect(formatPercent(-0.004)).not.toBe("−0%");
+  });
+
+  it("still renders an exact zero as 0%", () => {
+    expect(formatPercent(0)).toBe("0%");
+  });
+
+  it("rounds normally once a value is large enough to be visible", () => {
+    expect(formatPercent(0.005)).toBe("0.01%");
+    expect(formatPercent(-3.333)).toBe("-3.33%");
+  });
 });
 
 describe("formatCount", () => {

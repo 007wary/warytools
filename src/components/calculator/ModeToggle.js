@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { colors } from "@/lib/theme";
 
 // The GST, interest, and percentage calculators each carried their own
@@ -13,6 +14,13 @@ import { colors } from "@/lib/theme";
 // navigation, which a row of buttons doesn't have.
 
 export default function ModeToggle({ options, value, onChange, label, size = "md" }) {
+  // Focus is moved through refs rather than by indexing the group's DOM
+  // children. `parentElement.children[i]` assumed the buttons are the group's
+  // only direct children and in option order — true today, but it breaks
+  // silently (focus lands on the wrong control, or nowhere) the moment anything
+  // else is rendered inside the group. Refs stay correct regardless of markup.
+  const buttonRefs = useRef([]);
+
   function handleKeyDown(event, index) {
     const keys = ["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp", "Home", "End"];
     if (!keys.includes(event.key)) return;
@@ -29,7 +37,7 @@ export default function ModeToggle({ options, value, onChange, label, size = "md
     const next = options[nextIndex];
     onChange(next.id);
     // Roving focus follows selection, which is the expected radio behaviour.
-    event.currentTarget.parentElement?.children[nextIndex]?.focus();
+    buttonRefs.current[nextIndex]?.focus();
   }
 
   return (
@@ -43,6 +51,9 @@ export default function ModeToggle({ options, value, onChange, label, size = "md
         return (
           <button
             key={option.id}
+            ref={(node) => {
+              buttonRefs.current[index] = node;
+            }}
             type="button"
             role="radio"
             aria-checked={active}

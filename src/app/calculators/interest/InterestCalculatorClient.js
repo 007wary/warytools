@@ -61,10 +61,17 @@ export default function InterestCalculatorClient() {
 
   // Effective annual yield is the number that actually lets someone compare
   // two offers with different compounding frequencies.
-  const effectiveRate =
-    result && parsed.ok && parsed.values.years > 0
+  //
+  // A zero principal is a valid input (the field only forbids negatives) and
+  // makes total/principal 0/0 = NaN, which reached the panel as a bare "—"
+  // next to perfectly good figures. There is no meaningful yield on nothing,
+  // so the row is dropped instead. `Number.isFinite` is the guard rather than
+  // a `> 0` check on the inputs alone, matching the rule in calculatorInput.js.
+  const rawEffectiveRate =
+    result && parsed.ok && parsed.values.years > 0 && parsed.values.principal > 0
       ? (Math.pow(result.total / parsed.values.principal, 1 / parsed.values.years) - 1) * 100
       : null;
+  const effectiveRate = Number.isFinite(rawEffectiveRate) ? rawEffectiveRate : null;
 
   // Only the mode and (for compound) the frequency are sent — never the
   // principal, which is a financial figure and none of analytics' business.

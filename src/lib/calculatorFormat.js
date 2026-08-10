@@ -95,6 +95,16 @@ export function formatPercent(value, options = {}) {
   const { maximumFractionDigits = 2 } = options;
   if (!Number.isFinite(value)) return "—";
 
+  // A small but genuinely non-zero percentage must not render as "0%" — that
+  // is the same misleading-zero failure formatNumber() guards against, and it
+  // shows up on a real effective-rate row. Rounding -0.004 also yields the
+  // string "-0%", which reads as a typo. Below the visible resolution, fall
+  // back to significant digits so the value is still the value.
+  const magnitude = Math.abs(value);
+  if (value !== 0 && magnitude < Math.pow(10, -maximumFractionDigits) / 2) {
+    return `${formatNumber(value)}%`;
+  }
+
   return `${getFormatter(undefined, {
     minimumFractionDigits: 0,
     maximumFractionDigits,

@@ -117,8 +117,65 @@ describe("sanitizeNumericInput", () => {
     expect(sanitizeNumericInput("१२३")).toBe("123");
   });
 
+  it("normalises Arabic-Indic, Persian, and Bengali digits", () => {
+    expect(sanitizeNumericInput("١٢٣")).toBe("123");
+    expect(sanitizeNumericInput("۱۲۳")).toBe("123");
+    expect(sanitizeNumericInput("১২৩")).toBe("123");
+  });
+
+  it("normalises a unicode minus and typographic dashes to a plain hyphen", () => {
+    // A word processor substitutes these silently, and the parser rejects them
+    // with a "must be a number" error whose cause is invisible on screen.
+    expect(sanitizeNumericInput("−12")).toBe("-12");
+    expect(sanitizeNumericInput("–12")).toBe("-12");
+  });
+
+  it("strips the non-breaking spaces used as thousands separators", () => {
+    expect(sanitizeNumericInput("1 234")).toBe("1234");
+    expect(sanitizeNumericInput("1 234")).toBe("1234");
+  });
+
   it("returns an empty string for non-string input", () => {
     expect(sanitizeNumericInput(null)).toBe("");
+  });
+
+  // Stripping every comma turned the European "1234,56" into 123456 — a
+  // *silent* 100x error that still parsed as a valid number, on pages quoting
+  // GST and loan figures. These pin the disambiguation.
+  describe("the ambiguous comma", () => {
+    it("reads a comma as a decimal point only when no grouping could explain it", () => {
+      expect(sanitizeNumericInput("1234,56")).toBe("1234.56");
+      expect(sanitizeNumericInput("1.234,56")).toBe("1234.56");
+      expect(sanitizeNumericInput("1.234.567,89")).toBe("1234567.89");
+    });
+
+    it("still reads Indian and US grouping as grouping", () => {
+      expect(sanitizeNumericInput("1,234")).toBe("1234");
+      expect(sanitizeNumericInput("12,34,567.89")).toBe("1234567.89");
+      expect(sanitizeNumericInput("1,234.56")).toBe("1234.56");
+    });
+
+    // The load-bearing one. This runs on every keystroke, so no intermediate
+    // value may be rewritten into something that is not a prefix of what the
+    // user is typing — that corrupts the field under the cursor, which is
+    // worse than the bug being fixed.
+    it("never mangles a partially typed number", () => {
+      for (const target of ["1,234", "1,234.56", "12,34,567", "1234,56"]) {
+        let previous = "";
+        for (let i = 1; i <= target.length; i += 1) {
+          const current = sanitizeNumericInput(target.slice(0, i));
+          expect(current.startsWith(previous)).toBe(true);
+          previous = current;
+        }
+      }
+    });
+
+    it("is idempotent, since it re-runs over its own output", () => {
+      for (const raw of ["1234,56", "1.234,56", "₹1,234.56", "−12", "1,", "1,2", "12."]) {
+        const once = sanitizeNumericInput(raw);
+        expect(sanitizeNumericInput(once)).toBe(once);
+      }
+    });
   });
 });
 

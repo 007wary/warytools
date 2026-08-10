@@ -143,12 +143,66 @@ export function parseFields(fields) {
  */
 export function sanitizeNumericInput(raw) {
   if (typeof raw !== "string") return "";
-  return raw
-    .replace(/[\s,_]/g, "")
-    .replace(/[₹$€£]/g, "")
-    // Full-width and Devanagari digits arrive from mobile keyboards.
+
+  let text = raw
+    // Currency symbols, and the dashes/spaces that come with pasted text.
+    .replace(/[₹$€£¥]/g, "")
+    // Unicode minus (U+2212) and the typographic dashes a word processor
+    // substitutes for a hyphen. Without this a pasted "−12" fails to parse
+    // with a "must be a number" error the user cannot see the cause of.
+    .replace(/[−‒–—]/g, "-")
+    // Non-ASCII digits from mobile keyboards, mapped to their ASCII value.
+    // Devanagari and full-width were already handled; Arabic-Indic (the
+    // default on Arabic keyboards), its Eastern/Persian variant, and Bengali
+    // are all common enough to be worth the two extra ranges.
     .replace(/[０-９]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 0xfee0))
-    .replace(/[०-९]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 0x0966 + 48));
+    .replace(/[०-९]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 0x0966 + 48))
+    .replace(/[٠-٩]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 0x0660 + 48))
+    .replace(/[۰-۹]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 0x06f0 + 48))
+    .replace(/[০-৯]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 0x09e6 + 48))
+    // Whitespace (including the NBSP/narrow-NBSP that many locales use as a
+    // thousands separator) and the underscore separator.
+    .replace(/[\s  _]/g, "");
+
+  // The comma is ambiguous, and guessing wrong is a *silent* 100x error rather
+  // than a rejection: "1234,56" is 1234.56 in most of Europe, and stripping the
+  // comma unconditionally turned it into 123456 — a valid-looking number, no
+  // warning, wrong answer on a page that quotes GST and loan figures.
+  //
+  // The inference is deliberately only applied to values that cannot be a
+  // half-typed Indian/US number. This function runs on *every keystroke*, so
+  // treating a bare "1,2" as a decimal would rewrite the field to "1.2" while
+  // someone is still typing "1,234" — mangling input under the cursor, which is
+  // worse than the bug being fixed. A decimal comma is therefore only inferred
+  // when the value is unambiguous on its own:
+  //
+  //   - "1.234,56" — dot-grouped with a trailing comma group: European, so the
+  //     dots are grouping and the comma is the decimal point. Unambiguous at
+  //     any length, because no other convention produces that shape.
+  //   - "1234,56"  — no dot, one comma, and an integer part of *four or more*
+  //     digits, which no grouping convention ever produces before a separator.
+  //
+  // The four-digit floor is what keeps typing safe. A shorter integer part is
+  // exactly the ambiguous case: "1,2" is the third keystroke of "1,234" far
+  // more often than it is 1.2, so rewriting it would corrupt the field under
+  // the cursor — worse than the bug being fixed. Those keep the old behaviour
+  // and are simply stripped. The cost is that a European typing "99,5" by hand
+  // gets 995; they are already served by the dot key, and a wrong answer while
+  // typing is the more damaging of the two failures.
+  if (text.includes(",")) {
+    const europeanGrouped = /^[+-]?\d{1,3}(\.\d{3})+,\d+$/.test(text);
+    const plainDecimalComma = /^[+-]?\d{4,},\d{1,2}$/.test(text);
+
+    if (europeanGrouped) {
+      text = text.replace(/\./g, "").replace(",", ".");
+    } else if (!text.includes(".") && plainDecimalComma) {
+      text = text.replace(",", ".");
+    } else {
+      text = text.replace(/,/g, "");
+    }
+  }
+
+  return text;
 }
 
 /**

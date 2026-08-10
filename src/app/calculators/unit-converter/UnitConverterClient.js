@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { ArrowLeftRight } from "lucide-react";
 import { unitCategories, convertLinear, convertTemperature } from "@/lib/unitConversions";
 import { parseNumber } from "@/lib/calculatorInput";
@@ -42,6 +43,18 @@ export default function UnitConverterClient() {
   // instead of crashing on `units[from].label`.
   const from = unitIds.includes(state.from) ? state.from : unitIds[0];
   const to = unitIds.includes(state.to) ? state.to : unitIds[1] ?? unitIds[0];
+
+  // The fallback above only fixes what is *rendered*; state still holds the
+  // mismatched unit. That leaks in two ways — the copy-link button hands out
+  // the same broken URL the visitor arrived on, and a swap writes the stale
+  // id back into the new category — so reconcile state to what is on screen.
+  // Guarded by the inequality, so this is a no-op on every normal render
+  // rather than a render loop.
+  useEffect(() => {
+    if (from !== state.from || to !== state.to) {
+      setState((previous) => ({ ...previous, from, to }));
+    }
+  }, [from, to, state.from, state.to, setState]);
 
   // Temperature is the one category where negatives are meaningful; a negative
   // length or weight is a typo.

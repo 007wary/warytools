@@ -220,4 +220,71 @@ describe("businessDaysBetween", () => {
       diffBetween(start, end).totalDays
     );
   });
+
+  // The O(1) closed form replaced a day-by-day walk (~19ms per render across
+  // the full MIN_YEAR..MAX_YEAR span, on every keystroke). Asserting the new
+  // arithmetic against itself would prove nothing, so it is checked against an
+  // independent implementation of the thing it replaced — the same
+  // round-trip-rather-than-recompute rule the coordinate helpers follow.
+  it("matches a day-by-day walk across every start weekday and span length", () => {
+    function walk(start, end) {
+      const [earlier, later] = start <= end ? [start, end] : [end, start];
+      const cursor = new Date(earlier.getFullYear(), earlier.getMonth(), earlier.getDate());
+      const target = new Date(later.getFullYear(), later.getMonth(), later.getDate());
+      let count = 0;
+      while (cursor < target) {
+        cursor.setDate(cursor.getDate() + 1);
+        const day = cursor.getDay();
+        if (day !== 0 && day !== 6) count += 1;
+      }
+      return count;
+    }
+
+    // Every possible start weekday (offsets 0-6) crossed with spans from 0 to
+    // 40 days, which covers every whole-week + remainder combination.
+    for (let startOffset = 0; startOffset < 7; startOffset += 1) {
+      for (let span = 0; span <= 40; span += 1) {
+        const start = new Date(2024, 0, 1 + startOffset);
+        const end = new Date(2024, 0, 1 + startOffset + span);
+        expect(businessDaysBetween(start, end)).toBe(walk(start, end));
+      }
+    }
+  });
+});
+
+// A local-time Date subtraction divided by 86,400,000 is not a day count in
+// any timezone that observes DST: a spring-forward day is 23 hours, so the old
+// Math.floor returned 0 for two genuinely different calendar days. This is
+// asserted through the public API rather than by re-deriving the arithmetic.
+//
+// The bug was invisible from India (no DST), which is where this is developed
+// — so these tests pin the *calendar* meaning of a day count in a way that
+// holds regardless of the machine's timezone.
+describe("day counts are calendar days, not elapsed hours", () => {
+  it("counts consecutive calendar days as exactly one day, all year", () => {
+    // 2026-03-08 (US spring forward) and 2026-10-04 (Lord Howe) are the days
+    // that previously returned 0 under those timezones.
+    for (let month = 0; month < 12; month += 1) {
+      for (let day = 1; day <= 28; day += 1) {
+        const a = new Date(2026, month, day);
+        const b = new Date(2026, month, day + 1);
+        expect(diffBetween(a, b).totalDays).toBe(1);
+      }
+    }
+  });
+
+  it("counts a whole month and a whole year exactly", () => {
+    expect(diffBetween(parseDateInput("2026-03-01"), parseDateInput("2026-04-01")).totalDays).toBe(31);
+    expect(diffBetween(parseDateInput("2026-01-01"), parseDateInput("2027-01-01")).totalDays).toBe(365);
+    // 2024 is a leap year.
+    expect(diffBetween(parseDateInput("2024-01-01"), parseDateInput("2025-01-01")).totalDays).toBe(366);
+  });
+
+  it("keeps totalDays consistent with an exact-anniversary age", () => {
+    // 36 years to the day. Every DST transition crossed used to shave a day
+    // off this total.
+    const result = diffBetween(parseDateInput("1990-03-09"), parseDateInput("2026-03-09"));
+    expect(result).toMatchObject({ years: 36, months: 0, days: 0 });
+    expect(result.totalDays).toBe(13149);
+  });
 });
