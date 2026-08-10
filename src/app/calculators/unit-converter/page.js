@@ -47,15 +47,18 @@ const howToSteps = [
 const faqs = [
   {
     question: "Which unit categories can I convert?",
-    answer: "Length, weight, and temperature — covering the units people convert most often, like meters to feet, kilograms to pounds, or Celsius to Fahrenheit.",
+    answer:
+      "Length, weight, and temperature. Length covers millimetres through to miles, weight covers milligrams through to tonnes, and temperature covers Celsius, Fahrenheit, and Kelvin — so the common pairs like metres to feet, kilograms to pounds, and Celsius to Fahrenheit are all there.",
   },
   {
-    question: "Are the conversions accurate for precise work?",
-    answer: "Yes, conversions use standard conversion factors; results are shown with enough precision for everyday and professional use.",
+    question: "How accurate are the conversions?",
+    answer:
+      "The factors are the internationally defined ones — an inch is exactly 2.54 cm and a mile is exactly 1609.344 m, so those conversions are exact. Pound and ounce use the standard avoirdupois factors rounded to six significant figures, which is well inside everyday and trade tolerances. Results are displayed rounded for readability, so for metrology or laboratory work, check the displayed precision against what your task requires.",
   },
   {
     question: "Can I convert between metric and imperial units?",
-    answer: "Yes — the converter handles metric-to-imperial and imperial-to-metric conversions in both directions.",
+    answer:
+      "Yes, in both directions — centimetres to inches and inches to centimetres, kilograms to pounds and pounds to kilograms. The swap button reverses the direction without retyping the value.",
   },
   {
     question: "How many centimetres are in an inch?",

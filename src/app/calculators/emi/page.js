@@ -38,7 +38,7 @@ const howToSteps = [
   },
   {
     name: "Add the interest rate",
-    text: "Enter the annual rate your lender quoted. Use the rate itself, not the APR, if the two differ.",
+    text: "Enter the annual interest rate your lender quoted. If you have been given an APR as well, use the plain interest rate here — an APR folds in processing fees, which this calculation deliberately excludes.",
   },
   {
     name: "Set the tenure in years",
@@ -59,7 +59,7 @@ const faqs = [
   {
     question: "Does a longer tenure reduce my EMI?",
     answer:
-      "Yes, a longer tenure lowers the monthly instalment, but it increases the total interest you pay over the life of the loan. The breakdown below the result shows both figures so you can compare.",
+      "Yes, a longer tenure lowers the monthly instalment, but it increases the total interest you pay over the life of the loan. The result panel shows the EMI and the total interest side by side, so you can change the tenure and watch both move.",
   },
   {
     question: "What is an amortisation schedule?",

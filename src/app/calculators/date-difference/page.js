@@ -48,7 +48,8 @@ const howToSteps = [
 const faqs = [
   {
     question: "Does the calculator count the difference in days, or years and months too?",
-    answer: "Both — it breaks the difference down into years, months, and days, plus totals in days, weeks, and months.",
+    answer:
+      "Both. The headline is the span in years, months, and days, and below it you get the totals in calendar days, business days, weeks, and months, plus the weekday each date falls on.",
   },
   {
     question: "Can I calculate the difference between a past date and a future date?",

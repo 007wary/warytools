@@ -68,8 +68,9 @@ export default function CalculatorsHubPage() {
           Everyday calculators that just work
         </h2>
         <p style={{ fontSize: "14px", color: colors.textMuted, lineHeight: 1.7, marginBottom: "14px" }}>
-          Every calculator here runs entirely in your browser and updates as you type — there is no
-          calculate button, no sign-up, and nothing you enter is sent to a server. That matters most
+          Every calculator here runs entirely in your browser and updates the moment you change an
+          input — there is no calculate button, no sign-up, and nothing you enter is sent to a
+          server. That matters most
           on the money tools: the figures you put into the{" "}
           <HubLink href="/calculators/emi">EMI calculator</HubLink> or the{" "}
           <HubLink href="/calculators/gst">GST calculator</HubLink> never leave your device.

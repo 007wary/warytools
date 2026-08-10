@@ -41,7 +41,7 @@ const howToSteps = [
   },
   {
     name: "Select the GST rate",
-    text: "Tap one of the standard slabs — 5%, 12%, 18%, or 28% — or choose Custom for a rate like the 0.25% and 3% used on gems and gold.",
+    text: "Choose one of the standard slabs — 5%, 12%, 18%, or 28% — or pick Custom for a rate outside them, such as the 0.25% on rough gemstones or the 3% on gold.",
   },
   {
     name: "Read the breakdown",

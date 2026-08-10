@@ -57,11 +57,13 @@ const faqs = [
   },
   {
     question: "Can I set how often interest compounds?",
-    answer: "Yes — choose the compounding frequency (e.g. annually, monthly) along with the rate and time period.",
+    answer:
+      "Yes. Compound mode offers annual, semi-annual, quarterly, and monthly compounding. Pick the one your bank or deposit actually uses — Indian fixed deposits are usually quarterly, while most savings accounts credit interest quarterly on a daily balance.",
   },
   {
     question: "What do I need to enter to calculate interest?",
-    answer: "Principal amount, interest rate, and time period — the calculator returns the interest earned and the total amount.",
+    answer:
+      "Three figures: the principal, the annual interest rate, and the number of years. In compound mode there is a fourth choice, the compounding frequency. The interest earned and the maturity amount appear as soon as all three are filled in.",
   },
   {
     question: "What is the effective annual rate, and why does it differ from the quoted rate?",
@@ -133,8 +135,11 @@ export default function InterestCalculatorPage() {
           interest, from an identical rate.
         </p>
         <p style={{ fontSize: "14px", color: colors.textMuted, lineHeight: 1.7, margin: 0 }}>
-          The gap widens sharply with time, which is why compounding matters far more over decades
-          than over a year or two. Time, not rate, is usually the larger lever on a long horizon.
+          That gap widens sharply with time, because the interest being re-invested is itself larger
+          every year. Over one or two years simple and compound barely differ; over decades the
+          difference dominates the result. The same logic applies to the compounding frequency,
+          which is why the effective annual rate — not the quoted rate — is the figure to compare
+          two offers by.
         </p>
       </section>
 
