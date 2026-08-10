@@ -199,6 +199,76 @@ export function extensionFor(mimeType) {
 }
 
 /**
+ * Works out one image's output size from the batch's shared settings.
+ *
+ * Lives here rather than inline in image.worker.js for the reason the repo
+ * gives for pdfPageRange.js: the worker cannot be imported by the test suite
+ * (it touches `self` at module scope and vitest runs in node), so logic left
+ * there is logic that can never be covered. This decides the dimensions of
+ * every file the image tools hand back, which makes it exactly the kind of
+ * thing that has to be reachable by a test.
+ *
+ * Every branch clamps. The `dimensions` branch previously passed its settings
+ * straight through, so a non-finite width became `new OffscreenCanvas(NaN, NaN)`
+ * — which does not throw; it yields a 0x0 surface that encodes as an empty
+ * image. Same silent-failure class as an over-budget canvas.
+ *
+ * Percentage and "max edge" are relative to each image, so a batch of mixed
+ * sizes scales sensibly instead of being forced to identical dimensions.
+ *
+ * @param {number} sourceWidth
+ * @param {number} sourceHeight
+ * @param {{mode: string, percentage?: number, maxEdge?: number, width?: number, height?: number}} settings
+ * @returns {{width: number, height: number}} Always finite, always >= 1.
+ */
+export function resolveOutputSize(sourceWidth, sourceHeight, settings = {}) {
+  const source = {
+    width: Math.max(1, Math.round(Number(sourceWidth) || 1)),
+    height: Math.max(1, Math.round(Number(sourceHeight) || 1)),
+  };
+
+  const clamp = (value, fallback) => {
+    const number = Number(value);
+    if (!Number.isFinite(number) || number < 1) return fallback;
+    return Math.max(1, Math.round(number));
+  };
+
+  if (settings.mode === "percentage") {
+    const percentage = Number(settings.percentage);
+    if (!Number.isFinite(percentage) || percentage <= 0) return source;
+    const scale = percentage / 100;
+    return {
+      width: clamp(source.width * scale, 1),
+      height: clamp(source.height * scale, 1),
+    };
+  }
+
+  if (settings.mode === "maxEdge") {
+    const maxEdge = Number(settings.maxEdge);
+    const longest = Math.max(source.width, source.height);
+    if (!Number.isFinite(maxEdge) || maxEdge <= 0 || longest <= maxEdge) return source;
+    const scale = maxEdge / longest;
+    return {
+      width: clamp(source.width * scale, 1),
+      height: clamp(source.height * scale, 1),
+    };
+  }
+
+  if (settings.mode === "dimensions") {
+    // Falls back to the source dimension rather than to 1: a bad value means
+    // the request was malformed, and returning the untouched size is closest to
+    // "do no harm" — a 1x1 output would look like the tool destroyed the image.
+    return {
+      width: clamp(settings.width, source.width),
+      height: clamp(settings.height, source.height),
+    };
+  }
+
+  // "none" — re-encode at source resolution (compress, convert, watermark).
+  return source;
+}
+
+/**
  * Renames a source file for its converted output, preserving the stem.
  *
  * "holiday-photo.png" -> "holiday-photo.jpg" is far more useful in a batch of

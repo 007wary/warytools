@@ -99,9 +99,17 @@ export function useImageBatch({ toolSlug, errorFallback }) {
         });
 
         if (response.failures.length > 0) {
+          // The worker's own message is shown for a single failure rather than
+          // a generic line. It is the difference between "could not process
+          // IMG_4821.jpg" — which reads as the tool being broken — and "this
+          // image is 48 megapixels, past what browsers can process on a
+          // canvas", which tells the user what to do next. The failures that
+          // actually happen here (over the pixel ceiling, an encoder the
+          // browser lacks) all have actionable messages.
+          const [first] = response.failures;
           setNotice(
             response.failures.length === 1
-              ? `Could not process "${response.failures[0].name}".`
+              ? `Could not process "${first.name}": ${first.message}`
               : `Could not process ${response.failures.length} of ${items.length} images.`
           );
         }
@@ -116,6 +124,13 @@ export function useImageBatch({ toolSlug, errorFallback }) {
           quality: settings.quality ? Math.round(settings.quality * 100) : undefined,
         });
       } catch (err) {
+        // A cancel is a user's decision, not a failure. It rejects the pending
+        // promise (the only way to stop `process` awaiting a worker that is
+        // being terminated), so it arrives here — but showing a red banner and
+        // logging an error for someone who clicked Cancel misreports the tool
+        // as broken, and would skew TOOL_ERROR with deliberate stops.
+        if (err?.cancelled) return;
+
         console.error(err);
         trackEvent(events.TOOL_ERROR, { reason: `${toolSlug}_failed` });
         setError(describeImageError(err, errorFallback));
@@ -153,6 +168,11 @@ export function useImageBatch({ toolSlug, errorFallback }) {
       zip.file(name, result.bytes);
     });
 
+    // Stored, not deflated — JSZip's default, and deliberately kept. Every
+    // entry here is already-compressed image data (JPEG/PNG/WebP/AVIF), which
+    // DEFLATE cannot meaningfully shrink; running it would spend real CPU on a
+    // large batch to save a fraction of a percent. This looks like an omission,
+    // hence the note.
     return zip.generateAsync({ type: "blob" });
   }, [items, results]);
 

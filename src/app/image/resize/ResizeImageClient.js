@@ -46,6 +46,16 @@ export default function ResizeImageClient() {
   const selectedFormat = findFormat(format);
   const isBatch = items.length > 1;
 
+  // "Exact size" is hidden for a batch — forcing images of mixed dimensions to
+  // identical pixels would distort most of them. Without this the *mode* stayed
+  // on "dimensions" after a second file was dropped, leaving it selected with
+  // no button on screen showing it, and the run then quietly fell back to
+  // maxEdge at whatever `maxEdge` happened to hold (1920 by default) — a value
+  // the user had never seen, because that panel isn't rendered in this mode.
+  // Adding one file silently changed what the button did. Derived rather than
+  // synced through an effect so there is no frame where the two disagree.
+  const effectiveMode = isBatch && mode === "dimensions" ? "percentage" : mode;
+
   // Read the first image's dimensions so the pixel inputs can be seeded and
   // the aspect link has a ratio to work from.
   //
@@ -119,11 +129,12 @@ export default function ResizeImageClient() {
 
   async function handleResize() {
     // Exact-pixel mode only makes sense for a single image; a batch of mixed
-    // sizes forced to identical dimensions would distort most of them. The UI
-    // hides the option for batches, and this is the matching guard.
-    if (mode === "dimensions" && !isBatch) {
+    // sizes forced to identical dimensions would distort most of them. Reading
+    // effectiveMode throughout is what keeps this branch and the visible
+    // controls describing the same run.
+    if (effectiveMode === "dimensions") {
       const target = resolveTargetSize({
-        mode,
+        mode: effectiveMode,
         width,
         height,
         percentage,
@@ -153,7 +164,7 @@ export default function ResizeImageClient() {
     }
 
     await batch.process({
-      mode: mode === "dimensions" ? "maxEdge" : mode,
+      mode: effectiveMode,
       percentage,
       maxEdge,
       format,
@@ -164,7 +175,7 @@ export default function ResizeImageClient() {
   const singleResult = items.length === 1 ? results.get(items[0]?.id) : null;
 
   const preview =
-    source && mode === "percentage"
+    source && effectiveMode === "percentage"
       ? {
           width: Math.round((source.width * percentage) / 100),
           height: Math.round((source.height * percentage) / 100),
@@ -172,8 +183,8 @@ export default function ResizeImageClient() {
       : null;
 
   const isUpscale =
-    (mode === "percentage" && percentage > 100) ||
-    (mode === "dimensions" && source && Number(width) > source.width);
+    (effectiveMode === "percentage" && percentage > 100) ||
+    (effectiveMode === "dimensions" && source && Number(width) > source.width);
 
   return (
     <div>
@@ -226,19 +237,19 @@ export default function ResizeImageClient() {
 
           <div style={{ display: "flex", gap: "8px", margin: "24px 0 20px", flexWrap: "wrap" }}>
             {!isBatch && (
-              <ModeButton active={mode === "dimensions"} onClick={() => setMode("dimensions")}>
+              <ModeButton active={effectiveMode === "dimensions"} onClick={() => setMode("dimensions")}>
                 Exact size
               </ModeButton>
             )}
-            <ModeButton active={mode === "percentage"} onClick={() => setMode("percentage")}>
+            <ModeButton active={effectiveMode === "percentage"} onClick={() => setMode("percentage")}>
               By percentage
             </ModeButton>
-            <ModeButton active={mode === "maxEdge"} onClick={() => setMode("maxEdge")}>
+            <ModeButton active={effectiveMode === "maxEdge"} onClick={() => setMode("maxEdge")}>
               Fit within
             </ModeButton>
           </div>
 
-          {mode === "dimensions" && !isBatch && (
+          {effectiveMode === "dimensions" && (
             <div style={{ marginBottom: "20px" }}>
               <div
                 style={{
@@ -292,7 +303,7 @@ export default function ResizeImageClient() {
             </div>
           )}
 
-          {mode === "percentage" && (
+          {effectiveMode === "percentage" && (
             <div style={{ marginBottom: "20px" }}>
               <label htmlFor="scale" style={{ fontSize: "14px", color: colors.textSecondary }}>
                 Scale: {percentage}%
@@ -318,7 +329,7 @@ export default function ResizeImageClient() {
             </div>
           )}
 
-          {mode === "maxEdge" && (
+          {effectiveMode === "maxEdge" && (
             <div style={{ marginBottom: "20px" }}>
               <span
                 style={{

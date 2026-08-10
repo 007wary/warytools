@@ -8,6 +8,7 @@ import {
   needsMatte,
   extensionFor,
   outputFilename,
+  resolveOutputSize,
 } from "./imageResampling";
 
 describe("planDownscaleSteps", () => {
@@ -252,5 +253,116 @@ describe("outputFilename", () => {
   it("falls back to a usable name for empty input", () => {
     expect(outputFilename("", "image/png")).toBe("image.png");
     expect(outputFilename(null, "image/png")).toBe("image.png");
+  });
+});
+
+describe("resolveOutputSize", () => {
+  // This decides the dimensions of every file the image tools hand back, and
+  // it lives in lib rather than the worker precisely so it can be covered —
+  // the worker touches `self` at module scope and cannot be imported here.
+
+  it("keeps the source size for the 'none' mode", () => {
+    // Compress, Convert and Watermark all run at source resolution.
+    expect(resolveOutputSize(4000, 3000, { mode: "none" })).toEqual({
+      width: 4000,
+      height: 3000,
+    });
+  });
+
+  it("treats an unknown mode as 'none' rather than guessing", () => {
+    expect(resolveOutputSize(800, 600, { mode: "wat" })).toEqual({ width: 800, height: 600 });
+  });
+
+  it("scales by percentage", () => {
+    expect(resolveOutputSize(1000, 500, { mode: "percentage", percentage: 50 })).toEqual({
+      width: 500,
+      height: 250,
+    });
+  });
+
+  it("never scales a percentage below one pixel", () => {
+    // 1% of 50px rounds to 0, and a 0-wide canvas encodes an empty image.
+    const size = resolveOutputSize(50, 50, { mode: "percentage", percentage: 1 });
+    expect(size.width).toBeGreaterThanOrEqual(1);
+    expect(size.height).toBeGreaterThanOrEqual(1);
+  });
+
+  it("leaves an image alone when it already fits the max edge", () => {
+    expect(resolveOutputSize(800, 600, { mode: "maxEdge", maxEdge: 1920 })).toEqual({
+      width: 800,
+      height: 600,
+    });
+  });
+
+  it("fits the longest edge and preserves aspect ratio", () => {
+    const size = resolveOutputSize(4000, 2000, { mode: "maxEdge", maxEdge: 1000 });
+    expect(size).toEqual({ width: 1000, height: 500 });
+  });
+
+  it("uses exact dimensions when given them", () => {
+    expect(resolveOutputSize(4000, 3000, { mode: "dimensions", width: 800, height: 600 })).toEqual({
+      width: 800,
+      height: 600,
+    });
+  });
+
+  // The regression this function was extracted for. A non-finite dimension
+  // used to pass straight through to `new OffscreenCanvas(NaN, NaN)`, which
+  // does not throw — it yields a 0x0 surface that encodes as an empty image.
+  // Falling back to the source size is the "do no harm" outcome; a 1x1 result
+  // would look like the tool had destroyed the photo.
+  it.each([
+    ["NaN", NaN],
+    ["undefined", undefined],
+    ["a blank string", ""],
+    ["zero", 0],
+    ["a negative", -100],
+    ["Infinity", Infinity],
+  ])("falls back to the source size for %s dimensions", (_label, bad) => {
+    expect(resolveOutputSize(1600, 900, { mode: "dimensions", width: bad, height: bad })).toEqual({
+      width: 1600,
+      height: 900,
+    });
+  });
+
+  it("falls back per-axis, keeping a valid dimension", () => {
+    expect(resolveOutputSize(1600, 900, { mode: "dimensions", width: 800, height: NaN })).toEqual({
+      width: 800,
+      height: 900,
+    });
+  });
+
+  it("ignores a nonsensical percentage rather than emptying the image", () => {
+    expect(resolveOutputSize(800, 600, { mode: "percentage", percentage: 0 })).toEqual({
+      width: 800,
+      height: 600,
+    });
+    expect(resolveOutputSize(800, 600, { mode: "percentage", percentage: NaN })).toEqual({
+      width: 800,
+      height: 600,
+    });
+  });
+
+  it("ignores a nonsensical max edge", () => {
+    expect(resolveOutputSize(800, 600, { mode: "maxEdge", maxEdge: 0 })).toEqual({
+      width: 800,
+      height: 600,
+    });
+  });
+
+  it("always returns finite whole pixels at least 1", () => {
+    const cases = [
+      { mode: "percentage", percentage: 0.0001 },
+      { mode: "maxEdge", maxEdge: 0.5 },
+      { mode: "dimensions", width: 0.2, height: 0.2 },
+      { mode: "none" },
+    ];
+    for (const settings of cases) {
+      const size = resolveOutputSize(3000, 2000, settings);
+      expect(Number.isInteger(size.width)).toBe(true);
+      expect(Number.isInteger(size.height)).toBe(true);
+      expect(size.width).toBeGreaterThanOrEqual(1);
+      expect(size.height).toBeGreaterThanOrEqual(1);
+    }
   });
 });

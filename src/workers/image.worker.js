@@ -15,9 +15,10 @@
 //   - OffscreenCanvas lets the draw and encode happen here rather than
 //     marshalling pixels back to the DOM.
 
-import { planDownscaleSteps, needsMatte } from "@/lib/imageResampling";
+import { planDownscaleSteps, needsMatte, resolveOutputSize } from "@/lib/imageResampling";
 import { replies, createProgress } from "@/lib/pdfWorkerProtocol";
 import { drawWatermark } from "@/lib/imageWatermarkDraw";
+import { checkPixelBudget } from "@/lib/imageValidation";
 
 const cancelled = new Set();
 
@@ -37,18 +38,27 @@ self.onmessage = async (event) => {
 
   try {
     const result = await processBatch(id, payload);
-    if (cancelled.has(id)) {
-      cancelled.delete(id);
-      return;
-    }
+    if (cancelled.has(id)) return;
     self.postMessage({ type: replies.RESULT, id, ...result.message }, result.transfer);
   } catch (error) {
+    // A cancellation surfaces here as a throw from throwIfCancelled. The client
+    // has already torn the worker down by then, so posting an ERROR back would
+    // arrive at a terminated port at best and reject an already-settled promise
+    // at worst.
+    if (!error?.cancelled) {
+      self.postMessage({
+        type: replies.ERROR,
+        id,
+        message: String(error?.message || error),
+      });
+    }
+  } finally {
+    // Cleared on every exit path, including the ones that returned early above.
+    // The old code deleted the id in two of the three branches, so a cancel
+    // that lost the race with a completing batch left its id in the set for the
+    // life of the worker — and any later request that happened to reuse it
+    // would be discarded as cancelled before it ran.
     cancelled.delete(id);
-    self.postMessage({
-      type: replies.ERROR,
-      id,
-      message: String(error?.message || error),
-    });
   }
 };
 
@@ -130,19 +140,49 @@ async function processOne(entry, settings, logo = null) {
   // carries raw sensor orientation and the EXIF tag is silently dropped.
   const bitmap = await createImageBitmap(blob, { imageOrientation: "from-image" });
 
+  // Declared outside the try so the finally can release an intermediate bitmap
+  // that a mid-pipeline throw left live.
+  let current = bitmap;
+  let currentIsSource = true;
+
   try {
     const sourceWidth = bitmap.width;
     const sourceHeight = bitmap.height;
 
-    const { width, height } = resolveSize(sourceWidth, sourceHeight, settings);
+    const { width, height } = resolveOutputSize(sourceWidth, sourceHeight, settings);
+
+    // Checked here rather than in each client, because the decoded dimensions
+    // are the thing being checked and only the worker has them — a client would
+    // have to decode the file a second time to learn them.
+    //
+    // This guards the OUTPUT size, which is what a canvas is actually allocated
+    // at. Past the ceiling canvas does not throw: it silently yields a blank
+    // surface, so an oversized image comes back as a plausible file full of
+    // nothing. Only Resize checked this, and only on its exact-dimensions
+    // branch — so Compress, Convert and Watermark, all of which run at source
+    // resolution, handed back blank images for any photo above the ceiling with
+    // no error anywhere. Same silent-failure class as HEIC and scanned PDFs.
+    const budget = checkPixelBudget(width, height);
+    if (!budget.ok) throw new Error(budget.error);
 
     // Stepwise halving rather than one big draw. See planDownscaleSteps —
     // a single draw from 4000px to 400px undersamples badly and is why the
     // old resize output looked jagged.
     const steps = planDownscaleSteps(sourceWidth, sourceHeight, width, height);
+    const matte = needsMatte(settings.format);
 
-    let current = bitmap;
-    let currentIsSource = true;
+    // The final step draws directly into the canvas that gets encoded, rather
+    // than into a scratch canvas that is then transferred to a bitmap and
+    // copied once more into an output canvas.
+    //
+    // That extra round trip cost a second full-size allocation and a second
+    // full-size draw for EVERY image, and it was worst in exactly the common
+    // case: Compress, Convert and Watermark all run at source resolution, where
+    // planDownscaleSteps returns a single no-op step. A 40-megapixel photo was
+    // therefore allocating two 160 MB surfaces and copying between them to
+    // achieve nothing at all before the encode.
+    let outCanvas = null;
+    let outCtx = null;
 
     for (let s = 0; s < steps.length; s++) {
       const step = steps[s];
@@ -152,7 +192,7 @@ async function processOne(entry, settings, logo = null) {
       const ctx = canvas.getContext("2d", {
         // Tells the compositor there's no transparency to preserve when the
         // output format can't carry it, which lets it skip a blend pass.
-        alpha: !needsMatte(settings.format),
+        alpha: !matte,
       });
 
       ctx.imageSmoothingEnabled = true;
@@ -161,7 +201,7 @@ async function processOne(entry, settings, logo = null) {
       // JPG has no alpha channel: without a matte, transparent pixels encode
       // as black, which reads as a corrupted image rather than a format
       // limitation. Only needed on the final draw.
-      if (isFinal && needsMatte(settings.format)) {
+      if (isFinal && matte) {
         ctx.fillStyle = settings.matteColor || "#ffffff";
         ctx.fillRect(0, 0, step.width, step.height);
       }
@@ -172,18 +212,26 @@ async function processOne(entry, settings, logo = null) {
       // too slow when each one is tens of megabytes and a batch creates
       // several per file.
       if (!currentIsSource) current.close?.();
-      current = canvas.transferToImageBitmap();
-      currentIsSource = false;
+
+      if (isFinal) {
+        // Kept as a canvas, not transferred to a bitmap: the watermark still
+        // has to draw onto it and convertToBlob reads from it directly.
+        outCanvas = canvas;
+        outCtx = ctx;
+        current = null;
+        currentIsSource = false;
+      } else {
+        current = canvas.transferToImageBitmap();
+        currentIsSource = false;
+      }
     }
 
-    const outCanvas = new OffscreenCanvas(current.width, current.height);
-    const outCtx = outCanvas.getContext("2d", { alpha: !needsMatte(settings.format) });
-    if (needsMatte(settings.format)) {
-      outCtx.fillStyle = settings.matteColor || "#ffffff";
-      outCtx.fillRect(0, 0, current.width, current.height);
-    }
-    outCtx.drawImage(current, 0, 0);
-    current.close?.();
+    // planDownscaleSteps is documented never to return an empty list, so the
+    // loop above always sets this. Asserted rather than assumed because the
+    // failure mode if that ever changed is the one this file keeps guarding
+    // against: not a crash, but a blank image encoded and handed over as if it
+    // were the user's photo.
+    if (!outCanvas) throw new Error("No output surface was produced for this image.");
 
     // Drawn after every resize step and before the encode, which is the only
     // correct point in the pipeline. Watermarking first and then downscaling
@@ -220,38 +268,11 @@ async function processOne(entry, settings, logo = null) {
     };
   } finally {
     bitmap.close?.();
+    // An intermediate bitmap is live here only when the run threw part-way
+    // through the halving loop (an over-budget size, a failed encode). The
+    // happy path has already closed or consumed it, and close() twice is a
+    // no-op — but leaving a tens-of-megabytes bitmap to GC on the error path
+    // is how a batch that hits a few failures exhausts the worker.
+    if (!currentIsSource) current?.close?.();
   }
-}
-
-/**
- * Works out the output size for one image from the shared batch settings.
- *
- * Percentage and "max edge" are relative to each image, so a batch of mixed
- * sizes scales sensibly instead of being forced to identical dimensions.
- */
-function resolveSize(sourceWidth, sourceHeight, settings) {
-  if (settings.mode === "percentage") {
-    const scale = settings.percentage / 100;
-    return {
-      width: Math.max(1, Math.round(sourceWidth * scale)),
-      height: Math.max(1, Math.round(sourceHeight * scale)),
-    };
-  }
-
-  if (settings.mode === "maxEdge") {
-    const longest = Math.max(sourceWidth, sourceHeight);
-    if (longest <= settings.maxEdge) return { width: sourceWidth, height: sourceHeight };
-    const scale = settings.maxEdge / longest;
-    return {
-      width: Math.max(1, Math.round(sourceWidth * scale)),
-      height: Math.max(1, Math.round(sourceHeight * scale)),
-    };
-  }
-
-  if (settings.mode === "dimensions") {
-    return { width: settings.width, height: settings.height };
-  }
-
-  // "none" — re-encode at source resolution (compress and convert).
-  return { width: sourceWidth, height: sourceHeight };
 }
