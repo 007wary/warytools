@@ -16,8 +16,12 @@ const geistSans = Geist({
 });
 
 const title = "WaryTools — Free Online PDF, Image & Calculator Tools";
+// "All PDF and image tools" was false once the document converters shipped, and
+// this is the site-wide default description — the fallback for any page without
+// its own, and the OG description shared to every link preview. "Nearly all" is
+// the same narrowing already applied to the homepage, /pdf, /image and /about.
 const description =
-  "Free online tools for PDF editing, image processing, calculators, and URL shortening. All PDF and image tools run 100% in your browser — no uploads.";
+  "Free online tools for PDF editing, image processing, calculators, and URL shortening. Nearly all PDF and image tools run 100% in your browser — no uploads.";
 
 export const metadata = {
   metadataBase: new URL(SITE_URL),
