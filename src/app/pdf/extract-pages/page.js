@@ -91,14 +91,17 @@ export default function ExtractPagesPage() {
         Extract Pages from PDF
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Pick the pages you want and save them as a new PDF, or as one file per page. Everything
-        happens in your browser — files are never uploaded anywhere.
+        Pick exactly the pages you want and save them as a new PDF, or as one file per page.
+        Everything happens in your browser, so files are never uploaded anywhere.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
-        Useful for pulling one chapter out of a long report, saving the signature page of a
+        Perfect for lifting one chapter out of a long report, saving the signature page of a
         contract, separating invoices from a scanned batch, or sending someone the three pages
-        they asked for instead of the whole document. Select pages visually or type their numbers,
-        and typed selections keep the order you enter them in.
+        they actually asked for instead of the whole document. Click pages in the grid or type
+        their numbers — and typing gives you precise control the grid can&apos;t: enter 5, 1, 9 and
+        that&apos;s the order you get, or 1, 1 for two copies of the same page. Bookmarks and form
+        fields are carried across, and your pages are copied rather than re-rendered, so nothing
+        loses a shred of quality.
       </p>
 
       <ExtractPagesClient />

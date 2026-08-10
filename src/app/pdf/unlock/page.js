@@ -89,8 +89,8 @@ export default function UnlockPdfPage() {
         Unlock PDF
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Remove a password from a PDF so it opens freely. Everything happens in your browser — the
-        file and the password never leave your device.
+        Strip the password from a PDF you own, so it opens freely every time. Everything happens
+        in your browser — the file and the password never leave your device.
       </p>
       {/* The scope note is shared with the client rather than written twice, so
           the promise on the page and the promise beside the button cannot

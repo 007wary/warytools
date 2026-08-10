@@ -111,13 +111,16 @@ export default function SignPdfPage() {
         Sign a PDF
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Draw your signature with a mouse, finger, or stylus, type it, or upload a photo of it — then
-        drag it exactly where it belongs. Everything happens in your browser, so neither the
-        document nor your signature is ever uploaded.
+        Draw your signature with a mouse, finger, or stylus, type it, or upload a photo of it —
+        then drop it exactly where it belongs, right on the line. Everything happens in your
+        browser, so neither the document nor your signature is ever uploaded.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
         Sign as many pages as you need — an initial on each page and a full signature at the end is
-        a single pass. This places a signature on the page, the same as printing, signing, and
+        a single pass, and the same signature is stored once inside the PDF no matter how often it
+        appears, so your file never bloats. Drawn signatures are captured at high resolution and
+        cropped to your ink, so they land looking like a signature rather than a fax. This places a
+        signature on the page, the same as printing, signing, and
         scanning would; it is not a certificate-based digital signature, so it carries no
         cryptographic proof of who signed. For most everyday agreements that&rsquo;s exactly what is
         wanted, but it&rsquo;s worth knowing before you send something on.

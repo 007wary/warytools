@@ -93,16 +93,19 @@ export default function JpgToPdfPage() {
         JPG to PDF
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Turn images into a single PDF — free, with no sign-up and no watermarks. Everything runs
-        in your browser, so your photos are never uploaded anywhere.
+        Turn a pile of images into one polished PDF — free, no sign-up, no watermarks. Everything
+        runs in your browser, so your photos are never uploaded anywhere.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
-        Add as many images as you need, drag them into the right order, and choose how each page
-        should look. Useful for sending a set of receipts as one document, turning photographed
-        pages back into a readable file, or bundling scans for an application form.
+        Add as many images as you like, drag them into the right order, and choose exactly how each
+        page should look — A4 or US Letter with the margin you want, or &ldquo;Match image&rdquo;
+        for edge-to-edge pages with no borders at all. Perfect for sending a set of receipts as one
+        document, turning photographed pages back into something readable, or bundling scans for an
+        application form. Portrait phone photos stay portrait, too: the orientation tag your camera
+        wrote is read and applied, so nothing lands sideways.
       </p>
 
-      <JpgToPdfClient />
+      <JpgToPdfClient />
 
       <HowToSteps title={howToName} steps={howToSteps} />
 

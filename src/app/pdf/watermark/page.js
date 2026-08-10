@@ -108,9 +108,11 @@ export default function WatermarkPdfPage() {
         uploaded.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
-        Useful for marking drafts, labelling confidential documents, and branding anything you send
-        on. Pick the angle, colour, opacity, and how densely the mark repeats, choose which pages
-        get it, and see the result on the page before you download.
+        Perfect for marking drafts, labelling confidential documents, and branding anything you
+        send on. Dial in the angle, colour, opacity, and how densely the mark repeats, choose
+        exactly which pages get it, and watch a live preview update as you go — what you see is
+        what downloads. Rotated and scanned pages are handled properly too, so the mark reads at
+        the same angle right through the document instead of lying sideways halfway in.
       </p>
 
       <WatermarkPdfClient />

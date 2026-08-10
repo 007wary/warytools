@@ -40,17 +40,34 @@ const howToSteps = [
 
 const faqs = [
   {
-    question: "Can I delete pages while reordering?",
-    answer: "Yes. Remove any page you don't need at the same time as dragging the rest into a new order.",
+    question: "How do I reorder pages?",
+    answer:
+      "Drag a page thumbnail to its new position and the rest shift to make room. What you see on screen is exactly what downloads — no preview to second-guess, no surprises in the saved file.",
   },
   {
-    question: "How do I reorder pages?",
-    answer: "Drag a page thumbnail to its new position; the download reflects the order shown on screen.",
+    question: "Can I delete pages while reordering?",
+    answer:
+      "Yes, in the same pass. Remove any page you don't need while dragging the rest into a new order, then save once. If deleting is all you're after, the dedicated Delete Pages tool is quicker.",
+  },
+  {
+    question: "Can I reorder pages without a mouse?",
+    answer:
+      "Yes, and it's a first-class path rather than an afterthought. Focus a page, press Space to grab it, move it with the arrow keys, and press Space again to drop it — or Escape to cancel and put it back where it was. Drag-and-drop alone would leave the tool unusable with a keyboard or a screen reader.",
+  },
+  {
+    question: "Will bookmarks and form fields survive the reshuffle?",
+    answer:
+      "Yes. Reordering rebuilds the document, so bookmarks, form fields, named destinations, and the accessibility structure screen readers navigate by are copied across deliberately rather than quietly left behind — which is what makes a reordered file still feel like the original document.",
+  },
+  {
+    question: "Does reordering reduce quality?",
+    answer:
+      "No. Pages are copied wholesale into their new positions, never re-rendered or re-compressed, so every page comes out pixel-for-pixel identical to the one that went in.",
   },
   {
     question: "Is there a page limit?",
     answer:
-      "No hard limit is enforced, though very large PDFs are bounded by your device's memory since everything is processed in the browser.",
+      "No hard limit is enforced. Because everything runs in your browser, the practical ceiling is your own device's memory — thumbnails are rendered lazily as you scroll, so even a long document stays responsive.",
   },
 ];
 
@@ -75,14 +92,15 @@ export default function ReorderPdfPage() {
         Reorder &amp; Delete PDF Pages Online
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Drag and drop to rearrange pages, or delete the ones you don&apos;t need. This free
-        online tool reorders PDF pages entirely in your browser — files are never uploaded
-        anywhere.
+        Drag and drop to rearrange pages, or delete the ones you don&apos;t need. This free online
+        tool reorders PDF pages entirely in your browser — files are never uploaded anywhere.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
-        See every page as a thumbnail, drag them into the order you want, and drop any pages
-        that don&apos;t belong — useful for tidying up a scanned document or reassembling a
-        report before sharing it.
+        See every page as a live thumbnail, drag them into exactly the order you want, and drop
+        anything that doesn&apos;t belong — perfect for tidying a scanned document or reassembling
+        a report before you send it on. Your bookmarks, form fields, and accessibility structure
+        are carried across deliberately, so a reshuffled document arrives whole rather than
+        stripped. Prefer the keyboard? Space grabs a page and the arrow keys move it.
       </p>
 
       <ReorderPdfClient />

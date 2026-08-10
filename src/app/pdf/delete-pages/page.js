@@ -90,14 +90,15 @@ export default function DeletePagesPage() {
         Delete Pages from PDF
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Click the pages you want to remove and download the rest. Everything happens in your
-        browser — files are never uploaded anywhere.
+        Click the pages you want gone and download the rest — it really is that quick. Everything
+        happens in your browser, so files are never uploaded anywhere.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
-        Useful for dropping a blank scan, cutting a cover sheet, removing an internal appendix
-        before sending a report, or clearing the duplicate pages a scanner fed twice. Select pages
-        visually or type their numbers — the pages you don&apos;t pick come back in their original
-        order.
+        Ideal for dropping a blank scan, cutting a cover sheet, removing an internal appendix
+        before a report goes out, or clearing the duplicates a scanner fed twice. Select pages
+        visually or type their numbers — the grid dims exactly what&apos;s about to disappear, so
+        you can see the document you&apos;re about to get before you commit to it. Everything you
+        keep comes back in its original order, with bookmarks and form fields intact.
       </p>
 
       <DeletePagesClient />

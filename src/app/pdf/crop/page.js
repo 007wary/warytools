@@ -90,16 +90,19 @@ export default function CropPdfPage() {
         Crop PDF Online
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Trim margins, borders, and whitespace from a PDF — free, no sign-up. The crop runs in your
-        browser, so your file is never uploaded.
+        Trim margins, borders, and whitespace with pinpoint accuracy — free, no sign-up. The crop
+        runs in your browser, so your file is never uploaded.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
-        Drag a region over the page preview and apply it to one page or all of them. Useful for
-        cutting the wide margins off a scanned book, removing a slide deck&apos;s borders before
-        printing, or tightening a page so it reads better on a phone.
+        Drag a region over the live page preview and apply it to a single page or every one at
+        once. Ideal for cutting the wide margins off a scanned book, stripping a slide deck&apos;s
+        borders before printing, or tightening a page so it finally reads well on a phone. The crop
+        is written to every page boundary the format defines, not just the one most readers happen
+        to show — so what you see on screen is what prints, and what survives being converted or
+        sent on.
       </p>
 
-      <CropPdfClient />
+      <CropPdfClient />
 
       <HowToSteps title={howToName} steps={howToSteps} />
 

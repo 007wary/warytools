@@ -52,7 +52,7 @@ export const categories = [
       {
         slug: "compress",
         title: "Compress PDF",
-        description: "Reduce PDF file size online for free, without watermarks or sign-up.",
+        description: "Shrink PDF file size losslessly — no quality lost, nothing uploaded.",
         href: "/pdf/compress",
         icon: "Minimize2",
       },
@@ -112,7 +112,12 @@ export const categories = [
       {
         slug: "protect",
         title: "Protect PDF",
-        description: "Password-protect a PDF with AES encryption — free, nothing uploaded.",
+        // Deliberately does NOT name a cipher. @cantoo/pdf-lib picks the
+        // encryption revision from the SOURCE document's header version, not
+        // from an option we pass: a 1.4 file gets RC4-128, 1.6/1.7 gets AES-128
+        // (AESV2), and only 1.7ext3 gets AES-256. The old copy said "AES
+        // encryption" flatly, which is false for any older PDF someone drops in.
+        description: "Password-protect a PDF with strong encryption — free, nothing uploaded.",
         href: "/pdf/protect",
         icon: "LockKeyhole",
       },

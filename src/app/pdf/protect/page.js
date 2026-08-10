@@ -95,8 +95,8 @@ export default function ProtectPdfPage() {
         Protect PDF
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Add a password to a PDF so it can&apos;t be opened without one. Everything happens in your
-        browser — the file and the password never leave your device.
+        Lock a PDF with real encryption, so it simply cannot be opened without your password.
+        Everything happens in your browser — the file and the password never leave your device.
       </p>
       <p
         style={{

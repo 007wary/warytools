@@ -7,7 +7,7 @@ import { pageMetadata } from "@/lib/pageMetadata";
 
 const title = "Free PDF Tools — Merge, Split, Compress";
 const description =
-  "Free online PDF tools to merge, split, compress, rotate, reorder, and convert PDF to Word. No sign-up, no watermarks, no file size games.";
+  "Free online PDF tools to merge, split, compress, crop, sign, watermark, protect, and convert PDFs. No sign-up, no watermarks, no file size games.";
 
 export const metadata = pageMetadata({ title, description, path: "/pdf" });
 

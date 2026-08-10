@@ -91,13 +91,16 @@ export default function AddPageNumbersPage() {
         Add Page Numbers to a PDF
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Stamp page numbers onto any PDF — pick the position, format, and where the count starts.
-        Everything happens in your browser, so the file is never uploaded anywhere.
+        Stamp page numbers onto any PDF with pinpoint placement — pick the position, format, and
+        where the count starts. Everything happens in your browser, so the file is never uploaded.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
-        Useful for reports, contracts, and anything printed double-sided, where an unnumbered stack
-        of pages is easy to get out of order. Leave a cover page unstamped, start the count wherever
-        you need, and see exactly where each number lands before you download.
+        Essential for reports, contracts, and anything printed double-sided, where an unnumbered
+        stack of pages is one gust of wind away from chaos. Leave a cover page unstamped, start the
+        count wherever you need, and see precisely where each number lands before you download.
+        Numbers are drawn straight onto your existing pages, so bookmarks, links, and form fields
+        survive untouched — and rotated or scanned pages are handled properly, with every number
+        reading the right way up.
       </p>
 
       <AddPageNumbersClient />

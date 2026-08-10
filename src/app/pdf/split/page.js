@@ -74,13 +74,14 @@ export default function SplitPdfPage() {
         Split PDF Online
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Extract a page range into a new PDF, or split every page into its own file.
-        Everything happens in your browser — files are never uploaded anywhere.
+        Pull a page range into a new PDF, or explode every page into its own file — in one click.
+        Everything happens in your browser, so files are never uploaded anywhere.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
-        Useful for pulling a chapter out of a report, separating a scanned batch into individual
-        documents, or trimming a PDF down to just the pages you need — all processed locally in
-        the browser with no upload step.
+        Ideal for lifting a chapter out of a report, separating a scanned batch into individual
+        documents, or trimming a PDF down to precisely the pages you need. Your pages are copied
+        across rather than re-rendered, so text stays crisp and images stay exactly as sharp as
+        they started — all processed locally, with no upload step and nothing to sign up for.
       </p>
 
       <SplitPdfClient />

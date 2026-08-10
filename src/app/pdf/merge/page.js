@@ -81,14 +81,16 @@ export default function MergePdfPage() {
         Merge PDF Files Online
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Combine multiple PDF files into a single document — free, with no sign-up and no
-        watermark. Reorder them however you like before merging. Everything happens in your
-        browser, so files are never uploaded anywhere.
+        Combine any number of PDFs into one flawless document — free, no sign-up, no watermark.
+        Arrange them exactly how you like before merging. Everything happens in your browser, so
+        your files are never uploaded anywhere.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
-        Drop in as many PDFs as you need, drag them into the order you want, and download a
-        single combined file. Because merging runs locally using pdf-lib, it works offline once
-        the page has loaded and nothing about your documents is ever sent anywhere.
+        Drop in as many PDFs as you need, drag them into the perfect order, and download a single
+        combined file in seconds. Page quality is preserved exactly — merging copies your pages
+        rather than re-rendering them, so nothing is softened or resampled along the way. And
+        because it all runs locally, it keeps working offline once the page has loaded, with not a
+        byte of your documents leaving the device.
       </p>
 
       <MergePdfClient />

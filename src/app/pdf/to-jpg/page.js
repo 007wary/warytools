@@ -94,16 +94,19 @@ export default function PdfToJpgPage() {
         PDF to JPG
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Convert PDF pages into JPG or PNG images — free, no sign-up, no watermarks. Every page is
-        rendered by your own browser, so the file is never uploaded.
+        Convert PDF pages into crisp JPG or PNG images — free, no sign-up, no watermarks. Every
+        page is rendered by your own browser, so the file is never uploaded.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
-        Pick the pages you need and the resolution you want, and download them individually or as
-        a zip. Handy for pulling a figure out of a paper, posting a page where PDFs aren&apos;t
-        supported, or getting a printable image of a certificate.
+        Pick the pages you need and the resolution you want — 72 DPI for the web, 150 for
+        everyday use, or a full 300 DPI for print — then download them individually or as a zip.
+        Perfect for pulling a figure out of a paper, posting a page somewhere PDFs aren&apos;t
+        supported, or getting a genuinely printable image of a certificate. Pages are rendered
+        exactly as they appear, text and vector graphics included, at the sharpest resolution your
+        device can produce.
       </p>
 
-      <PdfToJpgClient />
+      <PdfToJpgClient />
 
       <HowToSteps title={howToName} steps={howToSteps} />
 

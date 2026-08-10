@@ -72,13 +72,15 @@ export default function RotatePdfPage() {
         Rotate PDF Pages Online
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Rotate individual pages or the whole document in 90° steps. Everything happens in your
+        Turn a single page or the entire document in perfect 90° steps. Everything happens in your
         browser — files are never uploaded anywhere.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
-        Fixes the common case of a scanned document coming out sideways or upside-down. Pick a
-        page (or all of them), rotate to the correct orientation, and download — no scanning
-        app or desktop software required.
+        The fastest fix for a scan that came out sideways or upside-down. Pick a page — or all of
+        them at once — set the right orientation, and download. Rotation is completely lossless:
+        only the page&apos;s orientation flag changes, so nothing is re-rendered and your document
+        comes back every bit as sharp as it went in. No scanning app, no desktop software, no
+        sign-up.
       </p>
 
       <RotatePdfClient />
