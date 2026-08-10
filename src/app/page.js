@@ -158,8 +158,17 @@ export default async function HomePage() {
               lineHeight: 1.6,
             }}
           >
-            Free PDF, image, calculator, and URL shortener tools that run entirely in your
-            browser. No uploads, no sign-up, no waiting. {allTools.length} tools and counting.
+            {/* "Almost everything" rather than a blanket "runs entirely in your
+                browser. No uploads" — the old wording was false for five of the
+                tools this very sentence names: the four document converters and
+                the URL shortener. The FAQ below, /about, /privacy and the PDF
+                hub were all already careful about this; the hero was the last
+                blanket claim on the site, and the highest-traffic copy on it.
+                The count is interpolated, never written as prose, so it cannot
+                drift from the registry. */}
+            Free PDF, image, calculator, and URL shortener tools — {allTools.length} of them, all
+            genuinely free. Almost everything runs right in your browser, so your files never
+            leave your device. No sign-up, no watermarks, no waiting.
           </p>
 
           <ToolSearchBox />
