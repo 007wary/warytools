@@ -53,7 +53,7 @@ const faqs = [
   {
     question: "Are my images uploaded to a server?",
     answer:
-      "No. Watermarking happens entirely in your browser — your photos and your logo never leave your device. That also means there's no queue and no file-size limit beyond what your device can handle.",
+      "No. Watermarking happens entirely in your browser — your photos and your logo never leave your device, so there's no queue and no waiting. The only ceiling is a practical one: files up to 50 MB, and images up to about 16 megapixels, which is what a browser canvas can process reliably.",
   },
   {
     question: "Can I watermark several images at once?",
