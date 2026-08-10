@@ -15,7 +15,7 @@ export const metadata = pageMetadata({
   path: "/privacy",
 });
 
-const LAST_UPDATED = "August 10, 2026";
+const LAST_UPDATED = "August 11, 2026";
 
 function Section({ id, title, children }) {
   return (
@@ -75,10 +75,18 @@ export default function PrivacyPage() {
       <section style={{ maxWidth: "720px", margin: "0 auto", padding: "48px 20px 80px" }}>
         <Section id="pdf-image" title="PDF and image tools">
           <p style={{ marginBottom: "10px" }}>
-            Every PDF and image tool (merge, split, compress, rotate, reorder, resize, convert,
-            watermark, EXIF stripper) processes your file entirely inside your browser tab. The
-            file is read into memory, transformed, and handed back to you as a download — it is
-            never sent to a WaryTools server or any third party.
+            {/* Deliberately not a list of tool names. The previous version named
+                nine, which had fallen years behind the registry — Sign, Crop, Add
+                Page Numbers, Delete/Extract Pages, PDF to JPG, JPG to PDF, Protect,
+                Unlock and the Favicon Generator were all missing. In a privacy
+                policy an incomplete list doesn't read as an oversight, it reads as
+                a scope limit: a tool absent from it looks deliberately excluded
+                from the promise. The rule is stated instead, so it stays true as
+                tools are added. */}
+            Every PDF and image tool on the site, with the four exceptions named below, processes
+            your file entirely inside your browser tab. The file is read into memory, transformed,
+            and handed back to you as a download — it is never sent to a WaryTools server or any
+            third party.
           </p>
           <p style={{ marginBottom: "10px" }}>
             Closing or refreshing the tab discards everything. We have no record of what you
@@ -133,17 +141,25 @@ export default function PrivacyPage() {
 
         <Section id="calculators" title="Calculators">
           <p>
-            Age, percentage, GST, interest, unit conversion, and date-difference calculators run
-            entirely client-side too. Whatever you type into them stays in your browser and is
-            never transmitted anywhere.
+            {/* Named six and silently omitted EMI. Same reasoning as the tool
+                list above: state the rule, not a roster that drifts. */}
+            Every calculator on the site runs entirely client-side too. Whatever you type into
+            them stays in your browser and is never transmitted anywhere.
           </p>
         </Section>
 
         <Section id="url-shortener" title="URL shortener">
           <p style={{ marginBottom: "10px" }}>
-            This is the one tool that needs a server, because a short link only works if
-            something remembers what it points to. When you shorten a URL, the destination URL,
-            the generated short code, and a click count are stored in a Supabase database.
+            {/* Said "the one tool that needs a server", directly contradicting
+                the four converters described in the section immediately above.
+                It is the one tool that STORES anything — that's the distinction
+                worth drawing, and it's the sharper privacy point besides: the
+                converters hold a file for seconds, this keeps a row forever. */}
+            This is the one tool that stores anything, because a short link only works if
+            something remembers what it points to. (The four converters above also use a server,
+            but only for the length of a single conversion — they keep nothing.) When you shorten
+            a URL, the destination URL, the generated short code, and a click count are stored in
+            a Supabase database.
           </p>
           <p style={{ marginBottom: "10px" }}>
             Links you create are also saved to your browser&rsquo;s <code>localStorage</code> so
