@@ -3,13 +3,23 @@ import JsonLd from "@/components/JsonLd";
 import FaqSection from "@/components/FaqSection";
 import RelatedTools from "@/components/RelatedTools";
 import { categories } from "@/lib/tools";
-import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
+import HowToSteps from "@/components/HowToSteps";
+import {
+  jsonLdGraph,
+  toolSoftwareAppJsonLd,
+  breadcrumbJsonLd,
+  faqJsonLd,
+  howToJsonLd,
+} from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
 import { pageMetadata } from "@/lib/pageMetadata";
 
-const title = "Watermark Images Online Free";
+// "Add watermark to photo" outranks "watermark images" as a phrasing, and the
+// batch capability is the differentiator against the many single-file tools, so
+// both go in the title rather than being left to the description.
+const title = "Add Watermark to Photos Online Free — Batch";
 const description =
-  "Add a text or logo watermark to your photos online, free and without sign-up. Batch watermark JPG, PNG, and WebP images in your browser — nothing is uploaded.";
+  "Add a text or logo watermark to your photos — free, no sign-up. Batch watermark JPG, PNG, WebP, and AVIF with tiling and opacity control. Nothing uploaded.";
 const appName = "Watermark Image";
 const href = "/image/watermark";
 
@@ -19,11 +29,31 @@ export const metadata = pageMetadata({
   path: href,
 });
 
+const howToName = "How to add a watermark to a photo";
+const howToSteps = [
+  {
+    name: "Add your photos",
+    text: "Drag your images onto the drop zone, or click it to browse. Drop a whole folder to watermark every photo in one run.",
+  },
+  {
+    name: "Choose text or a logo",
+    text: "Type the text you want stamped — a name, a copyright line, or DRAFT — or switch to Logo and drop in a PNG. A transparent PNG works best.",
+  },
+  {
+    name: "Set placement and opacity",
+    text: "Pick a single mark in any of nine positions or tile it across the whole image, then set the size, angle, colour, and opacity. The preview updates as you go.",
+  },
+  {
+    name: "Apply and download",
+    text: "Click Watermark, then download the finished image or the whole batch as a zip.",
+  },
+];
+
 const faqs = [
   {
     question: "Are my images uploaded to a server?",
     answer:
-      "No. Watermarking happens entirely in your browser using the Canvas API — your photos and your logo never leave your device. That also means there's no queue and no file-size limit beyond what your device can handle.",
+      "No. Watermarking happens entirely in your browser — your photos and your logo never leave your device. That also means there's no queue and no file-size limit beyond what your device can handle.",
   },
   {
     question: "Can I watermark several images at once?",
@@ -46,6 +76,16 @@ const faqs = [
       "Yes — switch to Logo and drop in a PNG, JPG, or WebP. A PNG with a transparent background works best, because transparency is preserved rather than being flattened onto a white box.",
   },
   {
+    question: "Can I tile the watermark across the whole image?",
+    answer:
+      "Yes. Switch the layout to Tiled and the mark repeats across the entire photo at your chosen density, which is much harder to crop out than a single corner mark. For a single mark you get a full nine-position grid — the corners, the edges, and the centre.",
+  },
+  {
+    question: "How do I make the watermark less obtrusive?",
+    answer:
+      "Lower the opacity. Faint or Light keeps the credit legible without competing with the photo, which is what most people want for an attribution line. Strong and Solid suit a DRAFT or PROOF stamp that's meant to be impossible to ignore.",
+  },
+  {
     question: "Does watermarking reduce my image quality?",
     answer:
       "The mark is drawn at full resolution, so the image itself isn't resized or resampled. If you export as JPG or WebP the file is re-encoded, which is lossy — use the quality slider to control that, or choose PNG for a lossless result.",
@@ -65,24 +105,28 @@ export default function WatermarkImagePage() {
             { name: "Image Tools", href: "/image" },
             { name: appName, href },
           ]),
+          howToJsonLd({ name: howToName, steps: howToSteps, href }),
           faqJsonLd(faqs)
         )}
       />
       <h1 style={{ fontSize: "28px", fontWeight: 700, color: colors.text, marginBottom: "12px" }}>
-        Watermark Images Online
+        Add a Watermark to Your Photos
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Stamp your name, a copyright line, or your logo across your photos — single or tiled,
-        at any angle. Everything happens in your browser, so your images are never uploaded.
+        Stamp your name, a copyright line, or your logo across your photos — a single mark in any
+        of nine positions, or tiled across the whole image at any angle. Everything happens in
+        your browser, so your images are never uploaded.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
-        Add a watermark to a whole folder at once and every image gets the same mark, sized to
-        its own dimensions rather than to a fixed pixel size. Text marks are drawn with a
-        contrasting outline so they stay legible over bright skies and dark shadows alike.
+        Watermark a whole folder at once and every image gets the same mark, sized as a
+        proportion of its own dimensions rather than a fixed pixel size — so a 600px thumbnail
+        and a 6000px photo come out looking identical. Text marks carry a contrasting outline so
+        they stay legible over bright skies and dark shadows alike.
       </p>
 
       <WatermarkImageClient />
 
+      <HowToSteps title={howToName} steps={howToSteps} />
       <FaqSection items={faqs} />
       <RelatedTools
         currentHref={href}

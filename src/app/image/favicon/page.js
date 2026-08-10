@@ -3,7 +3,14 @@ import JsonLd from "@/components/JsonLd";
 import FaqSection from "@/components/FaqSection";
 import RelatedTools from "@/components/RelatedTools";
 import { categories } from "@/lib/tools";
-import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
+import HowToSteps from "@/components/HowToSteps";
+import {
+  jsonLdGraph,
+  toolSoftwareAppJsonLd,
+  breadcrumbJsonLd,
+  faqJsonLd,
+  howToJsonLd,
+} from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
 import { pageMetadata } from "@/lib/pageMetadata";
 
@@ -14,7 +21,7 @@ import { pageMetadata } from "@/lib/pageMetadata";
 // wrong even when their files are right.
 const title = "Favicon Generator — Free ICO & PNG Icon Set";
 const description =
-  "Generate a complete favicon set free: favicon.ico, PNGs for every size, an Apple touch icon, a web manifest, and the HTML to paste. From a logo or a letter. Nothing uploaded.";
+  "Generate a complete favicon set free: favicon.ico, PNGs at every size, an Apple touch icon, a web manifest, and the HTML to paste. From a logo or a letter.";
 const appName = "Favicon Generator";
 const href = "/image/favicon";
 
@@ -23,6 +30,26 @@ export const metadata = pageMetadata({
   description,
   path: href,
 });
+
+const howToName = "How to make a favicon for your website";
+const howToSteps = [
+  {
+    name: "Add a logo or pick a letter",
+    text: "Drop in a square PNG or JPG — 512×512 or larger gives the sharpest result — or switch to the letter mode and type an initial instead.",
+  },
+  {
+    name: "Adjust it for small sizes",
+    text: "Set the padding, corner rounding, and background colour, and choose whether a non-square image is fitted or cropped. Check the 16-pixel preview, which is the size most visitors will ever see.",
+  },
+  {
+    name: "Download the set",
+    text: "Download the zip: favicon.ico, PNGs for every size, the Apple touch icon, the Android icons, and site.webmanifest.",
+  },
+  {
+    name: "Upload and paste the HTML",
+    text: "Put the files in your site's root directory — not a subfolder — and paste the generated snippet into your page's head section.",
+  },
+];
 
 const faqs = [
   {
@@ -75,6 +102,7 @@ export default function FaviconGeneratorPage() {
             { name: "Image Tools", href: "/image" },
             { name: appName, href },
           ]),
+          howToJsonLd({ name: howToName, steps: howToSteps, href }),
           faqJsonLd(faqs)
         )}
       />
@@ -94,6 +122,7 @@ export default function FaviconGeneratorPage() {
 
       <FaviconGeneratorClient />
 
+      <HowToSteps title={howToName} steps={howToSteps} />
       <FaqSection items={faqs} />
       <RelatedTools
         currentHref={href}

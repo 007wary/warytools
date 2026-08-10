@@ -5,14 +5,14 @@ import { categories } from "@/lib/tools";
 import { jsonLdGraph, collectionPageJsonLd, breadcrumbJsonLd } from "@/lib/jsonLd";
 import { pageMetadata } from "@/lib/pageMetadata";
 
-// The title names four of the six tools — all six would truncate in SERPs.
-// "Favicon" displaces "Watermark" because it is the higher-intent search of
-// the two: someone typing it is building a site and wants a file, whereas
-// "watermark" is browsed as often as it is needed. The full set is in the
-// description, which has room for it.
-const title = "Free Image Tools — Compress, Resize, Convert, Favicon";
+// Three of the six tools, not four. The layout appends " — WaryTools", and the
+// previous four-verb title reached 65 characters with it — past the ~60 Google
+// renders, so "Favicon" was being truncated mid-word and the title ended in an
+// ellipsis. The three kept are the highest-volume searches of the set; the full
+// list lives in the description and on the cards below, both of which have room.
+const title = "Free Image Tools — Compress, Resize, Convert";
 const description =
-  "Free online image tools to compress, resize, convert, and watermark images, generate favicons, and strip EXIF data from JPG, PNG, and WebP files. No sign-up — everything runs in your browser, nothing uploaded.";
+  "Free tools to compress, resize, convert, and watermark JPG, PNG, WebP, and AVIF images, generate favicons, and remove EXIF and GPS data. Nothing uploaded.";
 
 export const metadata = pageMetadata({ title, description, path: "/image" });
 

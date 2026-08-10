@@ -3,7 +3,14 @@ import JsonLd from "@/components/JsonLd";
 import FaqSection from "@/components/FaqSection";
 import RelatedTools from "@/components/RelatedTools";
 import { categories } from "@/lib/tools";
-import { jsonLdGraph, toolSoftwareAppJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/jsonLd";
+import HowToSteps from "@/components/HowToSteps";
+import {
+  jsonLdGraph,
+  toolSoftwareAppJsonLd,
+  breadcrumbJsonLd,
+  faqJsonLd,
+  howToJsonLd,
+} from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
 import { pageMetadata } from "@/lib/pageMetadata";
 
@@ -14,7 +21,7 @@ import { pageMetadata } from "@/lib/pageMetadata";
 // three: someone searching it has already decided they have a problem.
 const title = "EXIF Stripper — Remove Photo Metadata & GPS";
 const description =
-  "Remove EXIF, GPS location, and camera metadata from JPG and PNG photos online for free. See exactly what's in your image first. No quality loss, nothing uploaded.";
+  "Remove EXIF, GPS location, and camera metadata from JPG and PNG photos free. See exactly what your image contains first. No quality loss, nothing uploaded.";
 const appName = "EXIF Stripper";
 const href = "/image/exif";
 
@@ -23,6 +30,22 @@ export const metadata = pageMetadata({
   description,
   path: href,
 });
+
+const howToName = "How to remove EXIF data from a photo";
+const howToSteps = [
+  {
+    name: "Add your photos",
+    text: "Drag your JPG or PNG files onto the drop zone, or click it to browse. Each one is scanned the moment it lands — there's no separate scan step.",
+  },
+  {
+    name: "See what's inside",
+    text: "Every file lists the metadata it carries and how much space it takes, with GPS coordinates flagged separately because that's the one that reveals where you were.",
+  },
+  {
+    name: "Remove it and download",
+    text: "Choose whether to keep the colour profile, click Remove metadata, and download the cleaned photo — or the whole batch as a zip.",
+  },
+];
 
 const faqs = [
   {
@@ -44,6 +67,16 @@ const faqs = [
     question: "Which formats does this support?",
     answer:
       "JPG and PNG, which is where metadata almost always lives. Both can be edited without re-compressing them. For WebP, AVIF, GIF, or BMP, use Convert Image instead — re-encoding discards metadata as a side effect, though it does re-compress the picture.",
+  },
+  {
+    question: "How do I remove GPS location from a photo?",
+    answer:
+      "Drop the photo in and the tool tells you straight away whether it carries GPS coordinates, then removes them along with the rest of the metadata. On a phone you can also stop it being recorded in the first place — iPhone: Settings → Privacy & Security → Location Services → Camera → Never. Android: the Camera app's settings, usually under \"Location tags\".",
+  },
+  {
+    question: "How can I check what metadata a photo contains?",
+    answer:
+      "Just drop it in. The report appears immediately, before you remove anything: every metadata block is listed by type and size, with GPS called out separately. You can look and then walk away without changing the file — seeing what's there is half the point of the tool.",
   },
   {
     question: "What is the colour profile option?",
@@ -70,6 +103,7 @@ export default function ExifStripperPage() {
             { name: "Image Tools", href: "/image" },
             { name: appName, href },
           ]),
+          howToJsonLd({ name: howToName, steps: howToSteps, href }),
           faqJsonLd(faqs)
         )}
       />
@@ -89,6 +123,7 @@ export default function ExifStripperPage() {
 
       <ExifStripperClient />
 
+      <HowToSteps title={howToName} steps={howToSteps} />
       <FaqSection items={faqs} />
       <RelatedTools
         currentHref={href}
