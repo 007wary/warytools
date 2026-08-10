@@ -83,7 +83,7 @@ const faqs = [
   {
     question: "Are my images uploaded to a server to be compressed?",
     answer:
-      "No. Compression happens entirely in your browser — images never leave your device. There's no queue, no account, and no file-size limit beyond what your own device can handle.",
+      "No. Compression happens entirely in your browser — images never leave your device, so there's no queue, no account, and no waiting on somebody else's server. The only ceiling is a practical one: files up to 50 MB, and images up to about 16 megapixels, which is what a browser canvas can process reliably.",
   },
 ];
 
@@ -108,13 +108,15 @@ export default function CompressImagePage() {
         Compress Image Online
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Reduce the file size of your JPG, PNG, WebP, and AVIF images with an adjustable quality
-        slider. Everything happens in your browser — files are never uploaded anywhere.
+        Shrink JPG, PNG, WebP, and AVIF images dramatically — often by 80% or more — with pinpoint
+        control over quality. Everything happens in your browser, so files are never uploaded
+        anywhere and results appear the moment you click.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
-        Great for getting a photo under an email or upload limit, and for speeding up a page full
-        of images. Compress a whole batch with one setting, compare the before-and-after size on
-        every file, and download them together as a zip — no account, no watermark, no queue.
+        Perfect for slipping a photo under an email or upload limit, and for making a page full of
+        images load fast. Compress an entire batch with one setting, see the exact before-and-after
+        size on every single file, and download them together as a zip — no account, no watermark,
+        no queue, no compromise.
       </p>
 
       <CompressImageClient />

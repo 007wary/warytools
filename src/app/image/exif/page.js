@@ -116,9 +116,9 @@ export default function ExifStripperPage() {
         below to see what yours contains, then remove it. Free, and nothing is uploaded.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
-        This tool deletes the metadata without re-compressing the image, so the picture itself
-        comes out byte-for-byte identical — no quality loss, unlike tools that strip metadata by
-        re-saving the file. Works on JPG and PNG.
+        This tool deletes the metadata without ever re-compressing the image, so the picture comes
+        out byte-for-byte identical to the original — zero quality loss, where most strippers
+        quietly re-save the file and degrade it a little every time. Works on JPG and PNG.
       </p>
 
       <ExifStripperClient />

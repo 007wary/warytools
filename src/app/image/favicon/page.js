@@ -55,7 +55,7 @@ const faqs = [
   {
     question: "What files do I actually need for a favicon?",
     answer:
-      "Fewer than most guides claim, but more than one. You need favicon.ico for older browsers and Windows, a couple of PNGs for modern browser tabs, apple-touch-icon.png at 180×180 for iOS home screens, and 192px plus 512px PNGs referenced from a web manifest for Android. This tool generates all of them plus the manifest, so you don't have to work out which of the twenty files older tutorials list are still relevant. Most aren't — the Windows 8 tile tags and the IE-era \"shortcut icon\" relation are both dead, and they're deliberately left out.",
+      "Fewer than most guides claim, but more than one. You need favicon.ico for older browsers and Windows, favicon-16x16.png and favicon-32x32.png for modern browser tabs, apple-touch-icon.png at 180×180 for iOS home screens, and 192px plus 512px PNGs referenced from a web manifest for Android. This tool generates exactly those, plus the manifest, so you don't have to work out which of the twenty files older tutorials list are still relevant. Most aren't — the Windows 8 tile tags and the IE-era \"shortcut icon\" relation are both dead, and they're deliberately left out. There's no loose 48×48 PNG either: 48px genuinely matters on Windows, but it's read from inside favicon.ico, so shipping it twice would just be a file nothing ever requests.",
   },
   {
     question: "Where do I put the files?",
@@ -115,9 +115,10 @@ export default function FaviconGeneratorPage() {
         nothing is uploaded.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
-        You get favicon.ico with three sizes packed inside it, PNGs for browser tabs, an Apple
-        touch icon for iOS home screens, the two Android icons Chrome needs before it will offer
-        to install your site, a web manifest, and the HTML to paste into your head.
+        You get favicon.ico with all three Windows sizes packed inside it, PNGs for browser tabs,
+        an Apple touch icon for iOS home screens, the two Android icons Chrome needs before it will
+        offer to install your site, a web manifest, and the exact HTML to paste into your head.
+        Nothing extra, nothing missing — every file in the zip is one a browser actually asks for.
       </p>
 
       <FaviconGeneratorClient />

@@ -37,7 +37,7 @@ const howToSteps = [
   },
   {
     name: "Choose a size",
-    text: "Enter exact width and height in pixels, scale by a percentage, or fit every image inside a maximum edge like 1920px. Keep the aspect-ratio lock on so nothing stretches.",
+    text: "For a single image, enter the exact width and height in pixels. For a batch, scale by a percentage or fit every image inside a maximum edge like 1920px — both stay relative to each picture, so a mixed set keeps its proportions. Leave the aspect-ratio lock on and nothing stretches.",
   },
   {
     name: "Resize and download",
@@ -74,7 +74,7 @@ const faqs = [
   {
     question: "Are my images uploaded anywhere to be resized?",
     answer:
-      "No. Resizing runs entirely in your browser — nothing is uploaded to a server, and there's no account or file-size limit beyond what your device can handle.",
+      "No. Resizing runs entirely in your browser — nothing is uploaded to a server and there's no account to create. The only ceiling is a practical one: files up to 50 MB, and images up to about 16 megapixels, which is what a browser canvas can process reliably.",
   },
 ];
 
@@ -99,15 +99,15 @@ export default function ResizeImagePage() {
         Resize Image Online
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
-        Resize JPG, PNG, WebP, and AVIF images to exact pixel dimensions or by percentage, with
-        the aspect ratio locked so nothing stretches. Everything happens in your browser — files
+        Resize JPG, PNG, WebP, and AVIF images to pixel-exact dimensions or by percentage, with the
+        aspect ratio locked so nothing ever stretches. Everything happens in your browser — files
         are never uploaded anywhere.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
-        Fit an image to a size a website demands, shrink a photo before sending it, or scale a
-        whole batch down to a consistent maximum edge. Downscaling runs through a stepped
-        halving schedule rather than one abrupt jump, which is what keeps fine detail smooth
-        instead of jagged.
+        Hit the exact size a website demands, shrink a photo before sending it, or scale a whole
+        batch down to one consistent maximum edge. The quality is the part worth noticing:
+        downscaling runs through a stepped halving schedule instead of one abrupt jump, so fine
+        detail stays crisp and smooth where most online resizers leave it jagged.
       </p>
 
       <ResizeImageClient />

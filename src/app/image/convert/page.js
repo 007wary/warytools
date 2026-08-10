@@ -110,13 +110,14 @@ export default function ConvertImagePage() {
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
         Convert PNG to JPG, WebP to JPG, JPG to WebP, WebP to PNG, and every other combination of
         PNG, JPG, WebP, and AVIF. This free online image converter runs entirely in your browser —
-        files are never uploaded anywhere.
+        files are never uploaded anywhere, and conversion is effectively instant.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
-        Pick the format your project actually needs — WebP or AVIF for smaller, faster web pages,
-        JPG for universal compatibility, or PNG when transparency matters — and get the converted
-        file instantly, with no software to install. GIF and BMP are accepted as input too, and a
-        whole batch converts in one go.
+        Pick the format your project actually needs — WebP or AVIF for dramatically smaller, faster
+        web pages, JPG for universal compatibility, or PNG when transparency matters — and get the
+        converted file straight away, with no software to install. GIF and BMP go in too, and a
+        whole batch converts in a single pass. Only formats your browser can genuinely encode are
+        ever offered, so what you download always matches its extension.
       </p>
 
       <ConvertImageClient />

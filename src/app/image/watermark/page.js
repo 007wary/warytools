@@ -114,14 +114,15 @@ export default function WatermarkImagePage() {
       </h1>
       <p style={{ fontSize: "15px", color: colors.textMuted, marginBottom: "16px" }}>
         Stamp your name, a copyright line, or your logo across your photos — a single mark in any
-        of nine positions, or tiled across the whole image at any angle. Everything happens in
-        your browser, so your images are never uploaded.
+        of nine positions, or tiled edge to edge at any angle you like. Everything happens in your
+        browser, so your images and your logo are never uploaded.
       </p>
       <p style={{ fontSize: "14px", color: colors.textMuted, marginBottom: "32px", lineHeight: 1.6 }}>
-        Watermark a whole folder at once and every image gets the same mark, sized as a
-        proportion of its own dimensions rather than a fixed pixel size — so a 600px thumbnail
-        and a 6000px photo come out looking identical. Text marks carry a contrasting outline so
-        they stay legible over bright skies and dark shadows alike.
+        Watermark a whole folder in one run and every image gets a perfectly consistent mark, sized
+        as a proportion of its own dimensions rather than a fixed pixel size — so a 600px thumbnail
+        and a 6000px photo come out looking identical. Every text mark carries a contrasting
+        outline, the same trick subtitles use, so your credit stays legible over bright skies and
+        deep shadow alike instead of vanishing on half the batch.
       </p>
 
       <WatermarkImageClient />
