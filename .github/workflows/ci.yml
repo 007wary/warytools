@@ -1,0 +1,48 @@
+name: CI
+
+# Vercel builds every push to main and deploys it, but it runs `next build`
+# and nothing else — a change that breaks the vitest suite or trips a lint
+# rule still ships. This workflow is what makes the tests a gate rather than
+# a thing someone remembers to run.
+#
+# It deliberately also runs the build, even though Vercel does: the build is
+# the *only* verification the UI layer has (there are no e2e tests), so a
+# broken client component must fail here, on the commit, and not be found by
+# whoever opens the page next.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A second push to the same branch makes the first run's answer irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # `npm ci` runs the postinstall hook, which copies pdf.worker.min.mjs out
+      # of pdfjs-dist into public/. The build does not fail without it — the
+      # worker 404s at runtime instead — so the copy has to happen here for the
+      # build step below to be checking the same tree that gets deployed.
+      - run: npm ci
+
+      - run: npm test
+
+      - run: npm run lint
+
+      # No env needed: every server-side Supabase client is built per request,
+      # so the build never evaluates one. Keep it that way — a module-scope
+      # createClient fails here with `supabaseUrl is required` and a stack that
+      # names neither the file nor the missing variable.
+      - run: npm run build

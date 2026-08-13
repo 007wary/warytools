@@ -46,9 +46,23 @@ const noStaticSupabaseImport = {
   },
 };
 
+// Next's core-web-vitals rules are about what ships to a browser, and a test
+// file ships nowhere. The concrete case is a component test stubbing out
+// PdfPageThumbnail with a bare <img>: next/image in a jsdom mock would pull in
+// the whole image pipeline to render something no user ever sees, so the rule
+// is asking for the wrong thing here rather than catching a real problem.
+// Scoped to the perf rules only — correctness and hooks rules still apply.
+const testFileOverrides = {
+  files: ["src/**/*.test.jsx", "src/**/*.test.js", "vitest.setup.jsx"],
+  rules: {
+    "@next/next/no-img-element": "off",
+  },
+};
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   noStaticSupabaseImport,
+  testFileOverrides,
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
