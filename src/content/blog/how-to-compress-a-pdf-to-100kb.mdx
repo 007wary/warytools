@@ -1,0 +1,226 @@
+---
+title: How to compress a PDF to under 100 KB (and what to do when it won't go)
+description: Compress a PDF to 100 KB, 200 KB, or 500 KB free in your browser. Why scanned PDFs refuse to shrink, the route that actually works, and government form upload caps.
+date: 2026-08-13
+category: guide
+tags: [pdf, compress, how-to, government-forms]
+tool: compress
+cover: /blog/how-to-compress-a-pdf-to-100kb.webp
+coverAlt: A thick block of stacked white document pages on the left, linked by a curving red ribbon to a single slim page of the same document on the right, on a dark reflective surface
+---
+
+An upload form has just told you your file is too large. It wants 100 KB. You have 3.4 MB,
+and a deadline.
+
+Almost every guide to this problem gives you the same advice — compress the PDF online with
+a free tool and you're done — which works perfectly for about half of the people who read
+it and fails completely for the other half. Which half you're in was decided before you
+started, by what is actually inside your PDF.
+
+So this guide starts there, because five seconds of diagnosis saves you twenty minutes of
+compressing a file that was never going to get smaller.
+
+## How to compress a PDF to 100 KB online, free
+
+<ToolCallout slug="compress" />
+
+If your PDF came out of Word, Excel, Google Docs, LaTeX, or any "Save as PDF" button, drop
+it in and it will shrink losslessly. If your PDF is a **scan or a photo** — anything that
+started life in a scanner or a phone camera — compression alone will not get you to 100 KB,
+and the section below on scanned documents is the one you want.
+
+## First: which kind of PDF do you have?
+
+Open the file and try to select a sentence with your mouse.
+
+- **The text highlights.** You have a text-based PDF. Its size is structure, fonts, and
+  vector graphics. This compresses well.
+- **Nothing highlights, or you select a whole rectangle at once.** You have a scanned or
+  image-based PDF. Every page is a photograph of a document. Its size is image data, and
+  that data is already compressed.
+
+That single test decides everything that follows. A 3 MB text PDF and a 3 MB scan are the
+same number describing two completely different problems.
+
+## How to compress a text-based PDF (the easy case)
+
+This is the easy case, and it is the one our free online PDF compressor is built for.
+
+1. **Open the PDF.** Drag it onto the drop zone or click to browse.
+2. **Click Compress PDF.** The document is rebuilt — objects nothing references any more
+   are dropped, and the cross-reference tables are packed tight.
+3. **Read the before and after.** The new size sits next to the original, so you know what
+   you saved before you download anything.
+
+The saving here is **completely lossless**. Nothing is re-rendered, re-sampled, or
+re-encoded. Every glyph, image, and vector comes through bit-for-bit identical — the file
+gets smaller, the pixels are untouched.
+
+Files exported from word processors carry a surprising amount of dead weight: revision
+leftovers, embedded font subsets for characters the document never uses, duplicated
+resources on every page. Reports, invoices, and Word exports often shed a satisfying chunk.
+
+### If it's still too big
+
+A text PDF that stays stubbornly large usually has one of three things in it:
+
+- **A logo or header image on every page**, especially a PNG screenshot. Replacing it with
+  a smaller image before exporting is worth more than any compressor.
+- **Fully embedded fonts** rather than subsets. Re-exporting with "subset fonts" enabled in
+  your source application fixes this at the source.
+- **Pages you don't need.** Cutting the file down is compression too, and often the biggest
+  single win. Use [Delete Pages](/pdf/delete-pages) or
+  [Extract Pages](/pdf/extract-pages) to keep only what the form actually asked for.
+
+## How to compress a scanned PDF (and why the size won't budge)
+
+Here is the part most articles skip.
+
+A scanned page is a JPEG. JPEG is *already* a compressed format, and it was compressed by
+your scanner at whatever quality it was set to. Running a PDF compressor over it asks the
+tool to squeeze something that has already been squeezed. There is nothing structural left
+to remove — the file is 95% image data and 5% PDF wrapper, and only the wrapper is on the
+table.
+
+Our compressor will report a saving of a percent or two on a scan and we would rather tell
+you that up front than hand you a "compressed" file that is the same size and let you
+discover it at the upload form.
+
+<Callout type="warning">
+  Be careful with tools that promise any scan down to 100 KB. They get there by re-encoding
+  your images at brutal quality settings, and the result is often a document whose text is
+  legibly *blurred* — which matters enormously when the thing you're uploading is a
+  certificate or an ID someone has to read and verify.
+</Callout>
+
+### The route that actually works
+
+To genuinely shrink a scan, you must reduce its **resolution** — the pixel count — rather
+than hunting for redundancy that isn't there. That means taking the pages out as images,
+shrinking those, and rebuilding the PDF:
+
+1. **[Convert the PDF to JPG](/pdf/to-jpg)** at **72 or 150 DPI**. Not 300. A 300 DPI scan
+   of an A4 page is roughly 2480 × 3508 pixels, which is far more detail than any form
+   reviewer needs and is the single biggest reason your file is large.
+2. **[Compress the images](/image/compress)** with the quality slider. Watch the preview —
+   for a document of printed text you can usually go a long way down before it looks wrong.
+3. **[Turn the images back into a PDF](/pdf/jpg-to-pdf)**, in order, as one file.
+
+A scan that refused to move below 3 MB routinely lands between 80 KB and 300 KB through
+this route, and the text stays readable because you chose the trade-off deliberately
+instead of a tool making it for you.
+
+<Callout type="tip">
+  Scanning in **grayscale at 150 DPI** produces a file a third the size of the same page in
+  colour, and most document uploads neither need nor want colour. If you still have access
+  to the original paper, rescanning correctly beats compressing badly every time.
+</Callout>
+
+## How much can you reduce a PDF file size?
+
+How far you can reduce the PDF file size depends entirely on the diagnosis above. Rough
+expectations, so you know whether to keep compressing or change approach:
+
+| Your PDF | To 500 KB | To 200 KB | To 100 KB |
+| --- | --- | --- | --- |
+| Word or Docs export, text only | Almost always | Usually | Often |
+| Text with a few small images | Usually | Often | Sometimes |
+| Scanned document, grayscale | Often | Via the image route | Via the image route |
+| Scanned document, colour | Via the image route | Via the image route | Rescan in grayscale |
+| Photo-heavy portfolio or brochure | Via the image route | Unlikely to look good | No |
+
+"Via the image route" means the three-step process in the section above, not a compressor.
+
+## PDF size limits on Indian government portals
+
+This is where the 100 KB number comes from for a great many people. Recruitment and
+examination portals enforce some of the tightest upload caps anywhere, and they reject
+rather than warn.
+
+The common ones, as a rough guide — **always check the notification for your specific
+form**, because these change between cycles and between states:
+
+| Portal type | Typical PDF cap | Typical photo | Typical signature |
+| --- | --- | --- | --- |
+| SSC, RRB, IBPS and similar | 200 KB | 20–50 KB | 10–20 KB |
+| UPSC certificates (DAF) | up to 500 KB | 20–300 KB | 20–300 KB |
+| State recruitment portals | 100–500 KB | 20–50 KB | 10–20 KB |
+| Scholarship and RTI portals | 100–200 KB | 20–50 KB | 10–20 KB |
+
+Three things worth knowing before you fight one of these forms:
+
+**The cap is usually on the scan, not on your typing.** Certificates, mark sheets, and
+caste or income documents are scans, so they are the hard case — use the image route above
+rather than expecting a compressor to manage it.
+
+**Check whether the failing upload is even a PDF.** A large share of "file too large"
+errors on these portals are the *photograph* and *signature* fields, which want a JPG of
+20–50 KB at a specific pixel size. That is an image job, not a PDF job:
+[Resize Image](/image/resize) for the dimensions, then
+[Compress Image](/image/compress) for the weight.
+
+**Scan in grayscale at 150 DPI from the start.** Colour roughly triples the size of a
+document scan and almost no portal requires it. This one setting solves the problem more
+often than any tool does.
+
+<Callout type="note">
+  If a portal demands a single PDF and you have several separate scans, combine them with
+  [Merge PDF](/pdf/merge) *before* compressing. Compressing each piece and then merging
+  gives you a worse result, because the merge re-introduces structure the compressor had
+  just packed away.
+</Callout>
+
+## Compress a PDF online without uploading it anywhere
+
+Every step described here runs inside your browser tab. Your PDF is not uploaded, not
+queued, and not stored — there is no server copy to delete afterwards, because one was
+never made.
+
+That matters more than usual for this particular job. The documents people compress to
+meet an upload cap are ID cards, certificates, bank statements, and mark sheets: precisely
+the files you would least like sitting in a stranger's temporary directory.
+
+You do not have to take our word for it. Open your browser's developer tools, switch to the
+Network tab, and compress a file. You will see the page's own assets load, and nothing
+carrying your document.
+
+Four tools on this site genuinely do need a server — converting to and from Word,
+PowerPoint, and Excel — because rebuilding an editable document out of positioned glyphs is
+analysis no browser library performs. Each one says so on its page, above the file picker.
+Compression is not among them.
+
+## Compress PDF: common questions
+
+**Will compressing a PDF reduce its quality?**
+Not with the lossless rebuild described here — nothing is re-encoded. It absolutely will if
+you take the image route, which is why that route is a deliberate choice with a preview at
+each step rather than the default.
+
+**Why did my PDF get bigger?**
+Occasionally a file is already optimally packed and the rebuild adds a few bytes of
+structure. If that happens, keep your original — the tool shows you both sizes precisely so
+you can make that call.
+
+**Can I compress a password-protected PDF?**
+Remove the password first with [Unlock PDF](/pdf/unlock) — a tool cannot rewrite a file it
+cannot read. You can protect it again afterwards with [Protect PDF](/pdf/protect).
+
+**Is there a file size limit?**
+No account limit and no page limit — the practical ceiling is what your device can hold in
+memory, which is far more generous than the queue-and-wait limits of upload-based services.
+
+**What if I only need part of the document?**
+Then that is your compression. [Split PDF](/pdf/split) or
+[Extract Pages](/pdf/extract-pages) will get a 40-page file under a cap that the full
+document was never going to meet.
+
+## Where to start compressing your PDF
+
+If you have a text-based PDF, start and probably finish with the compressor. If you have a
+scan, skip it and go straight to the three-step image route — you will get there faster by
+not trying the thing that cannot work.
+
+<ToolCallout slug="compress" />
+
+Either way, the rest of the [free online PDF tools](/pdf) run the same way: in your
+browser, with no account, no watermark, and nothing uploaded.
