@@ -170,13 +170,14 @@ export function howToJsonLd({ name, steps, href }) {
  * Google's article rich-result docs treat the three (Article, NewsArticle,
  * BlogPosting) identically, so the more precise type costs nothing.
  *
- * Two deliberate omissions. There is no `image` — Google's article guidelines
- * want a real, crawlable, post-specific image, and pointing every post at the
- * site-wide OG card would be the same picture on every article, which is worse
- * than none. Add it per-post once posts carry their own artwork. And `author`
- * is the Organization rather than a Person: the posts are written under the
- * site's name, and inventing a bylined human would be a fabricated claim in
- * structured data.
+ * `image` is emitted only when a post declares its own cover, and is omitted
+ * entirely otherwise. Falling back to the site-wide OG card would put the same
+ * picture on every article, which Google's article guidance treats as worse
+ * than declaring none — so the absence is deliberate, not an oversight.
+ *
+ * `author` is the Organization rather than a Person: the posts are written
+ * under the site's name, and inventing a bylined human would be a fabricated
+ * claim in structured data.
  *
  * `dateModified` falls back to `datePublished`. Emitting a modified date that
  * silently tracks the build time — the tempting default — tells Google every
@@ -191,6 +192,7 @@ export function blogPostingJsonLd({
   dateModified,
   section,
   keywords,
+  image,
 }) {
   return {
     "@type": "BlogPosting",
@@ -198,6 +200,7 @@ export function blogPostingJsonLd({
     headline: title,
     description,
     url: absoluteUrl(href),
+    ...(image ? { image } : {}),
     datePublished,
     dateModified: dateModified || datePublished,
     author: { "@id": `${SITE_URL}/#organization` },

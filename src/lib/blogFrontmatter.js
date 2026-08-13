@@ -15,6 +15,8 @@
 // rendering a half-empty page in production. That is the intended failure
 // mode: a blog post with no title is not a page worth serving.
 
+import { coverAltFor, normalizeCoverPath } from "./blogCover";
+
 // Recognised frontmatter keys and how each is coerced. Anything not listed
 // here is rejected — a typo'd `discription:` must not be quietly ignored,
 // since the post would then render with no meta description at all and the
@@ -27,6 +29,12 @@ const FIELD_TYPES = {
   category: "string",
   tags: "list",
   tool: "string",
+  // Root-relative path under /blog/ (i.e. public/blog/). Validated by
+  // blogCover.js, and its existence on disk checked in blogPosts.js — a
+  // cover naming a file that isn't there fails the build rather than
+  // serving a broken image.
+  cover: "string",
+  coverAlt: "string",
   author: "string",
   draft: "boolean",
   featured: "boolean",
@@ -262,6 +270,18 @@ export function parseFrontmatter(block, file) {
 
   if (data.updated && data.updated < data.date) {
     throw new FrontmatterError("`updated` is earlier than `date`", { file });
+  }
+
+  if (data.cover) {
+    data.cover = normalizeCoverPath(data.cover, file);
+    // Throws when coverAlt is missing. Deliberately not defaulted to the
+    // title — see coverAltFor.
+    data.coverAlt = coverAltFor(data, file);
+  } else if (data.coverAlt) {
+    // Alt text with no image is a stale leftover from a removed cover, and
+    // silently ignoring it means the next person to add one inherits a
+    // description of a different picture.
+    throw new FrontmatterError("`coverAlt` is set but `cover` is not", { file });
   }
 
   return data;

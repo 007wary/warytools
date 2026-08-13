@@ -171,6 +171,40 @@ describe("parseFrontmatter", () => {
     });
   });
 
+  describe("covers", () => {
+    it("accepts a cover with alt text", () => {
+      const data = parseFrontmatter(
+        `${VALID}\ncover: /blog/a.jpg\ncoverAlt: A grid of PDF pages`,
+      );
+      expect(data.cover).toBe("/blog/a.jpg");
+      expect(data.coverAlt).toBe("A grid of PDF pages");
+    });
+
+    it("leaves both unset when no cover is declared", () => {
+      const data = parseFrontmatter(VALID);
+      expect(data.cover).toBeUndefined();
+      expect(data.coverAlt).toBeUndefined();
+    });
+
+    it("requires alt text alongside a cover", () => {
+      expect(() => parseFrontmatter(`${VALID}\ncover: /blog/a.jpg`)).toThrow(/coverAlt/);
+    });
+
+    // A stale alt with no image means the next person to add a cover
+    // inherits a description of a different picture.
+    it("rejects alt text with no cover", () => {
+      expect(() => parseFrontmatter(`${VALID}\ncoverAlt: Orphaned`)).toThrow(
+        /`coverAlt` is set but `cover` is not/,
+      );
+    });
+
+    it("rejects an invalid cover path", () => {
+      expect(() =>
+        parseFrontmatter(`${VALID}\ncover: https://example.com/a.jpg\ncoverAlt: x`),
+      ).toThrow(/root-relative/);
+    });
+  });
+
   it("rejects a malformed list", () => {
     expect(() => parseFrontmatter(`${VALID}\ntags: pdf, privacy`)).toThrow(/inline list/);
   });

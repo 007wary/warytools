@@ -3,11 +3,14 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import JsonLd from "@/components/JsonLd";
 import CategoryBadge from "@/components/blog/CategoryBadge";
+import CoverImage from "@/components/blog/CoverImage";
 import PostBody from "@/components/blog/PostBody";
 import RelatedPosts from "@/components/blog/RelatedPosts";
 import { getAllPosts, getPostBySlug, getPostSlugs } from "@/lib/blogPosts";
 import { displayDate, isoDate, relatedPosts } from "@/lib/blogPostList";
 import { CATEGORIES } from "@/lib/blogFrontmatter";
+import { COVER_HEIGHT, COVER_WIDTH, coverImageUrl } from "@/lib/blogCover";
+import { SITE_URL } from "@/lib/siteUrl";
 import { colors } from "@/lib/theme";
 import { blogPostingJsonLd, breadcrumbJsonLd, jsonLdGraph } from "@/lib/jsonLd";
 import { pageMetadata } from "@/lib/pageMetadata";
@@ -37,19 +40,31 @@ export async function generateMetadata({ params }) {
     ogType: "article",
   });
 
+  // A post with its own cover overrides the site-wide OG card, so it is
+  // distinguishable in a feed. Posts without one keep the site card — a
+  // shared link with no image at all is the worse outcome.
+  const cover = post.cover
+    ? [{ url: post.cover, width: COVER_WIDTH, height: COVER_HEIGHT, alt: post.coverAlt }]
+    : base.openGraph.images;
+
   // The article-only OG fields are spread onto the result rather than added
   // to pageMetadata's signature: that helper is shared with ~30 tool and hub
   // pages, none of which should grow an article-shaped openGraph block. Note
   // the spread of `base.openGraph` is required — assigning a bare object here
-  // would drop og:image and og:site_name, which is the exact failure
+  // would drop og:site_name and og:url, which is the exact failure
   // pageMetadata exists to prevent (see its header comment).
   return {
     ...base,
     openGraph: {
       ...base.openGraph,
+      images: cover,
       publishedTime: isoDate(post.date),
       ...(post.updated ? { modifiedTime: isoDate(post.updated) } : {}),
       tags: post.tags,
+    },
+    twitter: {
+      ...base.twitter,
+      images: cover,
     },
   };
 }
@@ -77,6 +92,11 @@ export default async function BlogPostPage({ params }) {
             dateModified: post.updated ? isoDate(post.updated) : null,
             section: category.label,
             keywords: post.tags,
+            // Absent for posts with no cover of their own. Pointing every
+            // post at the shared site card would be the same picture on
+            // every article, which Google's article guidance treats as worse
+            // than declaring none.
+            image: coverImageUrl(post, SITE_URL),
           }),
           breadcrumbJsonLd([
             { name: "Home", href: "/" },
@@ -153,6 +173,13 @@ export default async function BlogPostPage({ params }) {
               </p>
             )}
           </header>
+
+          {/* Below the header, not above it. A hero pushed to the very top
+              displaces the title and standfirst below the fold on a phone,
+              so the reader's first screen is a picture and no indication of
+              what they opened. `priority` because this is the post page's LCP
+              element once a cover is present. */}
+          <CoverImage post={post} variant="hero" priority />
 
           <PostBody slug={slug} />
         </article>

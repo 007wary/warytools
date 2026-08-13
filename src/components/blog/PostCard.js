@@ -2,6 +2,7 @@ import Link from "next/link";
 import { displayDate, isoDate } from "@/lib/blogPostList";
 import { colors } from "@/lib/theme";
 import CategoryBadge from "./CategoryBadge";
+import CoverImage from "./CoverImage";
 
 // One post in the /blog index list.
 //
@@ -22,6 +23,13 @@ export default function PostCard({ post }) {
         textDecoration: "none",
       }}
     >
+      {/* Above the metadata row, which is the one place it does not push the
+          title off a phone screen: the card is already a self-contained unit,
+          so the image reads as its lead rather than as an interruption.
+          Renders nothing at all for a post without a cover, so a mixed index
+          degrades to the text-only card rather than leaving a gap. */}
+      <CoverImage post={post} variant="thumbnail" />
+
       <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px", flexWrap: "wrap" }}>
         <CategoryBadge category={post.category} />
         <time

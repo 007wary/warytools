@@ -16,6 +16,7 @@ import { parseFrontmatter, slugFromFilename, splitFrontmatter } from "./blogFron
 import { filterPublished, readingTimeMinutes, sortPosts } from "./blogPostList";
 
 export const BLOG_DIR = path.join(process.cwd(), "src", "content", "blog");
+const PUBLIC_DIR = path.join(process.cwd(), "public");
 
 // Drafts render in `next dev` so a post can be previewed at its real URL, and
 // are absent from a production build entirely — not built, not linked, not in
@@ -59,6 +60,20 @@ export function getAllPosts() {
       // missing date) is invisible in the rendered page.
       const { frontmatter, body } = splitFrontmatter(raw, filename);
       const data = parseFrontmatter(frontmatter, filename);
+
+      // A cover pointing at a file that isn't there must fail the build.
+      // Next serves public/ verbatim with no build-time check, so without
+      // this the post ships with a broken <img>, a 404 og:image, and a
+      // JSON-LD image URL that resolves to nothing — none of which is
+      // visible in the build output or in the page's own HTML.
+      if (data.cover) {
+        const onDisk = path.join(PUBLIC_DIR, data.cover.replace(/^\//, ""));
+        if (!fs.existsSync(onDisk)) {
+          throw new Error(
+            `${filename}: cover "${data.cover}" does not exist — expected a file at public${data.cover}`,
+          );
+        }
+      }
 
       return {
         ...data,
