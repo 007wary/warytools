@@ -309,7 +309,22 @@ const withMdx = createMdx({
     // resolved by Turbopack itself. An imported binding works under webpack,
     // so this is exactly the kind of thing that looks correct in a tutorial
     // and breaks here.
-    remarkPlugins: [["remark-gfm", {}]],
+    // remark-frontmatter is what stops the `---` header being RENDERED. The
+    // MDX compiler has no concept of frontmatter: without this it parses the
+    // opening `---` as a thematic break and the `title:`/`description:` lines
+    // as ordinary paragraph text, so every post opened with its own metadata
+    // printed as a heading. blogPosts.js strips the block for its own parsing,
+    // but PostBody.js imports the raw .mdx through this compiler, so the two
+    // paths need telling separately.
+    //
+    // It is declared BEFORE remark-gfm: frontmatter must be recognised while
+    // the `---` delimiters are still at the top of the document, ahead of any
+    // plugin that rewrites block structure.
+    //
+    // The plugin only *parses* the block into a node — mdx still renders
+    // unknown nodes as nothing, which is the desired outcome here since the
+    // values are already read by blogPosts.js.
+    remarkPlugins: [["remark-frontmatter", ["yaml"]], ["remark-gfm", {}]],
     rehypePlugins: [],
   },
 });
