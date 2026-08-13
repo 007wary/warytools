@@ -25,11 +25,26 @@ function sentryCspReportUri() {
   // path and `beforeSend` never runs on a CSP report. Not emitting the
   // directive off production is the only place the noise can be stopped.
   //
-  // Matches robots.js's isNonCanonicalDeploy(): VERCEL_ENV is unset for local
-  // builds and non-Vercel hosts, which stay canonical so a self-hosted
-  // `next build` still reports violations.
+  // Follows robots.js's isNonCanonicalDeploy() in spirit, but is deliberately
+  // STRICTER, and the difference is what actually stopped the noise.
+  //
+  // The first version of this gate was `vercelEnv && vercelEnv !== "production"`
+  // — i.e. an unset VERCEL_ENV counts as canonical, so a self-hosted build
+  // still reports. That is correct for robots.txt, where the failure mode of
+  // guessing wrong is a lost page. Here it is inverted: unset is exactly what a
+  // Vercel build looks like when VERCEL_ENV is not exposed to the step
+  // evaluating this file, so previews fell into the "canonical" branch and kept
+  // emitting report-uri. Preview violations went on arriving for days after the
+  // gate shipped, which is how it was caught — see the *.vercel.app blocked-host
+  // issues of 2026-08-13, whose reported policy contains this very directive.
+  //
+  // VERCEL_URL is set on every Vercel deployment including previews, so it
+  // answers "are we on Vercel at all" independently of VERCEL_ENV. Requiring a
+  // positive "production" only when Vercel is detected keeps the self-hosted
+  // case reporting while making the preview case fail closed.
   const vercelEnv = process.env.VERCEL_ENV;
-  if (vercelEnv && vercelEnv !== "production") return null;
+  const onVercel = Boolean(vercelEnv || process.env.VERCEL_URL || process.env.VERCEL);
+  if (onVercel && vercelEnv !== "production") return null;
 
   try {
     const { username: publicKey, hostname, pathname } = new URL(dsn);
@@ -196,6 +211,27 @@ const adsenseHostList = [
   // Choices is the product Google's CMP grew out of, hence the name).
   "https://fundingchoicesmessages.google.com",
   "https://*.fundingchoicesmessages.google.com",
+
+  // AdSense's own performance beacon. rum_fy2021.js — loaded from pagead2 as
+  // part of adsbygoogle.js — POSTs page timing to csi.gstatic.com/csi. Arrived
+  // as a real connect-src blocked-host report from three visitors rather than
+  // being guessed, which is the workflow the report-uri above exists for.
+  //
+  // gstatic.com is Google's static-asset domain and is a different registrable
+  // domain from every serving host listed above, so no wildcard here reaches
+  // it. Listed as the exact host rather than `*.gstatic.com`: this is the only
+  // gstatic host the ad stack contacts from this site, and the wildcard would
+  // also cover fonts/, maps/ and the rest of Google's static estate for no
+  // benefit.
+  //
+  // Blocking it costs no revenue and blanks no ad — which is precisely why it
+  // is worth fixing rather than ignoring. It reports nothing but latency, so
+  // the only visible consequence is a permanent trickle of CSP issues burying
+  // the reports that do matter. It belongs in connect-src only, but is kept in
+  // the shared list for the reason given above: the hosts overlap, and a
+  // directive-by-directive split buys nothing against a party already running
+  // script on the page.
+  "https://csi.gstatic.com",
 ];
 
 const adsenseHosts = adsenseHostList.join(" ");
@@ -236,7 +272,17 @@ const adsenseFrameHosts = [
 // actually serve, which is the invalid-traffic risk that gate exists to
 // prevent — so the policy and the component agree rather than the CSP being
 // permanently wide and the component alone holding the line.
-const adsEnabledForCsp = !process.env.VERCEL_ENV || process.env.VERCEL_ENV === "production";
+//
+// Uses the same positive Vercel detection as sentryCspReportUri() above rather
+// than `!VERCEL_ENV || VERCEL_ENV === "production"`. That older shape treats an
+// unset VERCEL_ENV as production, which on Vercel is the preview case — so a
+// preview whose build step does not expose VERCEL_ENV would open every ad host
+// in its policy. lib/adsense.js still gates the tag itself, so no ad would
+// actually serve; this keeps the policy from silently disagreeing with it.
+const onVercelForCsp = Boolean(
+  process.env.VERCEL_ENV || process.env.VERCEL_URL || process.env.VERCEL,
+);
+const adsEnabledForCsp = !onVercelForCsp || process.env.VERCEL_ENV === "production";
 const adsScriptSrc = adsEnabledForCsp ? ` ${adsenseHosts}` : "";
 const adsFrameSrc = adsEnabledForCsp ? ` ${adsenseFrameHosts}` : "";
 const adsImgSrc = adsEnabledForCsp ? ` ${adsenseHosts}` : "";
