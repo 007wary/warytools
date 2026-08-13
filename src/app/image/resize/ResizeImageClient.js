@@ -182,9 +182,17 @@ export default function ResizeImageClient() {
         }
       : null;
 
+  // Both axes are checked, not just the width. With "Lock aspect ratio" off the
+  // two boxes are independent, so a height typed above the source's is an
+  // upscale the width alone cannot see — and that is exactly the case where the
+  // warning matters, since the aspect link would otherwise have raised the width
+  // alongside it. Number("") is 0, which is below any real dimension, so a
+  // cleared field reads as "no upscale" rather than tripping the banner.
   const isUpscale =
     (effectiveMode === "percentage" && percentage > 100) ||
-    (effectiveMode === "dimensions" && source && Number(width) > source.width);
+    (effectiveMode === "dimensions" &&
+      source &&
+      (Number(width) > source.width || Number(height) > source.height));
 
   return (
     <div>
