@@ -6,13 +6,14 @@ import CategoryBadge from "@/components/blog/CategoryBadge";
 import CoverImage from "@/components/blog/CoverImage";
 import PostBody from "@/components/blog/PostBody";
 import RelatedPosts from "@/components/blog/RelatedPosts";
+import ShareRow from "@/components/blog/ShareRow";
 import { getAllPosts, getPostBySlug, getPostSlugs } from "@/lib/blogPosts";
 import { displayDate, isoDate, relatedPosts } from "@/lib/blogPostList";
 import { CATEGORIES } from "@/lib/blogFrontmatter";
 import { coverImageUrl } from "@/lib/blogCover";
 import { SITE_URL } from "@/lib/siteUrl";
 import { colors } from "@/lib/theme";
-import { blogPostingJsonLd, breadcrumbJsonLd, jsonLdGraph } from "@/lib/jsonLd";
+import { absoluteUrl, blogPostingJsonLd, breadcrumbJsonLd, jsonLdGraph } from "@/lib/jsonLd";
 import { pageMetadata } from "@/lib/pageMetadata";
 
 // Every post is known at build time, so all of them prerender to static HTML.
@@ -194,6 +195,19 @@ export default async function BlogPostPage({ params }) {
 
           <PostBody slug={slug} />
         </article>
+
+        {/* Below the article, above related posts: someone shares when they
+            have finished reading, and the natural next action after that is
+            either to pass it on or to read another. The absolute URL is built
+            here on the server rather than read from window.location in the
+            component, so the buttons carry the canonical URL and work
+            identically before and after hydration. */}
+        <ShareRow
+          url={absoluteUrl(`/blog/${slug}`)}
+          title={post.title}
+          description={post.description}
+          slug={slug}
+        />
 
         <RelatedPosts posts={related} />
       </main>
