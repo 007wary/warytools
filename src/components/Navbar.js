@@ -18,12 +18,37 @@ export default function Navbar() {
   // Close the mobile menu whenever the viewport grows past the breakpoint
   // where the full desktop nav takes over, so it can't get stuck open
   // behind a resized window. Must match the md: breakpoint used below.
+  //
+  // matchMedia rather than a `resize` listener reading innerWidth, and this is
+  // a real cost rather than a tidy-up: the Navbar is in the root layout, so
+  // this listener is attached on EVERY page of the site for the whole visit.
+  // A resize handler fires continuously through a drag, and reading
+  // window.innerWidth inside it forces the browser to flush pending style and
+  // layout work to answer — so the one case this exists for (a desktop window
+  // crossing 768px, which almost never happens) taxed every resize everywhere.
+  //
+  // It is worse on mobile, where the menu actually lives: iOS and Android fire
+  // `resize` repeatedly as the URL bar collapses and expands during ordinary
+  // scrolling, so scrolling with the menu open ran a forced layout read per
+  // event on exactly the devices least able to absorb it.
+  //
+  // A media query list fires only when the breakpoint is genuinely crossed —
+  // no events during a scroll, none while dragging within one side of it — and
+  // `event.matches` is already computed, so nothing is read back off the DOM.
   useEffect(() => {
-    function handleResize() {
-      if (window.innerWidth >= 768) setMobileOpen(false);
+    // Guarded for older Safari, where matchMedia exists but addEventListener on
+    // the result does not. Falling through to no listener is the right
+    // degradation: the menu closes on navigation anyway, so the worst case is
+    // one stuck panel after a deliberate desktop resize.
+    const query = window.matchMedia?.("(min-width: 768px)");
+    if (!query?.addEventListener) return undefined;
+
+    function handleChange(event) {
+      if (event.matches) setMobileOpen(false);
     }
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+
+    query.addEventListener("change", handleChange);
+    return () => query.removeEventListener("change", handleChange);
   }, []);
 
   // Desktop dropdowns open on hover, but also need click/keyboard support —

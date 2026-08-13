@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { colors } from "@/lib/theme";
 import {
   DRAW_CAPTURE_SCALE,
@@ -114,6 +114,27 @@ export default function SignaturePad({ strokes, onChange, colorHex, disabled = f
     [onChange, strokes, current]
   );
 
+  // Serialised once per completed stroke, not once per pointermove.
+  //
+  // A stroke is immutable the moment it is committed, but the render below used
+  // to rebuild `[...strokes, current]` and call strokeToPath on every element of
+  // it — so each move event re-walked every point of every finished stroke to
+  // produce a string identical to the one it produced a frame earlier. That is
+  // quadratic in the size of the signature: a ten-stroke autograph of ~150
+  // points per stroke re-serialises ~1500 points on each of the hundreds of
+  // move events a single stroke emits, all of it discarded. Only the in-
+  // progress stroke's path actually changes between frames, so only it is
+  // rebuilt live.
+  //
+  // Keyed on `strokes` identity, which is safe because onChange always hands
+  // back a new array (`[...strokes, current]` in endStroke) rather than pushing
+  // into the existing one — an in-place mutation would leave this memo stale
+  // and the last stroke would not appear until some other render forced it.
+  const committedPaths = useMemo(
+    () => strokes.filter((stroke) => stroke.length > 0).map(strokeToPath),
+    [strokes]
+  );
+
   const isEmpty = strokes.length === 0 && current.length === 0;
 
   return (
@@ -155,21 +176,35 @@ export default function SignaturePad({ strokes, onChange, colorHex, disabled = f
             strokeWidth="1"
           />
 
-          {[...strokes, current].map((stroke, index) =>
-            stroke.length === 0 ? null : (
-              <path
-                key={index}
-                d={strokeToPath(stroke)}
-                fill="none"
-                stroke={colorHex}
-                strokeWidth={DRAW_STROKE_WIDTH}
-                // Round caps and joins are what make the line read as ink rather
-                // than as a series of connected rectangles, and a round cap is
-                // also what renders a single-point tap as a visible dot.
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            )
+          {/* Committed strokes first, from the memo above, then the live one.
+              Rendered as two lists rather than one `[...strokes, current]` map
+              so the finished paths keep their element identity as the in-
+              progress stroke grows — a single list re-creates every <path> on
+              each pointermove even when only the last one's `d` changed. */}
+          {committedPaths.map((d, index) => (
+            <path
+              key={index}
+              d={d}
+              fill="none"
+              stroke={colorHex}
+              strokeWidth={DRAW_STROKE_WIDTH}
+              // Round caps and joins are what make the line read as ink rather
+              // than as a series of connected rectangles, and a round cap is
+              // also what renders a single-point tap as a visible dot.
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ))}
+
+          {current.length > 0 && (
+            <path
+              d={strokeToPath(current)}
+              fill="none"
+              stroke={colorHex}
+              strokeWidth={DRAW_STROKE_WIDTH}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           )}
         </svg>
 
