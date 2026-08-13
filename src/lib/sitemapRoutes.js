@@ -224,11 +224,17 @@ export const SITEMAP_EXCLUDED_ROUTES = [
   "/newsletter/confirm",
   "/newsletter/unsubscribe",
   "/newsletter/resubscribe",
-  // The admin dashboard. Not a token-gated dead end like the others — it is a
-  // password-protected operator surface — but it belongs out of the sitemap
-  // for the same reason: listing it advertises it, and nothing good comes of a
-  // login form for the site's most privileged action being in search results.
-  "/admin",
+  // The operator dashboard. Not a token-gated dead end like the others — it is
+  // password-protected — but it belongs out of the sitemap for the same
+  // reason: listing it advertises it, and nothing good comes of a login form
+  // for the site's most privileged action being in search results.
+  //
+  // The path is deliberately not "/admin". That is the first thing any scanner
+  // tries, so an unguessable name keeps the login form off the radar of bulk
+  // credential-stuffing traffic entirely. It is obscurity, not security — the
+  // password and the rate limit are the actual controls — but it costs nothing
+  // and removes a large amount of noise.
+  "/habga",
 ];
 
 export function buildSitemapEntries({ baseUrl, appDir, srcDir, cwd, now = () => new Date() }) {

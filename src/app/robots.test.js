@@ -14,9 +14,22 @@ describe("robots (production)", () => {
     expect(result.sitemap).toBe("https://wary.tools/sitemap.xml");
   });
 
-  it("blocks the shortener redirect, api, admin and newsletter routes", () => {
+  it("blocks the shortener redirect, api and newsletter routes", () => {
     vi.stubEnv("VERCEL_ENV", "production");
-    expect(robots().rules.disallow).toEqual(["/s/", "/api/", "/admin", "/newsletter/"]);
+    expect(robots().rules.disallow).toEqual(["/s/", "/api/", "/newsletter/"]);
+  });
+
+  it("does not name the operator dashboard, which would publish its path", () => {
+    // robots.txt is world-readable and scanners read it precisely to harvest
+    // interesting paths, so listing a deliberately-unguessable admin route
+    // here would defeat the point of choosing one. The page's own
+    // noindex/nofollow and its absence from the sitemap are what keep it
+    // unindexed.
+    vi.stubEnv("VERCEL_ENV", "production");
+    const rendered = JSON.stringify(robots());
+
+    expect(rendered).not.toContain("habga");
+    expect(rendered).not.toContain("admin");
   });
 
   it("keeps the real pages crawlable", () => {

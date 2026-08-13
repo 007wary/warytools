@@ -134,7 +134,8 @@ export function verifySession(value, now = Date.now()) {
  *   which is what makes CSRF against the send endpoint impossible — a form on
  *   another origin cannot borrow this session. Strict rather than lax because
  *   nothing here is ever legitimately reached by a link from elsewhere.
- * path=/: the cookie must reach both /admin and /api/admin/*.
+ * path=/: the cookie must reach both the dashboard page and /api/admin/*,
+ *   which sit on different paths.
  */
 export function sessionCookieOptions(maxAge = SESSION_TTL_SECONDS) {
   return {

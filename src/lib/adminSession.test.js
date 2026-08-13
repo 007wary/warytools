@@ -122,7 +122,7 @@ describe("sessionCookieOptions", () => {
     expect(options.sameSite).toBe("strict");
   });
 
-  it("is scoped to the whole site, so it reaches both /admin and /api/admin", () => {
+  it("is scoped to the whole site, so it reaches both the dashboard and /api/admin", () => {
     expect(options.path).toBe("/");
   });
 
