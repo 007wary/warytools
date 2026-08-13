@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { canvasToBlob } from "./imageFile";
+import { touchThumbnail } from "./thumbnailCache";
 
 // Page-thumbnail rendering for the Reorder and Rotate tools.
 //
@@ -12,8 +13,10 @@ import { canvasToBlob } from "./imageFile";
 // first, with both writing into the same state and leaking each other's blobs.
 //
 // This renders on demand as pages scroll into view, caps how many bitmaps
-// stay resident, and ties every loop to a generation token so a superseded
-// run stops on its next iteration and cleans up after itself.
+// stay resident (see thumbnailCache.js — the cap is LRU, because scrolling
+// revisits pages and an insertion-ordered bound would evict page 1 the moment
+// someone scrolled back to it), and ties every loop to a generation token so a
+// superseded run stops on its next iteration and cleans up after itself.
 
 // pdf.js keeps its own cache per document; rendering wider than the grid cell
 // only costs memory. 2x the ~150px cell keeps thumbnails crisp on retina
@@ -55,6 +58,11 @@ export function usePdfThumbnails(bytes) {
   const taskRef = useRef(null);
   const urlsRef = useRef(new Map());
   const pendingRef = useRef(new Set());
+  // Access log backing the LRU cap: page numbers, least-recently-used first.
+  // Kept beside urlsRef rather than inside it because a Map's own insertion
+  // order records when an entry was *added*, not when it was last read — and a
+  // cache driven by scrolling needs the latter.
+  const orderRef = useRef([]);
   // Incremented on every new document. Async work captures the value it
   // started with and aborts as soon as it no longer matches — this is what
   // stops a superseded file's render loop from writing stale thumbnails.
@@ -65,6 +73,28 @@ export function usePdfThumbnails(bytes) {
     urlsRef.current.forEach((url) => URL.revokeObjectURL(url));
     urlsRef.current.clear();
     pendingRef.current.clear();
+    // Cleared alongside the URLs it describes. A log left pointing at pages of
+    // the previous document would evict against stale recency for as long as it
+    // took the new document's accesses to displace it.
+    orderRef.current = [];
+  }, []);
+
+  /**
+   * Records an access and revokes whatever the cap pushed out.
+   *
+   * The revoke is the point: dropping the Map entry alone would release the
+   * blob's *reference* while the object URL kept the blob itself alive for the
+   * lifetime of the tab, which is the same leak with an extra step.
+   */
+  const touch = useCallback((pageNumber) => {
+    const { order, evict } = touchThumbnail(orderRef.current, pageNumber);
+    orderRef.current = order;
+
+    for (const page of evict) {
+      const url = urlsRef.current.get(page);
+      if (url) URL.revokeObjectURL(url);
+      urlsRef.current.delete(page);
+    }
   }, []);
 
   useEffect(() => {
@@ -158,7 +188,15 @@ export function usePdfThumbnails(bytes) {
    */
   const getThumbnail = useCallback((pageNumber) => {
     const cached = urlsRef.current.get(pageNumber);
-    if (cached) return cached;
+    if (cached) {
+      // A hit is an access, so it refreshes recency. Without this the log would
+      // only ever record renders, which is insertion order wearing an LRU
+      // costume: a page held on screen would age out while pages nobody has
+      // looked at since survive, and the eviction would then throw away exactly
+      // the thumbnails currently being displayed.
+      touch(pageNumber);
+      return cached;
+    }
 
     // Guard against re-entering for a page already being rendered: scroll
     // events fire far faster than a render completes, and without this a
@@ -199,6 +237,10 @@ export function usePdfThumbnails(bytes) {
         if (generationRef.current !== generation || !mountedRef.current) return;
 
         urlsRef.current.set(pageNumber, URL.createObjectURL(blob));
+        // Recorded after the set, so the cap sees this page as resident and can
+        // evict an older one in the same pass. Recording first would let the
+        // page just rendered be counted against the limit before it existed.
+        touch(pageNumber);
         setVersion((v) => v + 1);
       } catch (err) {
         console.error(err);
@@ -208,7 +250,10 @@ export function usePdfThumbnails(bytes) {
     })();
 
     return null;
-  }, []);
+    // `touch` is stable (useCallback with no deps of its own), so naming it here
+    // costs nothing and keeps getThumbnail's identity stable — which matters,
+    // since PdfPageThumbnail takes it as a prop for every page in the grid.
+  }, [touch]);
 
   return { pageCount, getThumbnail, isReady, error };
 }

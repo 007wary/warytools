@@ -61,11 +61,22 @@ import {
 //
 // Only ids that are actually in flight are recorded. A cancel for an id that has
 // already settled — the common race, since the user clicks Cancel exactly as the
-// last page finishes — would otherwise sit in this Set forever. That is a slow
-// leak, but the sharp edge is reuse: request ids restart at "req-0" whenever the
-// handle spawns a fresh worker, so a stale entry could silently cancel a *future*
-// legitimate request, which surfaces as an operation that produces nothing and
-// reports no error.
+// last page finishes — would otherwise sit in this Set forever, because the
+// `finally` below only clears ids that ran.
+//
+// That is a slow leak on its own. The sharp edge is id reuse: a *worker* outlives
+// individual requests but not the page, and a fresh worker starts counting from
+// "req-0" again, so a stale entry can silently cancel a future legitimate
+// request — an operation that produces nothing and reports no error.
+//
+// Note the reuse window is narrower than it looks, and the guard is kept anyway.
+// PdfWorkerHandle owns nextId and does NOT reset it when destroy() drops the
+// worker, so a respawn within one handle keeps counting upward; ids collide only
+// across handles (a remount, or a second tool on the page), which each get their
+// own worker and therefore their own module scope. The guard costs one Set
+// operation and removes the need to reason about that at all — do not remove it
+// on the strength of the counter's current behaviour, which is a detail of the
+// client rather than a contract this file can rely on.
 const inFlight = new Set();
 const cancelled = new Set();
 

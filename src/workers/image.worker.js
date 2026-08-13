@@ -20,6 +20,23 @@ import { replies, createProgress } from "@/lib/pdfWorkerProtocol";
 import { drawWatermark } from "@/lib/imageWatermarkDraw";
 import { checkPixelBudget } from "@/lib/imageValidation";
 
+// Requests currently running, and those the main thread has cancelled.
+//
+// Only ids that are actually in flight may be recorded as cancelled — the same
+// guard, for the same reason, as the PDF worker's. A cancel for an id that has
+// already settled is the common race (the user clicks Cancel exactly as the
+// last file finishes), and recording it unconditionally left the id in the set
+// forever: the `finally` below only clears ids that ran, so nothing would ever
+// remove it. That is a slow leak, but the sharp edge is reuse — request ids
+// restart at "img-0" whenever the client spawns a fresh worker, so a stale
+// entry silently discards a *future* legitimate request, which surfaces as a
+// batch that produces nothing and reports no error.
+//
+// The image client currently terminates the worker rather than posting a cancel
+// (see imageWorkerClient.js), so this path is not reachable today. It is
+// guarded anyway: the message is still handled here, and the day anyone adds
+// cooperative cancellation the bug would arrive with it.
+const inFlight = new Set();
 const cancelled = new Set();
 
 export const imageOps = {
@@ -30,11 +47,15 @@ self.onmessage = async (event) => {
   const message = event.data;
 
   if (message?.type === "cancel") {
-    cancelled.add(message.id);
+    // Ignored unless the op is still running, so a late cancel cannot poison a
+    // later request that happens to reuse the id.
+    if (inFlight.has(message.id)) cancelled.add(message.id);
     return;
   }
 
   const { id, payload } = message;
+
+  inFlight.add(id);
 
   try {
     const result = await processBatch(id, payload);
@@ -53,11 +74,10 @@ self.onmessage = async (event) => {
       });
     }
   } finally {
-    // Cleared on every exit path, including the ones that returned early above.
-    // The old code deleted the id in two of the three branches, so a cancel
-    // that lost the race with a completing batch left its id in the set for the
-    // life of the worker — and any later request that happened to reuse it
-    // would be discarded as cancelled before it ran.
+    // One place, so no exit path can strand an id in either set. This clears
+    // the id that ran; the inFlight guard above is what stops an id that never
+    // ran from being recorded as cancelled in the first place.
+    inFlight.delete(id);
     cancelled.delete(id);
   }
 };
