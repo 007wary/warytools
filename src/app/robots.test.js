@@ -14,9 +14,21 @@ describe("robots (production)", () => {
     expect(result.sitemap).toBe("https://wary.tools/sitemap.xml");
   });
 
-  it("blocks the shortener redirect and api routes", () => {
+  it("blocks the shortener redirect, api, admin and newsletter routes", () => {
     vi.stubEnv("VERCEL_ENV", "production");
-    expect(robots().rules.disallow).toEqual(["/s/", "/api/"]);
+    expect(robots().rules.disallow).toEqual(["/s/", "/api/", "/admin", "/newsletter/"]);
+  });
+
+  it("keeps the real pages crawlable", () => {
+    // Guards against a disallow entry being written broadly enough to catch
+    // the tools and blog — "/" prefixes like "/a" would, and the failure would
+    // be silent until traffic dropped.
+    vi.stubEnv("VERCEL_ENV", "production");
+    const { disallow } = robots().rules;
+
+    for (const path of ["/pdf/merge", "/image/compress", "/blog", "/about", "/"]) {
+      expect(disallow.some((rule) => path.startsWith(rule)), path).toBe(false);
+    }
   });
 
   it("treats a non-Vercel build as canonical", () => {

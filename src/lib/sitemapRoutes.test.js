@@ -34,6 +34,7 @@ const FIXTURE = {
   "app/newsletter/confirm/page.js": "export default function Confirm() {}",
   "app/newsletter/unsubscribe/page.js": "export default function Unsub() {}",
   "app/newsletter/resubscribe/page.js": "export default function Resub() {}",
+  "app/admin/page.js": "export default function Admin() {}",
 };
 
 let tmpDir, srcDir, appDir;
@@ -184,6 +185,13 @@ describe("buildSitemapEntries", () => {
     expect(urls).not.toContain("https://wary.tools/newsletter/confirm");
     expect(urls).not.toContain("https://wary.tools/newsletter/unsubscribe");
     expect(urls.some((url) => url.includes("/newsletter"))).toBe(false);
+  });
+
+  it("omits the admin dashboard", () => {
+    // A login form for the site's most privileged action has no business in
+    // search results.
+    const urls = build().map((entry) => entry.url);
+    expect(urls).not.toContain("https://wary.tools/admin");
   });
 
   it("still discovers ordinary pages alongside the exclusions", () => {

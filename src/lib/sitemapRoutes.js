@@ -224,6 +224,11 @@ export const SITEMAP_EXCLUDED_ROUTES = [
   "/newsletter/confirm",
   "/newsletter/unsubscribe",
   "/newsletter/resubscribe",
+  // The admin dashboard. Not a token-gated dead end like the others — it is a
+  // password-protected operator surface — but it belongs out of the sitemap
+  // for the same reason: listing it advertises it, and nothing good comes of a
+  // login form for the site's most privileged action being in search results.
+  "/admin",
 ];
 
 export function buildSitemapEntries({ baseUrl, appDir, srcDir, cwd, now = () => new Date() }) {

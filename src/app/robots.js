@@ -34,7 +34,11 @@ export default function robots() {
       // /s/ is the shortener's redirect route: crawling it would inflate
       // click counts and index redirect stubs rather than real pages.
       // /api/ has no crawlable content.
-      disallow: ["/s/", "/api/"],
+      // /admin is the operator dashboard and /newsletter/ holds the token-gated
+      // landing pages; both also carry noindex, since robots.txt is a request
+      // rather than a control and a disallowed URL can still be indexed from
+      // an external link.
+      disallow: ["/s/", "/api/", "/admin", "/newsletter/"],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
   };

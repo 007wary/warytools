@@ -250,7 +250,11 @@ export default async function HomePage() {
           style={{
             maxWidth: "900px",
             margin: "0 auto",
-            padding: "0 20px 88px",
+            // Bottom padding trimmed from 88px to 56px: this section no longer
+            // ends the page, and its old spacing plus the divider's would have
+            // left the rule marooned far below the last answer instead of
+            // closing it.
+            padding: "0 20px 56px",
           }}
         >
           <h2
@@ -304,17 +308,35 @@ export default async function HomePage() {
             for their address is after they have had it — not in front of the
             thing they came for. The grid stays the page's job.
 
-            No divider above it, unlike the blog index. There the signup card
-            sat directly under a stack of PostCards sharing its border, radius
-            and surface, so it read as one more post; here it follows the FAQ's
-            own rules and borrowed shape from nothing, so an extra rule would
-            just be a line. The narrower max-width does the separating instead,
-            setting the card apart from the 900px sections above it. */}
+            The rule above it closes the FAQ. Every FAQ row already carries a
+            borderTop, so the list has no bottom edge of its own — it simply
+            stops, and the signup card then floated in undivided space that
+            read as a gap rather than a section break. The rule is at the FAQ's
+            900px width, not the card's 760px, because it belongs to the list
+            it terminates. */}
+        <section
+          style={{
+            maxWidth: "900px",
+            margin: "0 auto",
+            padding: "0 20px",
+          }}
+        >
+          <div
+            // Decorative: the card's own heading announces the section change,
+            // so an <hr> would have a screen reader announce a thematic break
+            // that adds nothing.
+            aria-hidden="true"
+            style={{ height: "1px", backgroundColor: colors.border }}
+          />
+        </section>
+
         <section
           style={{
             maxWidth: "760px",
             margin: "0 auto",
-            padding: "0 20px 88px",
+            // Symmetric with the 56px above, so the card sits evenly between
+            // the rule and the footer rather than crowding one of them.
+            padding: "56px 20px 88px",
           }}
         >
           <NewsletterSignup

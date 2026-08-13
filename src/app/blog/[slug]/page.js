@@ -214,8 +214,23 @@ export default async function BlogPostPage({ params }) {
             reading has just been given the evidence for whether they want more
             of this — which is the only honest moment to ask. Deliberately not a
             modal or a scroll-triggered popup: those convert better and they are
-            why people install content blockers. */}
-        <div style={{ marginTop: "40px" }}>
+            why people install content blockers.
+
+            The borderTop is the same device ShareRow and RelatedPosts already
+            use, and it is needed for the same reason it was on the homepage's
+            FAQ: ShareRow's own rule sits ABOVE its buttons, so the share row
+            has no bottom edge and the card below it floated in undivided
+            space. Matching ShareRow's 48px/28px rhythm rather than inventing a
+            third spacing keeps the three stacked sections reading as one
+            system. RelatedPosts closes this card from below with its own
+            rule, so none is added here. */}
+        <div
+          style={{
+            marginTop: "48px",
+            paddingTop: "28px",
+            borderTop: `1px solid ${colors.border}`,
+          }}
+        >
           <NewsletterSignup />
         </div>
 
