@@ -1,8 +1,8 @@
-import { createClient } from "@supabase/supabase-js";
 import { createHash } from "crypto";
 import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { SITE_URL } from "@/lib/siteUrl";
+import { isNewsletterDbConfigured, newsletterDb } from "@/lib/newsletterDb";
 import { checkSubscription, rejectionMessage } from "@/lib/newsletterValidation";
 import { resubscribeUrl, unsubscribeUrl } from "@/lib/newsletterToken";
 import {
@@ -30,6 +30,16 @@ import { listUnsubscribeHeaders, sendEmail } from "@/lib/newsletterMailer";
 //      VICTIM — without it, a stranger's address submitted repeatedly earns
 //      them a welcome email every time, and the public form becomes a
 //      mail-bomb aimed at whoever the attacker names.
+//
+// Defence 1 lives ONLY here, in the route, which is why the RPCs below are
+// called with the service role and `anon` can no longer execute them. While
+// the anon key could reach subscribe_newsletter_directly directly, the quota
+// was one HTTP call away from being skipped entirely and only the per-address
+// cooldown stood between the form and a mail-bomb. Revoking also closes the
+// mirror problem on consume_newsletter_quota, whose bucket is a hash of the
+// caller's IP: a public quota RPC lets a stranger spend someone else's
+// allowance and lock a whole household's NAT out of signing up. See
+// newsletterDb.js.
 //   3. The welcome email leads with an unsubscribe link, because under single
 //      opt-in the recipient is not guaranteed to be the person who typed the
 //      address, and leaving must be the easiest thing in it.
@@ -50,12 +60,6 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY;
 // for a list of zero.
 const NEWSLETTER_FROM =
   process.env.NEWSLETTER_FROM_EMAIL || "WaryTools <hello@wary.tools>";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  { auth: { persistSession: false } }
-);
 
 const SITE_ORIGIN = new URL(SITE_URL).origin;
 
@@ -107,9 +111,15 @@ export async function POST(req) {
   // without a Resend account or a token secret. Checked after validation but
   // before the quota spend, so an outage doesn't burn quota nobody got an
   // email out of.
-  if (!RESEND_API_KEY || !process.env.NEWSLETTER_TOKEN_SECRET) {
+  if (
+    !RESEND_API_KEY ||
+    !process.env.NEWSLETTER_TOKEN_SECRET ||
+    !isNewsletterDbConfigured()
+  ) {
     return fail(UNAVAILABLE, 503);
   }
+
+  const supabase = newsletterDb();
 
   try {
     const { data: allowed, error } = await supabase.rpc("consume_newsletter_quota", {
@@ -126,8 +136,18 @@ export async function POST(req) {
     }
 
     if (allowed === false) {
+      // The quota window is an hour (see consume_newsletter_quota), so the
+      // copy names an hour rather than saying "wait a little" — a vague wait
+      // for what is actually a one-hour lockout reads as the form being
+      // broken, and the visitor retries instead of coming back.
+      //
+      // Retry-After is the window length, which is an UPPER bound: the RPC
+      // measures from when the window started, so a caller part-way through
+      // one waits less than this. Over-stating is the safe direction — a
+      // client that retries early is refused again, whereas one told to
+      // retry too soon hammers the endpoint.
       return fail(
-        "That's a few sign-ups from here already. Please wait a little and try again.",
+        "That's several sign-ups from this connection already. Please try again in an hour.",
         429,
         { "Retry-After": "3600" }
       );

@@ -1,8 +1,8 @@
-import { createClient } from "@supabase/supabase-js";
 import { createHash } from "crypto";
 import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { SITE_URL } from "@/lib/siteUrl";
+import { isNewsletterDbConfigured, newsletterDb } from "@/lib/newsletterDb";
 import {
   SESSION_COOKIE,
   createSession,
@@ -29,12 +29,6 @@ export const dynamic = "force-dynamic";
 
 const ADMIN_PASSWORD = process.env.NEWSLETTER_ADMIN_PASSWORD;
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  { auth: { persistSession: false } }
-);
-
 const SITE_ORIGIN = new URL(SITE_URL).origin;
 
 // A salted hash, not the IP — the same construction as every other limiter
@@ -59,11 +53,19 @@ function fail(message, status) {
 }
 
 export async function POST(req) {
-  if (!ADMIN_PASSWORD || !process.env.NEWSLETTER_TOKEN_SECRET) {
+  if (
+    !ADMIN_PASSWORD ||
+    !process.env.NEWSLETTER_TOKEN_SECRET ||
+    !isNewsletterDbConfigured()
+  ) {
     // Unconfigured rather than unauthorised: with no password set there is no
-    // correct request, and a 401 would imply one exists.
+    // correct request, and a 401 would imply one exists. The database is part
+    // of that check because the limiter below fails closed — without it there
+    // is no safe way to accept a login attempt at all.
     return fail("The dashboard is not configured.", 503);
   }
+
+  const supabase = newsletterDb();
 
   let body;
   try {
@@ -76,6 +78,16 @@ export async function POST(req) {
   // a right one cost the same. Consuming only on failure would let an attacker
   // run unlimited attempts as long as none succeeded — which is exactly the
   // situation being defended against.
+  //
+  // consume_admin_login_quota is no longer executable by `anon` either (see
+  // newsletterDb.js). The bucket is a hash of the caller's IP, so a public RPC
+  // did not let anyone bypass their OWN limit — it let them spend anyone
+  // else's. The salt is a fixed string in this file, so the bucket for a given
+  // IP is computable by anyone who reads the client bundle's Supabase URL and
+  // guesses the construction, and ten direct calls would then lock the
+  // operator out of their own dashboard for fifteen minutes, repeatable
+  // indefinitely. A rate limiter that a stranger can spend on your behalf is a
+  // denial-of-service primitive rather than a defence.
   try {
     const { data: allowed, error } = await supabase.rpc("consume_admin_login_quota", {
       p_bucket: rateLimitBucket(req),

@@ -1,8 +1,11 @@
-import { createClient } from "@supabase/supabase-js";
-import { timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { SITE_URL } from "@/lib/siteUrl";
+// The same constant-time compare the dashboard login uses, rather than a
+// second copy: a byte-by-byte `===` on a secret leaks how much of a guess was
+// correct, and a guard written twice is a guard that can disagree with itself.
+import { secretMatches } from "@/lib/adminSession";
+import { newsletterDb } from "@/lib/newsletterDb";
 import { getPostBySlug } from "@/lib/blogPosts";
 import { unsubscribeUrl } from "@/lib/newsletterToken";
 import {
@@ -38,6 +41,25 @@ import { overCapMessage, resolveDailyCap } from "@/lib/newsletterSendQuota";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// The send loop is paced at SEND_INTERVAL_MS per recipient to stay under
+// Resend's rate limit, so its runtime scales with the list: a full 100-address
+// day is ~55s of deliberate sleeping. Vercel's default function timeout is
+// well below what that needs, and being killed here is the worst failure this
+// route has — the slug is claimed BEFORE the first email (deliberately, as the
+// duplicate-send guard), so a timeout marks the post sent with most of the
+// list unmailed, and they can never receive it.
+//
+// 300s is the ceiling on Vercel's Pro plan and leaves headroom for the whole
+// cap plus the queries either side. It is the same class of reasoning as the
+// converter routes' maxDuration, but the failure mode is worse: those retry
+// cleanly, this one cannot.
+//
+// This bounds the cap as much as the plan does. If NEWSLETTER_DAILY_SEND_CAP
+// is ever raised far above 100, this loop stops fitting in any single
+// invocation and the send needs to become resumable (a cursor in the ledger)
+// rather than one long request. See newsletterSendQuota.js.
+export const maxDuration = 300;
+
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const NEWSLETTER_FROM =
   process.env.NEWSLETTER_FROM_EMAIL || "WaryTools <hello@wary.tools>";
@@ -61,17 +83,6 @@ function fail(message, status) {
   );
 }
 
-// Constant-time comparison, for the same reason newsletterToken.js uses it: a
-// byte-by-byte `===` on a secret leaks how much of a guess was correct.
-function secretMatches(given) {
-  if (typeof given !== "string" || given.length === 0) return false;
-
-  const a = Buffer.from(given);
-  const b = Buffer.from(ADMIN_SECRET);
-
-  return a.length === b.length && timingSafeEqual(a, b);
-}
-
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export async function POST(req) {
@@ -88,7 +99,7 @@ export async function POST(req) {
     ? authorization.slice(7)
     : "";
 
-  if (!secretMatches(presented)) {
+  if (!secretMatches(presented, ADMIN_SECRET)) {
     return fail("Unauthorized.", 401);
   }
 
@@ -121,9 +132,7 @@ export async function POST(req) {
     return fail("That post is still a draft.", 400);
   }
 
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, SERVICE_ROLE_KEY, {
-    auth: { persistSession: false },
-  });
+  const supabase = newsletterDb();
 
   // A dry run resolves the post and counts the audience without claiming the
   // slug or sending anything. This is the step that makes the manual trigger
@@ -241,7 +250,7 @@ export async function POST(req) {
   const failures = [];
   let sent = 0;
 
-  for (const email of recipients) {
+  for (const [index, email] of recipients.entries()) {
     // A per-recipient token, so the unsubscribe link in each email removes
     // that reader and only that reader.
     const unsubscribe = unsubscribeUrl(SITE_URL, email);
@@ -266,7 +275,12 @@ export async function POST(req) {
       failures.push({ email, detail: result.detail });
     }
 
-    await sleep(SEND_INTERVAL_MS);
+    // Paced BETWEEN sends, not after the last one — the interval exists to
+    // space out calls to Resend, so a trailing sleep is pure dead time held
+    // against the function's timeout.
+    if (index < recipients.length - 1) {
+      await sleep(SEND_INTERVAL_MS);
+    }
   }
 
   if (failures.length > 0) {

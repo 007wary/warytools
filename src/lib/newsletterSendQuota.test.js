@@ -74,3 +74,44 @@ describe("overCapMessage", () => {
     expect(over).not.toContain("-");
   });
 });
+
+describe("the send loop fits inside the function's timeout", () => {
+  // Not testing this module's code — testing the relationship between the cap
+  // it resolves and two constants in /api/newsletter/send that scale with it.
+  //
+  // This is the guard on a real bug: the send route paces itself at 550ms per
+  // recipient and originally set no maxDuration at all, so a full day's list
+  // ran ~55s against Vercel's much lower default and was killed partway. The
+  // slug is claimed BEFORE the first email (the duplicate-send guard), so a
+  // timeout marks the post sent with most of the list unmailed and no way to
+  // ever deliver it — the exact unrecoverable state the cap exists to prevent,
+  // reached from a different direction.
+  //
+  // Hardcoded rather than imported, for the same reason pdfToWordLimits.test.js
+  // hardcodes maxDuration: it is a route-segment export that cannot be
+  // imported without pulling the whole route (and its env vars) into the test.
+  const SEND_INTERVAL_MS = 550;
+  const MAX_DURATION_S = 300;
+  // The queries either side of the loop, plus Resend's own latency per call.
+  const OVERHEAD_S = 30;
+
+  it("leaves headroom for a full default-cap run", () => {
+    const capacity = resolveDailyCap(undefined);
+    // Paced BETWEEN sends, so n recipients sleep n-1 times.
+    const loopSeconds = ((capacity - 1) * SEND_INTERVAL_MS) / 1000;
+
+    expect(loopSeconds + OVERHEAD_S).toBeLessThan(MAX_DURATION_S);
+  });
+
+  it("flags the cap at which a single invocation stops being viable", () => {
+    // Documents the ceiling rather than asserting a bug: past roughly this
+    // many recipients the send must become resumable (a cursor in the ledger)
+    // instead of one long request. If someone raises the cap for a paid Resend
+    // plan, this is the number they are up against.
+    const maxRecipients =
+      Math.floor(((MAX_DURATION_S - OVERHEAD_S) * 1000) / SEND_INTERVAL_MS) + 1;
+
+    expect(maxRecipients).toBeGreaterThan(DEFAULT_DAILY_SEND_CAP);
+    expect(maxRecipients).toBeLessThan(1000);
+  });
+});

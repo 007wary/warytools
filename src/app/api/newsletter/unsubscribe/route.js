@@ -1,6 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
+import { isNewsletterDbConfigured, newsletterDb } from "@/lib/newsletterDb";
 import { TokenPurpose, verifyToken } from "@/lib/newsletterToken";
 
 // The POST half of one-click unsubscribe.
@@ -18,12 +18,6 @@ import { TokenPurpose, verifyToken } from "@/lib/newsletterToken";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  { auth: { persistSession: false } }
-);
-
 export async function POST(req) {
   // The token arrives in the query string, because that is where the header's
   // URL put it. RFC 8058 has the client POST to the List-Unsubscribe URL
@@ -39,8 +33,15 @@ export async function POST(req) {
     return NextResponse.json({ error: "Invalid link." }, { status: 400 });
   }
 
+  // A 5xx rather than a silent success, for the same reason as the RPC failure
+  // below: a mail client told "done" by a misconfigured deploy stops offering
+  // the button, and the reader's next move is the spam report.
+  if (!isNewsletterDbConfigured()) {
+    return NextResponse.json({ error: "Could not unsubscribe." }, { status: 503 });
+  }
+
   try {
-    const { error } = await supabase.rpc("unsubscribe_newsletter", {
+    const { error } = await newsletterDb().rpc("unsubscribe_newsletter", {
       p_email: verified.email,
     });
 

@@ -1,5 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
 import * as Sentry from "@sentry/nextjs";
+import { isNewsletterDbConfigured, newsletterDb } from "@/lib/newsletterDb";
 import { TokenPurpose, verifyToken } from "@/lib/newsletterToken";
 import NewsletterResult from "../NewsletterResult";
 
@@ -25,12 +25,6 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  { auth: { persistSession: false } }
-);
-
 export default async function UnsubscribePage({ searchParams }) {
   const params = await searchParams;
   const token = typeof params?.token === "string" ? params.token : null;
@@ -51,7 +45,11 @@ export default async function UnsubscribePage({ searchParams }) {
   }
 
   try {
-    const { error } = await supabase.rpc("unsubscribe_newsletter", {
+    if (!isNewsletterDbConfigured()) {
+      throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");
+    }
+
+    const { error } = await newsletterDb().rpc("unsubscribe_newsletter", {
       p_email: verified.email,
     });
 
