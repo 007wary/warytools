@@ -4,6 +4,7 @@ import { colors, categoryColors } from "@/lib/theme";
 import { ToolSearchProvider, ToolSearchBox, ToolSearchGrid } from "@/components/ToolSearch";
 import JsonLd from "@/components/JsonLd";
 import TrendingTools from "@/components/TrendingTools";
+import NewsletterSignup from "@/components/NewsletterSignup";
 import { jsonLdGraph, collectionPageJsonLd, faqJsonLd } from "@/lib/jsonLd";
 import { pageMetadata } from "@/lib/pageMetadata";
 import { fetchToolUsageSnapshot } from "@/lib/toolUsage";
@@ -294,6 +295,32 @@ export default async function HomePage() {
               </div>
             ))}
           </dl>
+        </section>
+
+        {/* Last thing on the page, after the FAQ.
+
+            Placed at the bottom rather than near the tool grid deliberately:
+            someone arriving here wants a tool, and the honest moment to ask
+            for their address is after they have had it — not in front of the
+            thing they came for. The grid stays the page's job.
+
+            No divider above it, unlike the blog index. There the signup card
+            sat directly under a stack of PostCards sharing its border, radius
+            and surface, so it read as one more post; here it follows the FAQ's
+            own rules and borrowed shape from nothing, so an extra rule would
+            just be a line. The narrower max-width does the separating instead,
+            setting the card apart from the 900px sections above it. */}
+        <section
+          style={{
+            maxWidth: "760px",
+            margin: "0 auto",
+            padding: "0 20px 88px",
+          }}
+        >
+          <NewsletterSignup
+            title="Get new tools by email"
+            body="A short email whenever a new tool or guide goes live. Usually once or twice a month. Unsubscribe in one click."
+          />
         </section>
       </div>
     </ToolSearchProvider>
