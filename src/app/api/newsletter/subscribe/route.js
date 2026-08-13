@@ -4,8 +4,10 @@ import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { SITE_URL } from "@/lib/siteUrl";
 import { checkSubscription, rejectionMessage } from "@/lib/newsletterValidation";
-import { unsubscribeUrl } from "@/lib/newsletterToken";
+import { resubscribeUrl, unsubscribeUrl } from "@/lib/newsletterToken";
 import {
+  renderResubscribeEmailHtml,
+  renderResubscribeEmailText,
   renderWelcomeEmailHtml,
   renderWelcomeEmailText,
 } from "@/lib/newsletterEmailTemplate";
@@ -135,11 +137,10 @@ export async function POST(req) {
     return fail(UNAVAILABLE, 503);
   }
 
-  // Subscribes the address (always) and reports whether a welcome email is
-  // warranted (subject to the per-address cooldown). Returns a bare boolean by
-  // design — see the function's own comment; anything richer would leak
-  // whether the address was already on the list.
-  let shouldSend;
+  // Returns one of three outcomes rather than a boolean — see the RPC's own
+  // comment. "confirm" is the opted-out case, where the subscription is
+  // deliberately NOT reinstated by a form submission alone.
+  let outcome;
   try {
     const { data, error } = await supabase.rpc("subscribe_newsletter_directly", {
       p_email: email,
@@ -150,33 +151,45 @@ export async function POST(req) {
       return fail(UNAVAILABLE, 503);
     }
 
-    shouldSend = data === true;
+    outcome = data;
   } catch (error) {
     Sentry.captureException(error);
     return fail(UNAVAILABLE, 503);
   }
 
   // Already subscribed and emailed recently. They ARE subscribed either way —
-  // only the welcome is suppressed — so this is the same response as a send.
-  if (!shouldSend) {
+  // only the email is suppressed — so this is the same response as a send.
+  if (outcome !== "welcome" && outcome !== "confirm") {
     return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
   }
 
   const unsubscribe = unsubscribeUrl(SITE_URL, email);
 
+  // The opted-out path. This address chose to leave, and an anonymous form
+  // submission must not undo that — otherwise anyone could put someone back on
+  // a list they deliberately left. So a link that proves control of the inbox
+  // is required, and only clicking it reinstates the subscription.
+  const isReinstate = outcome === "confirm";
+  const reinstate = isReinstate ? resubscribeUrl(SITE_URL, email) : null;
+
   const sent = await sendEmail({
     apiKey: RESEND_API_KEY,
     from: NEWSLETTER_FROM,
     to: email,
-    subject: "You're subscribed to WaryTools",
-    html: renderWelcomeEmailHtml({ unsubscribeUrl: unsubscribe, siteUrl: SITE_URL }),
-    text: renderWelcomeEmailText({ unsubscribeUrl: unsubscribe, siteUrl: SITE_URL }),
-    // Carries List-Unsubscribe, unlike the confirmation email it replaces.
-    // That one was transactional with nothing yet to leave; this one announces
-    // a live subscription, so the recipient is owed a one-click exit from the
-    // very first message — especially since under single opt-in they may not
-    // be the person who signed up.
-    headers: listUnsubscribeHeaders(unsubscribe),
+    subject: isReinstate
+      ? "Resubscribe to WaryTools?"
+      : "You're subscribed to WaryTools",
+    html: isReinstate
+      ? renderResubscribeEmailHtml({ resubscribeUrl: reinstate, siteUrl: SITE_URL })
+      : renderWelcomeEmailHtml({ unsubscribeUrl: unsubscribe, siteUrl: SITE_URL }),
+    text: isReinstate
+      ? renderResubscribeEmailText({ resubscribeUrl: reinstate, siteUrl: SITE_URL })
+      : renderWelcomeEmailText({ unsubscribeUrl: unsubscribe, siteUrl: SITE_URL }),
+    // The welcome announces a live subscription, so it carries List-Unsubscribe
+    // and owes the recipient a one-click exit from the very first message.
+    // The reinstate email deliberately does not: that address is already
+    // unsubscribed, and offering to remove them again is a confusing no-op.
+    ...(isReinstate ? {} : { headers: listUnsubscribeHeaders(unsubscribe) }),
   });
 
   if (!sent.ok) {
@@ -184,7 +197,7 @@ export async function POST(req) {
     // reported as a failure to the visitor: they are on the list, and telling
     // them otherwise would invite a resubmit that changes nothing.
     Sentry.captureMessage(
-      `Resend rejected a newsletter welcome: ${sent.detail}`,
+      `Resend rejected a newsletter ${isReinstate ? "reinstate" : "welcome"}: ${sent.detail}`,
       "error"
     );
   }

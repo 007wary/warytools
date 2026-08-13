@@ -223,6 +223,7 @@ export function buildBlogSitemapEntries({ baseUrl, posts }) {
 export const SITEMAP_EXCLUDED_ROUTES = [
   "/newsletter/confirm",
   "/newsletter/unsubscribe",
+  "/newsletter/resubscribe",
 ];
 
 export function buildSitemapEntries({ baseUrl, appDir, srcDir, cwd, now = () => new Date() }) {

@@ -231,6 +231,105 @@ export function renderWelcomeEmailText({ unsubscribeUrl, siteUrl }) {
 }
 
 /**
+ * The reinstatement email, sent when someone submits the form using an address
+ * that previously unsubscribed.
+ *
+ * This is the one place the site still uses a confirmation click, and the
+ * reason is narrow: an unsubscribe is a deliberate, recorded decision by the
+ * address owner, so an anonymous form submission must not be able to reverse
+ * it. Everywhere else single opt-in is fine, because the worst case is one
+ * welcome email carrying an exit.
+ *
+ * The copy therefore leads with "someone asked", not "welcome back" — the
+ * recipient may not be the person who typed the address, and if they are not,
+ * the correct outcome is that they do nothing and stay unsubscribed.
+ *
+ * @param {{resubscribeUrl: string, siteUrl: string}} input
+ * @returns {string}
+ */
+export function renderResubscribeEmailHtml({ resubscribeUrl, siteUrl }) {
+  const href = escapeHtml(resubscribeUrl);
+  const origin = escapeHtml(siteUrl);
+
+  const body = `
+<tr>
+<td style="padding:30px 28px 0;">
+<p style="margin:0 0 6px;font-family:${FONT};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${BRAND.textFaint};">
+WaryTools newsletter
+</p>
+<p style="margin:0;font-family:${FONT};font-size:21px;font-weight:700;line-height:1.35;color:${BRAND.text};">
+Resubscribe to WaryTools?
+</p>
+</td>
+</tr>
+
+<tr>
+<td style="padding:14px 28px 0;">
+<p style="margin:0 0 14px;font-family:${FONT};font-size:15px;line-height:1.65;color:${BRAND.textSecondary};">
+Someone entered this address on our newsletter form. You unsubscribed previously, so we haven't added you back &mdash; that's your call to make, not ours.
+</p>
+<p style="margin:0;font-family:${FONT};font-size:15px;line-height:1.65;color:${BRAND.textSecondary};">
+If it was you and you'd like to start getting new posts again, tap below.
+</p>
+</td>
+</tr>
+
+<tr>
+<td style="padding:22px 28px 0;">
+${renderButton(href, "Yes, resubscribe me")}
+</td>
+</tr>
+
+<!-- The raw URL as well as the button. Some clients render buttons poorly and
+     some strip them, and this link is the only way to act on the email. -->
+<tr>
+<td style="padding:20px 28px 0;">
+<p style="margin:0;font-family:${FONT};font-size:12.5px;line-height:1.6;color:${BRAND.textMuted};">
+If the button doesn't work, paste this into your browser:<br>
+<span style="color:${BRAND.textMuted};word-break:break-all;overflow-wrap:break-word;">${href}</span>
+</p>
+</td>
+</tr>
+
+<tr>
+<td style="padding:22px 28px 26px;">
+<div style="height:1px;background-color:${BRAND.border};font-size:0;line-height:0;">&nbsp;</div>
+<!-- The whole point: doing nothing is a valid and complete response, and it
+     is stated plainly rather than left implicit. -->
+<p style="margin:16px 0 0;font-family:${FONT};font-size:12.5px;line-height:1.6;color:${BRAND.textMuted};">
+Wasn't you? Ignore this email and nothing changes &mdash; you stay unsubscribed and we won't email you again. The link expires in three days.
+</p>
+</td>
+</tr>`;
+
+  const footer = `<p style="margin:16px 0 0;font-family:${FONT};font-size:11.5px;color:${BRAND.textFaint};">
+<a href="${origin}" style="color:${BRAND.textMuted};text-decoration:none;">${origin.replace(/^https?:\/\//, "")}</a> &mdash; free PDF, image and calculator tools
+</p>`;
+
+  return renderShell({
+    preheader: "Someone asked to resubscribe this address. You stay unsubscribed unless you confirm.",
+    body,
+    footer,
+  });
+}
+
+export function renderResubscribeEmailText({ resubscribeUrl, siteUrl }) {
+  return [
+    "Resubscribe to WaryTools?",
+    "",
+    "Someone entered this address on our newsletter form. You unsubscribed previously, so we haven't added you back - that's your call to make, not ours.",
+    "",
+    "If it was you and you'd like to start getting new posts again, open this link:",
+    "",
+    resubscribeUrl,
+    "",
+    "Wasn't you? Ignore this email and nothing changes - you stay unsubscribed and we won't email you again. The link expires in three days.",
+    "",
+    siteUrl,
+  ].join("\n");
+}
+
+/**
  * The subject line for a post announcement.
  *
  * The post's own title, unprefixed. A "[WaryTools Newsletter]" prefix eats the

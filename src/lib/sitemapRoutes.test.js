@@ -33,6 +33,7 @@ const FIXTURE = {
   // token from an email, so a crawler finds only "this link is invalid".
   "app/newsletter/confirm/page.js": "export default function Confirm() {}",
   "app/newsletter/unsubscribe/page.js": "export default function Unsub() {}",
+  "app/newsletter/resubscribe/page.js": "export default function Resub() {}",
 };
 
 let tmpDir, srcDir, appDir;

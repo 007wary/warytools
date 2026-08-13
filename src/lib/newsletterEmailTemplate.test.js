@@ -4,6 +4,8 @@ import {
   postSubject,
   renderWelcomeEmailHtml,
   renderWelcomeEmailText,
+  renderResubscribeEmailHtml,
+  renderResubscribeEmailText,
   renderPostEmailHtml,
   renderPostEmailText,
 } from "./newsletterEmailTemplate";
@@ -113,6 +115,58 @@ describe("renderWelcomeEmailText", () => {
 
   it("states the subscription is live", () => {
     expect(text).toContain("You're subscribed");
+  });
+});
+
+describe("renderResubscribeEmailHtml", () => {
+  const RESUB = `${SITE}/newsletter/resubscribe?token=resubscribe.abc.123.sig`;
+  const html = renderResubscribeEmailHtml({ resubscribeUrl: RESUB, siteUrl: SITE });
+
+  it("does not claim the recipient is subscribed", () => {
+    // They are not: the form submission deliberately did NOT reinstate them.
+    // Saying "welcome back" would be a lie and would also tell a third party
+    // that their submission worked.
+    expect(html.toLowerCase()).not.toContain("you're subscribed");
+    expect(html).toContain("Resubscribe to WaryTools?");
+  });
+
+  it("says someone asked, rather than assuming it was the recipient", () => {
+    expect(html).toContain("Someone entered this address");
+  });
+
+  it("states that doing nothing keeps them unsubscribed", () => {
+    // The most important sentence in the email: for a recipient who did not
+    // sign up, inaction must be a complete and correct response.
+    expect(html).toContain("you stay unsubscribed");
+  });
+
+  it("carries the link in both the button and as pasteable text", () => {
+    expect(html.split(RESUB).length - 1).toBeGreaterThanOrEqual(2);
+  });
+
+  it("carries no List-Unsubscribe-style exit, since they are already out", () => {
+    expect(html).not.toContain("/newsletter/unsubscribe");
+  });
+
+  it("escapes a quote in the URL rather than breaking out of the href", () => {
+    const hostile = renderResubscribeEmailHtml({
+      resubscribeUrl: `${RESUB}"><script>alert(1)</script>`,
+      siteUrl: SITE,
+    });
+    expect(hostile).not.toContain("<script>");
+  });
+
+  it("balances its tags and avoids unusable CSS", () => {
+    expect((html.match(/<table/g) || []).length).toBe((html.match(/<\/table>/g) || []).length);
+    expect(html).not.toMatch(/display:\s*flex/);
+    expect(html).not.toContain("var(--");
+  });
+
+  it("has a plain-text alternative carrying the bare link", () => {
+    const text = renderResubscribeEmailText({ resubscribeUrl: RESUB, siteUrl: SITE });
+    expect(text).toContain(RESUB);
+    expect(text).not.toContain("<");
+    expect(text).toContain("you stay unsubscribed");
   });
 });
 

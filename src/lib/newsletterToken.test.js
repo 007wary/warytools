@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   NO_EXPIRY,
+  RESUBSCRIBE_TTL_SECONDS,
   TokenError,
   TokenPurpose,
   createToken,
+  resubscribeUrl,
   unsubscribeUrl,
   verifyToken,
 } from "./newsletterToken";
@@ -196,6 +198,58 @@ describe("malformed input", () => {
 
       expect(() => verifyToken(token, TokenPurpose.UNSUBSCRIBE, NOW)).not.toThrow();
     }
+  });
+});
+
+describe("resubscribe tokens", () => {
+  it("cannot be spent as an unsubscribe token, or the reverse", () => {
+    // The whole point of the resubscribe flow: an unsubscribe link already
+    // sitting in someone's inbox must not be replayable to put them BACK on
+    // the list they deliberately left.
+    const unsub = createToken(TokenPurpose.UNSUBSCRIBE, "reader@example.com", NO_EXPIRY, NOW);
+    expect(verifyToken(unsub, TokenPurpose.RESUBSCRIBE, NOW)).toEqual({
+      ok: false,
+      reason: TokenError.WRONG_PURPOSE,
+    });
+
+    const resub = createToken(
+      TokenPurpose.RESUBSCRIBE,
+      "reader@example.com",
+      RESUBSCRIBE_TTL_SECONDS,
+      NOW
+    );
+    expect(verifyToken(resub, TokenPurpose.UNSUBSCRIBE, NOW)).toEqual({
+      ok: false,
+      reason: TokenError.WRONG_PURPOSE,
+    });
+  });
+
+  it("expires, unlike an unsubscribe token", () => {
+    // Asymmetric on purpose: this token GRANTS a subscription, so an immortal
+    // one in an old inbox is a standing invitation to resubscribe someone who
+    // opted out. The unsubscribe token revokes, so it must never expire.
+    const token = createToken(
+      TokenPurpose.RESUBSCRIBE,
+      "reader@example.com",
+      RESUBSCRIBE_TTL_SECONDS,
+      NOW
+    );
+
+    expect(verifyToken(token, TokenPurpose.RESUBSCRIBE, NOW + 24 * 3600 * 1000).ok).toBe(true);
+    expect(
+      verifyToken(token, TokenPurpose.RESUBSCRIBE, NOW + (RESUBSCRIBE_TTL_SECONDS + 60) * 1000)
+    ).toEqual({ ok: false, reason: TokenError.EXPIRED });
+  });
+
+  it("builds a link that verifies as a resubscribe token", () => {
+    const url = resubscribeUrl("https://wary.tools", "reader@example.com", NOW);
+    expect(url.startsWith("https://wary.tools/newsletter/resubscribe?token=")).toBe(true);
+
+    const token = new URL(url).searchParams.get("token");
+    expect(verifyToken(token, TokenPurpose.RESUBSCRIBE, NOW)).toEqual({
+      ok: true,
+      email: "reader@example.com",
+    });
   });
 });
 

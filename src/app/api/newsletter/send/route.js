@@ -11,6 +11,7 @@ import {
   renderPostEmailText,
 } from "@/lib/newsletterEmailTemplate";
 import { listUnsubscribeHeaders, sendEmail } from "@/lib/newsletterMailer";
+import { overCapMessage, resolveDailyCap } from "@/lib/newsletterSendQuota";
 
 // Emails a published post to the confirmed list. Operator-only.
 //
@@ -145,6 +146,8 @@ export async function POST(req) {
     return fail("Could not read the subscriber list.", 503);
   }
 
+  const dailyCap = resolveDailyCap();
+
   if (dryRun) {
     return NextResponse.json(
       {
@@ -156,8 +159,54 @@ export async function POST(req) {
         // Named so the operator can see the send is blocked before they try
         // it for real, rather than discovering it at the point of no return.
         alreadySent: await hasBeenSent(supabase, post.slug),
+        dailyCap,
+        sentToday: await sentToday(supabase),
       },
       { headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
+  // An empty list is not an error, but it must not claim the slug either —
+  // otherwise the first post published before anyone subscribes is burned, and
+  // can never be sent to the people who join afterwards.
+  if (recipients.length === 0) {
+    return fail(
+      "There are no confirmed subscribers, so nothing was sent and the post is not marked as sent.",
+      409
+    );
+  }
+
+  // Reserve the day's capacity BEFORE claiming the slug, so a refused run
+  // leaves the post fully re-sendable. The reverse order would mark a post
+  // sent that nobody received — the same unrecoverable state this guard exists
+  // to prevent, arrived at by a different route.
+  //
+  // Reserving is atomic in Postgres (see the RPC), so two concurrent sends
+  // cannot both see the same headroom and both proceed.
+  let reserved = 0;
+  try {
+    const { data, error } = await supabase.rpc("reserve_newsletter_send_capacity", {
+      p_count: recipients.length,
+      p_daily_cap: dailyCap,
+    });
+
+    if (error) throw error;
+    reserved = data ?? 0;
+  } catch (error) {
+    Sentry.captureException(error);
+    // Fail closed, like every other limiter here: an unreachable ledger cannot
+    // tell a safe run from one that would blow the cap.
+    return fail("Could not check today's sending quota, so nothing was emailed.", 503);
+  }
+
+  if (reserved === 0) {
+    return fail(
+      overCapMessage({
+        recipients: recipients.length,
+        cap: dailyCap,
+        alreadySentToday: await sentToday(supabase),
+      }),
+      429
     );
   }
 
@@ -171,6 +220,10 @@ export async function POST(req) {
     if (error) {
       // 23505 is unique_violation — the slug was already claimed.
       if (error.code === "23505") {
+        // Hand back the capacity: no email went out, so the day's budget must
+        // not be spent. Without this, a few accidental double-sends would
+        // exhaust the quota for real sends nobody made.
+        await releaseCapacity(supabase, reserved);
         return fail(
           `"${post.slug}" has already been sent. Nothing was emailed.`,
           409
@@ -180,6 +233,7 @@ export async function POST(req) {
     }
   } catch (error) {
     Sentry.captureException(error);
+    await releaseCapacity(supabase, reserved);
     return fail("Could not record the send, so nothing was emailed.", 503);
   }
 
@@ -220,6 +274,11 @@ export async function POST(req) {
       `Newsletter "${post.slug}": ${failures.length} of ${recipients.length} sends failed`,
       "error"
     );
+
+    // Capacity was reserved for the whole list up front. Anything Resend
+    // refused never consumed quota on their side, so hand it back rather than
+    // charging the day for emails that do not exist.
+    await releaseCapacity(supabase, failures.length);
   }
 
   return NextResponse.json(
@@ -245,4 +304,36 @@ async function hasBeenSent(supabase, slug) {
     .maybeSingle();
 
   return Boolean(data);
+}
+
+/** How many emails today's ledger has already spent. */
+async function sentToday(supabase) {
+  const { data } = await supabase
+    .from("newsletter_send_ledger")
+    .select("emails_sent")
+    // Postgres `current_date` is UTC here, and the ledger keys on it; building
+    // the key from the server's local date would miss the row for anyone whose
+    // timezone has already rolled over.
+    .eq("day", new Date().toISOString().slice(0, 10))
+    .maybeSingle();
+
+  return data?.emails_sent ?? 0;
+}
+
+/**
+ * Hands back reserved-but-unused capacity.
+ *
+ * Never throws: this runs on paths that are already returning an error, and a
+ * failure to release must not mask the original problem. A leaked reservation
+ * costs at most one day of headroom and self-corrects at midnight, which is a
+ * far smaller failure than a 500 hiding why a send was refused.
+ */
+async function releaseCapacity(supabase, count) {
+  if (!count || count <= 0) return;
+
+  try {
+    await supabase.rpc("release_newsletter_send_capacity", { p_count: count });
+  } catch (error) {
+    Sentry.captureException(error);
+  }
 }

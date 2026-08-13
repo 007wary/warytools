@@ -47,8 +47,17 @@ import { createHmac, timingSafeEqual } from "crypto";
 // invalidate every unsubscribe link already sitting in someone's inbox.
 export const NO_EXPIRY = 0;
 
+// A reinstatement link IS short-lived, unlike an unsubscribe link, and the
+// asymmetry is deliberate. This token re-adds an address to a list its owner
+// deliberately left, so it is the one link here that grants rather than
+// revokes — an immortal one sitting in an old inbox is a standing invitation
+// to resubscribe someone who opted out. Three days matches how long a person
+// plausibly takes to notice the email.
+export const RESUBSCRIBE_TTL_SECONDS = 3 * 24 * 60 * 60;
+
 export const TokenPurpose = {
   UNSUBSCRIBE: "unsubscribe",
+  RESUBSCRIBE: "resubscribe",
 };
 
 export const TokenError = {
@@ -195,4 +204,21 @@ export function verifyToken(token, expectedPurpose, now = Date.now()) {
 export function unsubscribeUrl(siteUrl, email, now = Date.now()) {
   const token = createToken(TokenPurpose.UNSUBSCRIBE, email, NO_EXPIRY, now);
   return `${siteUrl}/newsletter/unsubscribe?token=${encodeURIComponent(token)}`;
+}
+
+/**
+ * The link that reinstates an address which previously unsubscribed.
+ *
+ * Its purpose is signed and distinct from UNSUBSCRIBE, which is what stops an
+ * unsubscribe link already in someone's inbox from being replayed to put them
+ * back on the list — the exact reversal this whole flow exists to prevent.
+ */
+export function resubscribeUrl(siteUrl, email, now = Date.now()) {
+  const token = createToken(
+    TokenPurpose.RESUBSCRIBE,
+    email,
+    RESUBSCRIBE_TTL_SECONDS,
+    now
+  );
+  return `${siteUrl}/newsletter/resubscribe?token=${encodeURIComponent(token)}`;
 }
