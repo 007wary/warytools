@@ -1,5 +1,6 @@
 import path from "path";
-import { buildSitemapEntries } from "@/lib/sitemapRoutes";
+import { buildBlogSitemapEntries, buildSitemapEntries } from "@/lib/sitemapRoutes";
+import { getAllPosts } from "@/lib/blogPosts";
 import { SITE_URL } from "@/lib/siteUrl";
 
 // Route discovery and lastmod derivation live in src/lib/sitemapRoutes.js so
@@ -25,7 +26,13 @@ export default function sitemap() {
   const appDir = path.join(srcDir, "app");
 
   try {
-    return buildSitemapEntries({ baseUrl, appDir, srcDir, cwd });
+    // Blog posts are appended rather than discovered: they live behind a
+    // [slug] segment, which the route walk deliberately skips. See
+    // buildBlogSitemapEntries.
+    return [
+      ...buildSitemapEntries({ baseUrl, appDir, srcDir, cwd }),
+      ...buildBlogSitemapEntries({ baseUrl, posts: getAllPosts() }),
+    ];
   } catch (error) {
     // A filesystem or git failure during the walk shouldn't fail the whole
     // build. Degrade to the homepage alone: a valid but minimal sitemap is a

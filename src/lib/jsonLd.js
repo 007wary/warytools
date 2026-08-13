@@ -163,6 +163,81 @@ export function howToJsonLd({ name, steps, href }) {
   };
 }
 
+/**
+ * A blog post.
+ *
+ * `BlogPosting` rather than plain `Article`: it is the specific subtype, and
+ * Google's article rich-result docs treat the three (Article, NewsArticle,
+ * BlogPosting) identically, so the more precise type costs nothing.
+ *
+ * Two deliberate omissions. There is no `image` — Google's article guidelines
+ * want a real, crawlable, post-specific image, and pointing every post at the
+ * site-wide OG card would be the same picture on every article, which is worse
+ * than none. Add it per-post once posts carry their own artwork. And `author`
+ * is the Organization rather than a Person: the posts are written under the
+ * site's name, and inventing a bylined human would be a fabricated claim in
+ * structured data.
+ *
+ * `dateModified` falls back to `datePublished`. Emitting a modified date that
+ * silently tracks the build time — the tempting default — tells Google every
+ * post changed on every deploy, which is exactly the signal that gets lastmod
+ * and dateModified distrusted wholesale (same reasoning as sitemapRoutes.js).
+ */
+export function blogPostingJsonLd({
+  title,
+  description,
+  href,
+  datePublished,
+  dateModified,
+  section,
+  keywords,
+}) {
+  return {
+    "@type": "BlogPosting",
+    "@id": `${absoluteUrl(href)}#post`,
+    headline: title,
+    description,
+    url: absoluteUrl(href),
+    datePublished,
+    dateModified: dateModified || datePublished,
+    author: { "@id": `${SITE_URL}/#organization` },
+    publisher: { "@id": `${SITE_URL}/#organization` },
+    isPartOf: { "@id": `${SITE_URL}/#blog` },
+    // Tells a crawler which URL the article "is" when it appears at several
+    // (e.g. reached via a tag filter query string on the index).
+    mainEntityOfPage: { "@type": "WebPage", "@id": absoluteUrl(href) },
+    ...(section ? { articleSection: section } : {}),
+    ...(keywords && keywords.length > 0 ? { keywords: keywords.join(", ") } : {}),
+  };
+}
+
+/**
+ * The blog index itself, as a Blog node with its posts listed.
+ *
+ * The `@id` here (`#blog`) is what every BlogPosting's `isPartOf` points at,
+ * so the posts and the index form one connected graph rather than a set of
+ * orphaned articles — the same reason toolSoftwareAppJsonLd ties back to the
+ * WebSite node.
+ */
+export function blogJsonLd({ name, description, href, posts }) {
+  return {
+    "@type": "Blog",
+    "@id": `${SITE_URL}/#blog`,
+    name,
+    description,
+    url: absoluteUrl(href),
+    publisher: { "@id": `${SITE_URL}/#organization` },
+    isPartOf: { "@id": `${SITE_URL}/#website` },
+    blogPost: posts.map((post) => ({
+      "@type": "BlogPosting",
+      "@id": `${absoluteUrl(post.href)}#post`,
+      headline: post.title,
+      url: absoluteUrl(post.href),
+      datePublished: post.datePublished,
+    })),
+  };
+}
+
 export function faqJsonLd(qa) {
   return {
     "@type": "FAQPage",

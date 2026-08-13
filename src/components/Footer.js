@@ -86,6 +86,15 @@ export default function Footer() {
               </li>
               <li style={{ marginBottom: "14px" }}>
                 <Link
+                  href="/blog"
+                  className="footer-link"
+                  style={{ display: "inline-block", padding: "4px 0", fontSize: "14px", color: colors.textMuted, textDecoration: "none" }}
+                >
+                  Blog
+                </Link>
+              </li>
+              <li style={{ marginBottom: "14px" }}>
+                <Link
                   href="/contact"
                   className="footer-link"
                   style={{ display: "inline-block", padding: "4px 0", fontSize: "14px", color: colors.textMuted, textDecoration: "none" }}

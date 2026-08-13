@@ -204,6 +204,22 @@ export default function Navbar() {
               </div>
             );
           })}
+          {/* Blog sits before About: it is content people come back for,
+              whereas About is a destination someone visits once. */}
+          <Link
+            href="/blog"
+            className="hover-surface"
+            style={{
+              fontSize: "14px",
+              fontWeight: 500,
+              color: colors.textSecondary,
+              padding: "8px 12px",
+              borderRadius: "8px",
+              textDecoration: "none",
+            }}
+          >
+            Blog
+          </Link>
           <Link
             href="/about"
             className="hover-surface"
@@ -338,6 +354,20 @@ export default function Navbar() {
               </div>
             );
           })}
+          <Link
+            href="/blog"
+            onClick={() => setMobileOpen(false)}
+            style={{
+              display: "block",
+              padding: "12px 4px",
+              fontSize: "15px",
+              fontWeight: 600,
+              color: colors.text,
+              textDecoration: "none",
+            }}
+          >
+            Blog
+          </Link>
           <Link
             href="/about"
             onClick={() => setMobileOpen(false)}

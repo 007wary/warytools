@@ -1,3 +1,4 @@
+import createMdx from "@next/mdx";
 import { withSentryConfig } from "@sentry/nextjs";
 
 // Sentry can ingest CSP violation reports on the same DSN used for error
@@ -284,6 +285,35 @@ const securityHeaders = [
   { key: "X-DNS-Prefetch-Control", value: "off" },
 ];
 
+// Blog posts are .mdx files compiled at build time (see src/lib/blogPosts.js).
+// `pageExtensions` is deliberately NOT widened to include mdx: posts live in
+// src/content/blog and are imported by the [slug] route, they are not routes
+// themselves. Adding "mdx" here would make any stray .mdx file under src/app a
+// live URL, which is a surprising thing for a content file to be.
+const withMdx = createMdx({
+  options: {
+    // remark-gfm is not optional garnish. MDX's core is CommonMark, which has
+    // no tables, no strikethrough, and no autolinks — so a pipe table in a
+    // post renders as a literal paragraph of `| a | b |` text. It looks like
+    // an authoring mistake rather than a missing plugin, and it shipped that
+    // way in the first post here before the built HTML was checked.
+    //
+    // Nothing else is added. Syntax highlighting and heading-anchor plugins
+    // would each pull a dependency in for a blog with no post yet needing one,
+    // and anchors are already handled for free in the MDX component map.
+    //
+    // Named as a STRING, not as an imported function. This project builds with
+    // Turbopack, which serializes loader options to pass them to its Rust
+    // core — a function reference is not serializable and fails the build
+    // outright with "does not have serializable options". The string form is
+    // resolved by Turbopack itself. An imported binding works under webpack,
+    // so this is exactly the kind of thing that looks correct in a tutorial
+    // and breaks here.
+    remarkPlugins: [["remark-gfm", {}]],
+    rehypePlugins: [],
+  },
+});
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   async headers() {
@@ -321,7 +351,7 @@ const nextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
+export default withSentryConfig(withMdx(nextConfig), {
   silent: true,
   // No org/project/authToken here — sourcemap upload is opt-in once
   // SENTRY_ORG/SENTRY_PROJECT/SENTRY_AUTH_TOKEN are set in the environment.

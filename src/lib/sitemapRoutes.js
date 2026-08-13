@@ -172,6 +172,37 @@ function entryFilesFor(route, dir) {
     .map((entry) => path.join(dir, entry.name));
 }
 
+/**
+ * Sitemap entries for the blog's posts.
+ *
+ * These cannot come from discoverRoutes: posts live behind a [slug] dynamic
+ * segment, which that walk deliberately skips (a `[slug]` directory is not a
+ * URL). Without this, every post would be absent from the sitemap while the
+ * /blog index alone was listed — the exact opposite of what a blog built for
+ * search is for.
+ *
+ * lastmod comes from the post's own frontmatter (`updated` if present, else
+ * `date`) rather than from git. This is the one place where a declared date
+ * beats a commit date: a typo fix commits a change to the file, but the
+ * article did not change, and telling Google it did on every touch is the
+ * "everything changed at once" signal the rest of this module works to avoid.
+ * The author saying so with `updated:` is the honest signal.
+ *
+ * @param {object} args
+ * @param {string} args.baseUrl
+ * @param {Array}  args.posts  Post records from getAllPosts().
+ */
+export function buildBlogSitemapEntries({ baseUrl, posts }) {
+  return posts.map((post) => ({
+    url: `${baseUrl}/blog/${post.slug}`,
+    lastModified: post.updated || post.date,
+    changeFrequency: "yearly",
+    // Deeper than a hub, same as a tool page. A post is a real destination
+    // page, not a navigational one.
+    priority: 0.6,
+  }));
+}
+
 export function buildSitemapEntries({ baseUrl, appDir, srcDir, cwd, now = () => new Date() }) {
   // The homepage lives at the app root itself, so it isn't produced by the
   // directory walk — prepend it explicitly. Its route is "/" rather than ""
