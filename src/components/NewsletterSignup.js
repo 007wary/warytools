@@ -110,6 +110,12 @@ export default function NewsletterSignup({
           strokeWidth={1.7}
           color={colors.success}
           aria-hidden="true"
+          // `display: block` + auto margins, not the parent's textAlign.
+          // lucide renders an <svg>, which is display:inline by default — so
+          // it sits on a text baseline and centres as a glyph would, leaving
+          // it visibly off-centre against the block of text below. Making it
+          // a block is what actually centres the shape.
+          style={{ display: "block", margin: "0 auto" }}
         />
         <p
           style={{

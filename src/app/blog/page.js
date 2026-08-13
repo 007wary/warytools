@@ -102,8 +102,26 @@ export default function BlogIndexPage() {
         {/* Below the list, so it never displaces the posts someone came here
             to scan. Shown even in the empty state: before the first post
             ships, "tell me when there is one" is the only useful action the
-            page can offer. */}
+            page can offer.
+
+            The rule above it is doing real work rather than decorating. The
+            signup card and a PostCard share a border, radius and surface, so
+            stacked with only a gap between them the newsletter reads as one
+            more post in the list — the eye groups by repeated shape before it
+            reads any text. The rule says "the list ended here", which is what
+            lets the card below be understood as a different kind of thing. */}
         <div style={{ marginTop: "48px" }}>
+          <div
+            // Decorative, so it is a styled div rather than an <hr>: an <hr>
+            // is a semantic thematic break that screen readers announce, and
+            // the heading inside the card already conveys the section change.
+            aria-hidden="true"
+            style={{
+              height: "1px",
+              backgroundColor: colors.border,
+              marginBottom: "48px",
+            }}
+          />
           <NewsletterSignup
             title="Get new posts by email"
             body="A short email whenever a new guide or tool goes live. Usually once or twice a month. Unsubscribe in one click."

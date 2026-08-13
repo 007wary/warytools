@@ -45,7 +45,11 @@ export default function NewsletterResult({ ok, title, body, action }) {
           // Decorative: the heading immediately below says the same thing in
           // words, so announcing the icon too would just repeat it.
           aria-hidden="true"
-          style={{ marginBottom: "16px" }}
+          // `display: block` + auto side margins, not the parent's textAlign.
+          // lucide renders an <svg>, which is display:inline by default, so it
+          // sits on a text baseline and centres as a glyph rather than as a
+          // shape — visibly off-centre above a block of centred text.
+          style={{ display: "block", margin: "0 auto 16px" }}
         />
 
         <h1
