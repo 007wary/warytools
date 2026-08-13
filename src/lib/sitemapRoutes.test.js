@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { execFileSync } from "child_process";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -278,7 +279,29 @@ describe("buildSitemapEntries", () => {
     // The real repo (unlike the fixture) has git history, so this exercises
     // the primary path: a page's date comes from commits touching page.js and
     // its sibling client component, never from src/lib/tools.js.
+    //
+    // This test needs REAL git history and fails without it. A shallow clone
+    // (`actions/checkout` defaults to fetch-depth: 1) dates every file to the
+    // single fetched commit, so the dates collapse to one value and this
+    // assertion fails — while passing locally, where the history is complete.
+    // The workflow therefore sets fetch-depth: 0, and the guard below turns
+    // the confusing "expected 1 to be greater than 1" into a message naming
+    // the actual cause. Skipping instead was rejected: a silently skipped test
+    // on CI is the same as not having one.
     const repoRoot = process.cwd();
+    const historyDepth = Number(
+      execFileSync("git", ["rev-list", "--count", "HEAD"], {
+        cwd: repoRoot,
+        encoding: "utf8",
+      }).trim()
+    );
+    expect(
+      historyDepth,
+      "needs full git history — this checkout is shallow, so every file dates " +
+        "to one commit. Use actions/checkout with fetch-depth: 0."
+    ).toBeGreaterThan(1);
+
+
     const repoSrc = path.join(repoRoot, "src");
     const entries = buildSitemapEntries({
       baseUrl,

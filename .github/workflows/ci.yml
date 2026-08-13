@@ -25,6 +25,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history, not the default shallow fetch-depth: 1.
+          #
+          # sitemapRoutes.js derives each route's lastmod from the commits
+          # touching that page's own files, and its test asserts the dates
+          # actually differ across pages — which is the whole point, since a
+          # sitemap where every URL shares one timestamp is what gets lastmod
+          # distrusted. Under a shallow clone every file dates to the single
+          # fetched commit, so the dates collapse to one value and the test
+          # fails on CI while passing locally.
+          #
+          # The build has the same dependency: a shallow clone would generate a
+          # real sitemap.xml with every route stamped identically.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
