@@ -23,6 +23,11 @@ const CARD = {
   backgroundColor: colors.surface,
 };
 
+// How long a "Confirm send to N" button stays armed. Two minutes is long
+// enough to read the number and decide, short enough that the count cannot
+// drift meaningfully underneath it. See the guard in handleSend.
+const PREVIEW_TTL_MS = 2 * 60 * 1000;
+
 function formatDate(value) {
   if (!value) return null;
   // en-GB with an explicit UTC timezone, so the rendered date cannot depend on
@@ -352,6 +357,20 @@ export default function AdminClient() {
 
   const handleSend = useCallback(
     async (post, confirming) => {
+      // A confirmation is only good for as long as the count it names is still
+      // plausible. The preview says "Confirm send to 40"; if that button sits
+      // untouched while people subscribe, the second click sends to whatever
+      // the list is NOW, and the number the operator approved is not the
+      // number that gets mailed — which defeats the point of a two-step flow.
+      //
+      // Re-previewing costs one dry run and is always safe, so an expired
+      // confirmation falls back to a fresh preview rather than refusing.
+      if (confirming && (!preview || Date.now() - preview.at > PREVIEW_TTL_MS)) {
+        setPreview(null);
+        setError("That confirmation expired. Press Send again to re-check the count.");
+        return;
+      }
+
       setPending(true);
       setError("");
       setNotice("");
@@ -384,11 +403,31 @@ export default function AdminClient() {
         }
 
         if (!confirming) {
-          setPreview({ slug: post.slug, recipients: payload.recipients });
+          // The route computes this precisely so the block is visible BEFORE
+          // the irreversible click rather than at the point of no return.
+          // Ignoring it left the operator confirming a send that was always
+          // going to 409.
+          if (payload.alreadySent) {
+            setPreview(null);
+            setError(
+              `"${post.slug}" has already been sent. Nothing was emailed.`
+            );
+            await load();
+            return;
+          }
+
+          setPreview({
+            slug: post.slug,
+            recipients: payload.recipients,
+            // Stamped so the confirmation can expire. See PREVIEW_TTL_MS.
+            at: Date.now(),
+          });
           return;
         }
 
+        // Reached only on a confirmed send.
         setPreview(null);
+
         setNotice(
           `Sent "${payload.subject}" to ${payload.sent} of ${payload.recipients} subscribers.`
         );
@@ -399,7 +438,10 @@ export default function AdminClient() {
         setPending(false);
       }
     },
-    [load]
+    // `preview` is read by the staleness guard, so it must be a dependency —
+    // without it the guard closes over the preview as it was on first render
+    // and never fires.
+    [load, preview]
   );
 
   const signOut = useCallback(async () => {
