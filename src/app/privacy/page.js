@@ -194,15 +194,15 @@ export default function PrivacyPage() {
         <Section id="newsletter" title="Newsletter">
           <p style={{ marginBottom: "10px" }}>
             If you subscribe to the newsletter, we store your email address in a Supabase
-            database, along with when you subscribed, when you confirmed, and when you
-            unsubscribed if you do. That is the entire record — no name, no location, and
-            nothing about which tools you use.
+            database, along with when you subscribed and when you unsubscribed if you do. That is
+            the entire record — no name, no location, and nothing about which tools you use.
           </p>
           <p style={{ marginBottom: "10px" }}>
-            Subscribing is confirmed opt-in: we email you a link, and until you click it you
-            receive nothing else. If someone types your address in by mistake, or on purpose,
-            ignoring that one email is the end of it. Emails are delivered by Resend, our email
-            provider, the same one the contact form uses.
+            Subscribing takes effect immediately, and we send a welcome email confirming it.
+            That email &mdash; like every one we send &mdash; carries a one-click unsubscribe
+            link, so if someone entered your address by mistake, or on purpose, one click ends
+            it permanently. Emails are delivered by Resend, our email provider, the same one the
+            contact form uses.
           </p>
           <p style={{ marginBottom: "10px" }}>
             Every newsletter email carries a one-click unsubscribe link that works without

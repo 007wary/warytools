@@ -119,7 +119,7 @@ export default function NewsletterSignup({
             color: colors.text,
           }}
         >
-          Check your inbox
+          You&rsquo;re subscribed
         </p>
         <p
           style={{
@@ -129,11 +129,14 @@ export default function NewsletterSignup({
             color: colors.textSecondary,
           }}
         >
-          {/* The confirmation step is stated rather than assumed. Someone who
-              expects to be subscribed already will not go looking for an
-              email, and an unconfirmed address receives nothing, ever. */}
-          We&rsquo;ve sent you a link to confirm your subscription. It expires in
-          three days.
+          {/* States that the subscription is already active — there is no
+              confirmation step to complete, so implying one would send people
+              looking for an email they don't need to act on. The welcome is
+              mentioned because it's about to arrive and shouldn't surprise
+              them. */}
+          You&rsquo;ll get an email whenever a new guide or tool goes live.
+          We&rsquo;ve sent a welcome message with a one-click unsubscribe link,
+          in case you change your mind.
         </p>
       </div>
     );

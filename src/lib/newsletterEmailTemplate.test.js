@@ -2,14 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   escapeHtml,
   postSubject,
-  renderConfirmEmailHtml,
-  renderConfirmEmailText,
+  renderWelcomeEmailHtml,
+  renderWelcomeEmailText,
   renderPostEmailHtml,
   renderPostEmailText,
 } from "./newsletterEmailTemplate";
 
 const SITE = "https://wary.tools";
-const CONFIRM = `${SITE}/newsletter/confirm?token=confirm.abc.123.sig`;
 const UNSUB = `${SITE}/newsletter/unsubscribe?token=unsubscribe.abc.0.sig`;
 
 const POST = {
@@ -38,15 +37,8 @@ describe("escapeHtml", () => {
   });
 });
 
-describe("renderConfirmEmailHtml", () => {
-  const html = renderConfirmEmailHtml({ confirmUrl: CONFIRM, siteUrl: SITE });
-
-  it("contains the confirm link in both the button and as pasteable text", () => {
-    // Some clients strip or mangle buttons; a confirmation whose only action is
-    // unreachable is a subscription that silently never completes.
-    const occurrences = html.split(CONFIRM).length - 1;
-    expect(occurrences).toBeGreaterThanOrEqual(2);
-  });
+describe("renderWelcomeEmailHtml", () => {
+  const html = renderWelcomeEmailHtml({ unsubscribeUrl: UNSUB, siteUrl: SITE });
 
   it("declares a charset, twice, so an em-dash does not arrive as mojibake", () => {
     expect(html).toContain('<meta charset="utf-8">');
@@ -54,25 +46,35 @@ describe("renderConfirmEmailHtml", () => {
   });
 
   it("carries a preheader so the inbox preview is not layout junk", () => {
-    expect(html).toContain("Confirm your WaryTools newsletter subscription");
+    // The preheader is interpolated data, so it goes through escapeHtml and
+    // its apostrophe arrives as &#39; — unlike the headline below, which is a
+    // literal in the template.
+    expect(html).toContain("You&#39;re subscribed to the WaryTools newsletter");
   });
 
-  it("tells the recipient that ignoring it ends the matter", () => {
-    // The entire point of double opt-in: the recipient may not be the person
-    // who typed the address.
-    // A literal in the template rather than interpolated data, so the
-    // apostrophe is not escaped here.
-    expect(html).toContain("Didn't sign up?");
+  it("says the subscription is already active, not that it needs confirming", () => {
+    // Single opt-in: implying a pending confirmation step would send people
+    // looking for an action that does not exist.
+    expect(html).toContain("You're subscribed");
+    expect(html.toLowerCase()).not.toContain("confirm your subscription");
   });
 
-  it("carries no unsubscribe link, because there is nothing yet to leave", () => {
-    expect(html).not.toContain("/newsletter/unsubscribe");
+  it("carries the unsubscribe link at least twice", () => {
+    // Once in the body ("didn't sign up?") and once in the footer. Under
+    // single opt-in the recipient may not be the person who typed the
+    // address, so leaving must be the easiest thing in the email.
+    const occurrences = html.split(UNSUB).length - 1;
+    expect(occurrences).toBeGreaterThanOrEqual(2);
+  });
+
+  it("addresses the recipient who never signed up", () => {
+    expect(html).toContain("Didn't sign up");
   });
 
   it("uses a table-celled button rather than a padded inline link", () => {
     // Outlook ignores padding on inline elements, collapsing a link-styled
     // button into bare underlined text.
-    expect(html).toContain(`background-color:#2563eb;border-radius:10px;`);
+    expect(html).toContain("background-color:#2563eb;border-radius:10px;");
   });
 
   it("uses no flexbox, grid, or <style> block", () => {
@@ -85,6 +87,15 @@ describe("renderConfirmEmailHtml", () => {
     expect(html).not.toContain("var(--");
   });
 
+  it("escapes a quote in the unsubscribe URL rather than breaking out of the href", () => {
+    const hostile = renderWelcomeEmailHtml({
+      unsubscribeUrl: `${UNSUB}"><script>alert(1)</script>`,
+      siteUrl: SITE,
+    });
+
+    expect(hostile).not.toContain("<script>");
+  });
+
   it("balances its tags", () => {
     const opens = (html.match(/<table/g) || []).length;
     const closes = (html.match(/<\/table>/g) || []).length;
@@ -92,11 +103,16 @@ describe("renderConfirmEmailHtml", () => {
   });
 });
 
-describe("renderConfirmEmailText", () => {
-  it("contains the bare link, unwrapped by markup", () => {
-    const text = renderConfirmEmailText({ confirmUrl: CONFIRM, siteUrl: SITE });
-    expect(text).toContain(CONFIRM);
+describe("renderWelcomeEmailText", () => {
+  const text = renderWelcomeEmailText({ unsubscribeUrl: UNSUB, siteUrl: SITE });
+
+  it("contains the bare unsubscribe link, unwrapped by markup", () => {
+    expect(text).toContain(UNSUB);
     expect(text).not.toContain("<");
+  });
+
+  it("states the subscription is live", () => {
+    expect(text).toContain("You're subscribed");
   });
 });
 

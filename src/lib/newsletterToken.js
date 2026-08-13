@@ -1,9 +1,17 @@
-// Signed, self-contained tokens for the confirm and unsubscribe links.
+// Signed, self-contained tokens for the unsubscribe links in every email.
 //
 // These links are clicked from an email client, by someone with no session and
 // no account, so the token in the URL *is* the entire proof of authorization.
 // That makes this file the security boundary for the newsletter, in the same
 // way the database is for the shortener.
+//
+// A CONFIRM purpose used to live here too, for a double opt-in flow that has
+// since been replaced by single opt-in (a subscription is live on submit, and
+// the welcome email reports it rather than gating it). The purpose field is
+// KEPT even though only one value is currently minted: it is inside the
+// signature, so a future second link type cannot be forged from an unsubscribe
+// token, and removing it would silently make every existing token
+// interchangeable with whatever came next.
 //
 // The shape is a compact HMAC-signed triple:
 //
@@ -29,17 +37,17 @@
 
 import { createHmac, timingSafeEqual } from "crypto";
 
-// Confirm links are short-lived: an unconfirmed address is a claim someone
-// made about an inbox they may not own, and a claim that sat unacted-on for
-// three days is stale. Unsubscribe links must outlive the email they are in —
-// people unsubscribe from a post they finally opened months later, and an
-// expired unsubscribe link is both infuriating and, under CAN-SPAM/GDPR, the
-// one link that is not optional. So it does not expire.
-export const CONFIRM_TTL_SECONDS = 3 * 24 * 60 * 60;
+// Unsubscribe links must outlive the email they are in — people unsubscribe
+// from a post they finally opened months later, and an expired unsubscribe
+// link is both infuriating and, under CAN-SPAM/GDPR, the one link that is not
+// optional. So it does not expire.
+//
+// The expiry machinery below is kept rather than deleted, because it is inside
+// the signature: dropping it would change the signed payload shape and
+// invalidate every unsubscribe link already sitting in someone's inbox.
 export const NO_EXPIRY = 0;
 
 export const TokenPurpose = {
-  CONFIRM: "confirm",
   UNSUBSCRIBE: "unsubscribe",
 };
 
@@ -178,17 +186,12 @@ export function verifyToken(token, expectedPurpose, now = Date.now()) {
 }
 
 /**
- * The absolute URLs that go in an email.
+ * The absolute unsubscribe URL that goes in every email.
  *
  * Built here rather than inline in the templates so the token shape and the
  * route path can never disagree, and so a test can assert the link a
  * subscriber actually receives.
  */
-export function confirmUrl(siteUrl, email, now = Date.now()) {
-  const token = createToken(TokenPurpose.CONFIRM, email, CONFIRM_TTL_SECONDS, now);
-  return `${siteUrl}/newsletter/confirm?token=${encodeURIComponent(token)}`;
-}
-
 export function unsubscribeUrl(siteUrl, email, now = Date.now()) {
   const token = createToken(TokenPurpose.UNSUBSCRIBE, email, NO_EXPIRY, now);
   return `${siteUrl}/newsletter/unsubscribe?token=${encodeURIComponent(token)}`;

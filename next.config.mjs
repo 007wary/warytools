@@ -362,6 +362,24 @@ const nextConfig = {
         destination: "/pdf/jpg-to-pdf",
         permanent: true,
       },
+      {
+        // The newsletter moved from double to single opt-in on 2026-08-13, so
+        // /newsletter/confirm no longer exists. The same "a live URL cannot
+        // just vanish" rule applies as for a moved tool, and here it is
+        // sharper than usual: confirmation links were already delivered to
+        // real inboxes, and a 404 would tell someone who is *already
+        // subscribed* that their subscription failed. Sending them to the blog
+        // is the honest landing — they are on the list and there is nothing
+        // for them to do.
+        //
+        // 307 rather than 308: this is a temporary courtesy for tokens that
+        // expire three days after the last confirmation email went out, not a
+        // permanent fact about the URL space. A cached-forever 308 would
+        // outlive the reason for it.
+        source: "/newsletter/confirm",
+        destination: "/blog",
+        permanent: false,
+      },
     ];
   },
 };

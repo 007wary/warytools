@@ -126,22 +126,29 @@ function renderButton(href, label) {
 }
 
 /**
- * The confirmation email for a new subscription.
+ * The welcome email for a new subscription.
  *
- * This is the entire double opt-in mechanism: until the link in it is clicked,
- * the address receives nothing else, ever. That is what makes a public form
- * safe to expose — anyone can type a stranger's address into it, and this
- * guarantees the stranger gets exactly one email rather than a subscription
- * they never asked for.
+ * Replaces an earlier confirmation email. The site now uses single opt-in: the
+ * subscription is live the moment the form is submitted, so this email
+ * *reports* a subscription rather than gating one, and needs no click to work.
  *
- * @param {{confirmUrl: string, siteUrl: string}} input
+ * That inverts what the email has to do. A confirmation could be quiet, because
+ * its link was the whole product. This one is the only notice the recipient
+ * ever gets that they are on a list — and under single opt-in the recipient is
+ * not guaranteed to be the person who typed the address. So the unsubscribe
+ * link is prominent rather than buried, and the "if this wasn't you" line is
+ * near the top: for someone who did not sign up, leaving is the only thing
+ * this email needs to help them do, and making them hunt for it is what earns
+ * a spam report instead.
+ *
+ * @param {{unsubscribeUrl: string, siteUrl: string}} input
  * @returns {string}
  */
-export function renderConfirmEmailHtml({ confirmUrl, siteUrl }) {
+export function renderWelcomeEmailHtml({ unsubscribeUrl, siteUrl }) {
   // The URL is already ours (built by newsletterToken) and its token is
   // base64url, so it needs no escaping for a URL context — but it lands inside
   // an HTML attribute, where an unescaped quote would break out of the href.
-  const href = escapeHtml(confirmUrl);
+  const unsubHref = escapeHtml(unsubscribeUrl);
   const origin = escapeHtml(siteUrl);
 
   const body = `
@@ -151,55 +158,50 @@ export function renderConfirmEmailHtml({ confirmUrl, siteUrl }) {
 WaryTools newsletter
 </p>
 <p style="margin:0;font-family:${FONT};font-size:21px;font-weight:700;line-height:1.35;color:${BRAND.text};">
-Confirm your subscription
+You're subscribed
 </p>
 </td>
 </tr>
 
 <tr>
-<td style="padding:14px 28px 0;font-family:${FONT};font-size:15px;line-height:1.65;color:${BRAND.textSecondary};">
+<td style="padding:14px 28px 0;">
 <p style="margin:0 0 14px;font-family:${FONT};font-size:15px;line-height:1.65;color:${BRAND.textSecondary};">
-Tap the button below and you'll get an email whenever a new guide or tool goes live on WaryTools. Usually once or twice a month, never more.
+Thanks for signing up. You'll get an email whenever a new guide or tool goes live on WaryTools &mdash; usually once or twice a month, never more.
+</p>
+<p style="margin:0;font-family:${FONT};font-size:15px;line-height:1.65;color:${BRAND.textSecondary};">
+Nothing else. No ads, no sharing your address, and no account to manage.
 </p>
 </td>
 </tr>
 
 <tr>
 <td style="padding:22px 28px 0;">
-${renderButton(href, "Confirm subscription")}
-</td>
-</tr>
-
-<!-- The raw URL as well as the button. Some clients render buttons poorly,
-     some strip them, and a confirmation email whose only action is
-     unreachable is a subscription that silently never completes. -->
-<tr>
-<td style="padding:20px 28px 0;">
-<p style="margin:0;font-family:${FONT};font-size:12.5px;line-height:1.6;color:${BRAND.textMuted};">
-If the button doesn't work, paste this into your browser:<br>
-<span style="color:${BRAND.textMuted};word-break:break-all;overflow-wrap:break-word;">${href}</span>
-</p>
+${renderButton(`${origin}/blog`, "Read the blog")}
 </td>
 </tr>
 
 <tr>
-<td style="padding:22px 28px 26px;">
+<td style="padding:24px 28px 26px;">
 <div style="height:1px;background-color:${BRAND.border};font-size:0;line-height:0;">&nbsp;</div>
-<!-- The "you can ignore this" line is the whole point of double opt-in, and it
-     is stated plainly rather than buried: the recipient may not be the person
-     who typed the address. -->
+<!-- Prominent, not buried, and deliberately high in the email. Under single
+     opt-in the recipient may not be the person who typed the address, and for
+     them the ONLY useful thing here is a way out. Someone who cannot find it
+     reaches for the spam button instead, and enough of those take the sending
+     domain down with them - contact form included. -->
 <p style="margin:16px 0 0;font-family:${FONT};font-size:12.5px;line-height:1.6;color:${BRAND.textMuted};">
-Didn't sign up? Ignore this email and nothing happens &mdash; we won't email you again. The link expires in three days.
+Didn't sign up, or changed your mind?
+<a href="${unsubHref}" style="color:${BRAND.primary};text-decoration:underline;">Unsubscribe here</a> &mdash; one click, no questions, and you'll hear nothing further.
 </p>
 </td>
 </tr>`;
 
-  const footer = `<p style="margin:16px 0 0;font-family:${FONT};font-size:11.5px;color:${BRAND.textFaint};">
-<a href="${origin}" style="color:${BRAND.textMuted};text-decoration:none;">${origin.replace(/^https?:\/\//, "")}</a> &mdash; free PDF, image and calculator tools
+  const footer = `<p style="margin:16px 0 0;font-family:${FONT};font-size:11.5px;line-height:1.7;color:${BRAND.textFaint};">
+<a href="${origin}" style="color:${BRAND.textMuted};text-decoration:none;">${origin.replace(/^https?:\/\//, "")}</a> &mdash; free PDF, image and calculator tools<br>
+<a href="${unsubHref}" style="color:${BRAND.textMuted};text-decoration:underline;">Unsubscribe</a>
 </p>`;
 
   return renderShell({
-    preheader: "Confirm your WaryTools newsletter subscription",
+    preheader: "You're subscribed to the WaryTools newsletter",
     body,
     footer,
   });
@@ -212,17 +214,19 @@ Didn't sign up? Ignore this email and nothing happens &mdash; we won't email you
  * prefer it, and HTML-only mail is itself a spam signal — which for a bulk
  * send matters far more than it does for a single contact notification.
  */
-export function renderConfirmEmailText({ confirmUrl, siteUrl }) {
+export function renderWelcomeEmailText({ unsubscribeUrl, siteUrl }) {
   return [
-    "Confirm your subscription",
+    "You're subscribed",
     "",
-    "Tap the link below and you'll get an email whenever a new guide or tool goes live on WaryTools. Usually once or twice a month, never more.",
+    "Thanks for signing up. You'll get an email whenever a new guide or tool goes live on WaryTools - usually once or twice a month, never more.",
     "",
-    confirmUrl,
+    "Nothing else. No ads, no sharing your address, and no account to manage.",
     "",
-    "Didn't sign up? Ignore this email and nothing happens - we won't email you again. The link expires in three days.",
+    `Read the blog: ${siteUrl}/blog`,
     "",
-    siteUrl,
+    "---",
+    "Didn't sign up, or changed your mind? Unsubscribe here - one click, no questions:",
+    unsubscribeUrl,
   ].join("\n");
 }
 

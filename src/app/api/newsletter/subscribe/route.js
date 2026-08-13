@@ -4,31 +4,38 @@ import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { SITE_URL } from "@/lib/siteUrl";
 import { checkSubscription, rejectionMessage } from "@/lib/newsletterValidation";
-import { confirmUrl } from "@/lib/newsletterToken";
+import { unsubscribeUrl } from "@/lib/newsletterToken";
 import {
-  renderConfirmEmailHtml,
-  renderConfirmEmailText,
+  renderWelcomeEmailHtml,
+  renderWelcomeEmailText,
 } from "@/lib/newsletterEmailTemplate";
-import { sendEmail } from "@/lib/newsletterMailer";
+import { listUnsubscribeHeaders, sendEmail } from "@/lib/newsletterMailer";
 
-// Takes a subscription request and sends the confirmation email.
+// Subscribes an address immediately and sends a welcome email.
 //
-// This is the only newsletter route reachable from a public form, so it is
-// where the abuse pressure lands. Three separate defences, each covering a
-// case the others miss:
+// SINGLE opt-in, by an explicit product decision: the subscription is live the
+// moment the form is submitted, and the welcome email reports that rather than
+// gating it. An earlier version required a confirmation click. What that
+// bought was protection against someone entering a stranger's address; what it
+// cost was every real reader having to find an email and click before they
+// were subscribed at all.
+//
+// Losing the confirm step means the remaining defences carry more weight than
+// they used to, so none of them may be quietly dropped:
 //
 //   1. A per-IP quota (consume_newsletter_quota) bounds one SENDER.
-//   2. A per-address cap and cooldown inside request_newsletter_subscription
-//      bounds one VICTIM — without it, a stranger's address submitted from
-//      many IPs gets a confirmation email each time, and a public form becomes
-//      a mail-bomb aimed at whoever the attacker names.
-//   3. Double opt-in means an address that never confirms receives exactly one
-//      email, ever, no matter what.
+//   2. A per-address cooldown inside subscribe_newsletter_directly bounds one
+//      VICTIM — without it, a stranger's address submitted repeatedly earns
+//      them a welcome email every time, and the public form becomes a
+//      mail-bomb aimed at whoever the attacker names.
+//   3. The welcome email leads with an unsubscribe link, because under single
+//      opt-in the recipient is not guaranteed to be the person who typed the
+//      address, and leaving must be the easiest thing in it.
 //
 // The response is deliberately identical whether the address was new, already
-// subscribed, already confirmed, or suppressed by the cooldown. A form that
-// distinguishes them is an oracle for testing whether a given person is on the
-// list, which is precisely the fact a subscriber list must not leak.
+// subscribed, or suppressed by the cooldown. A form that distinguishes them is
+// an oracle for testing whether a given person is on the list, which is
+// precisely the fact a subscriber list must not leak.
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -70,14 +77,6 @@ function fail(message, status, headers = {}) {
     { status, headers: { "Cache-Control": "no-store", ...headers } }
   );
 }
-
-// The one success message, used for every non-error outcome. Worded to be true
-// in all of them: a new address gets a confirmation, an already-confirmed one
-// gets nothing, and both are honestly described by "check your inbox to
-// confirm" — the second person simply has nothing to find, which tells an
-// attacker nothing.
-const SUCCESS =
-  "Almost there — check your inbox for a confirmation link. It expires in three days.";
 
 const UNAVAILABLE =
   "Subscriptions are temporarily unavailable. Please try again in a few minutes.";
@@ -136,12 +135,13 @@ export async function POST(req) {
     return fail(UNAVAILABLE, 503);
   }
 
-  // Records the request and decides whether an email is warranted. Returns a
-  // bare boolean by design — see the function's own comment; anything richer
-  // would leak whether the address was already on the list.
+  // Subscribes the address (always) and reports whether a welcome email is
+  // warranted (subject to the per-address cooldown). Returns a bare boolean by
+  // design — see the function's own comment; anything richer would leak
+  // whether the address was already on the list.
   let shouldSend;
   try {
-    const { data, error } = await supabase.rpc("request_newsletter_subscription", {
+    const { data, error } = await supabase.rpc("subscribe_newsletter_directly", {
       p_email: email,
     });
 
@@ -156,31 +156,37 @@ export async function POST(req) {
     return fail(UNAVAILABLE, 503);
   }
 
-  // Already confirmed, or capped, or inside the cooldown. Same response as a
-  // successful send.
+  // Already subscribed and emailed recently. They ARE subscribed either way —
+  // only the welcome is suppressed — so this is the same response as a send.
   if (!shouldSend) {
     return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
   }
+
+  const unsubscribe = unsubscribeUrl(SITE_URL, email);
 
   const sent = await sendEmail({
     apiKey: RESEND_API_KEY,
     from: NEWSLETTER_FROM,
     to: email,
-    subject: "Confirm your WaryTools subscription",
-    html: renderConfirmEmailHtml({ confirmUrl: confirmUrl(SITE_URL, email), siteUrl: SITE_URL }),
-    text: renderConfirmEmailText({ confirmUrl: confirmUrl(SITE_URL, email), siteUrl: SITE_URL }),
-    // Deliberately NO List-Unsubscribe header. This is a transactional
-    // confirmation, not bulk mail: there is nothing to unsubscribe from until
-    // it is acted on, and offering to remove an address that isn't subscribed
-    // is a confusing no-op.
+    subject: "You're subscribed to WaryTools",
+    html: renderWelcomeEmailHtml({ unsubscribeUrl: unsubscribe, siteUrl: SITE_URL }),
+    text: renderWelcomeEmailText({ unsubscribeUrl: unsubscribe, siteUrl: SITE_URL }),
+    // Carries List-Unsubscribe, unlike the confirmation email it replaces.
+    // That one was transactional with nothing yet to leave; this one announces
+    // a live subscription, so the recipient is owed a one-click exit from the
+    // very first message — especially since under single opt-in they may not
+    // be the person who signed up.
+    headers: listUnsubscribeHeaders(unsubscribe),
   });
 
   if (!sent.ok) {
+    // The subscription itself already succeeded, so this is logged but not
+    // reported as a failure to the visitor: they are on the list, and telling
+    // them otherwise would invite a resubmit that changes nothing.
     Sentry.captureMessage(
-      `Resend rejected a newsletter confirmation: ${sent.detail}`,
+      `Resend rejected a newsletter welcome: ${sent.detail}`,
       "error"
     );
-    return fail(UNAVAILABLE, 502);
   }
 
   return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });

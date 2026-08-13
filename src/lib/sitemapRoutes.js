@@ -207,13 +207,19 @@ export function buildBlogSitemapEntries({ baseUrl, posts }) {
 //
 // discoverRoutes finds every page.js by design, which is what makes adding a
 // tool a zero-edit change here — but it means a page that exists only as the
-// end of a private journey gets crawled and indexed unless it is named. Both
-// entries below are the landing pages for links inside newsletter emails: they
-// do nothing without a valid signed token, so a crawler reaches a "this link is
-// invalid" page and indexes that as a wary.tools search result. They also carry
-// `robots: { index: false }` in their own metadata — this list stops us
-// *advertising* them, that stops them being indexed if found another way, and
-// neither alone is sufficient.
+// end of a private journey gets crawled and indexed unless it is named. The
+// entry below is the landing page for the unsubscribe link inside newsletter
+// emails: it does nothing without a valid signed token, so a crawler reaches a
+// "this link is invalid" page and indexes that as a wary.tools search result.
+// It also carries `robots: { index: false }` in its own metadata — this list
+// stops us *advertising* it, that stops it being indexed if found another way,
+// and neither alone is sufficient.
+//
+// /newsletter/confirm was here too until the switch from double to single
+// opt-in on 2026-08-13 removed that page; it now 307s to /blog from
+// next.config.mjs. Kept listed anyway: the route no longer exists, so this
+// costs nothing, and it means a future reinstatement cannot silently ship
+// crawlable.
 export const SITEMAP_EXCLUDED_ROUTES = [
   "/newsletter/confirm",
   "/newsletter/unsubscribe",
