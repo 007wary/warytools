@@ -1,12 +1,12 @@
 ---
 title: How to delete pages from a PDF without uploading it anywhere
-description: Remove unwanted pages from a PDF in your browser — no upload, no account, no watermark. Here is how it works and what to watch out for.
+description: Delete pages from a PDF in your browser — free, no upload, no account, no watermark. How PDF page deletion works, and what to watch out for.
 date: 2026-08-13
 category: guide
 tags: [pdf, privacy, how-to]
 tool: delete-pages
 cover: /blog/how-to-delete-pages-from-a-pdf.webp
-coverAlt: A grid of white document pages on a dark background, with two pages tinted red and marked with a circular white cross to show they are being removed
+coverAlt: A grid of white document pages on a dark background, with two pages tinted red and marked with a circular white cross to show they are being deleted from the PDF
 ---
 
 Most PDFs arrive with pages you did not ask for. A scanned contract picks up a blank
@@ -14,16 +14,31 @@ separator sheet. A bank statement carries four pages of terms you will never rea
 exported report ends with an empty final page because the last table broke across the
 margin.
 
-Deleting them is a two-minute job. The awkward part is that most of the obvious ways to
-do it involve handing the entire document to a stranger's server first.
+To delete pages from a PDF is a two-minute job. The awkward part is that most of the
+obvious ways to do it involve handing the entire document to a stranger's server first.
 
 ## The short version
 
 <ToolCallout slug="delete-pages" />
 
 Open the tool, drop the file in, click the pages you want gone, download the result. The
-file never leaves your device — the work happens in the browser tab, which is why there
-is no upload progress bar and no queue.
+PDF never leaves your device — the work happens in the browser tab, which is why there is
+no upload progress bar and no queue.
+
+## How to delete pages from a PDF in your browser
+
+Four steps, start to finish:
+
+1. **Open the PDF.** Drag it onto the drop zone, or click to browse for it. Every page
+   appears as a thumbnail.
+2. **Click the pages to delete.** Each one you click dims and is marked for removal.
+   Shift-click to take a whole run at once.
+3. **Check the preview.** The dimmed pages are the ones about to disappear, so what is
+   left un-dimmed is the PDF you are about to get.
+4. **Delete and download.** One click removes the pages and hands you the new file.
+
+There is no sign-up, no watermark on the output, and no page limit beyond what your
+device can hold in memory.
 
 ## Why the pages you click are the ones that disappear
 
@@ -40,7 +55,7 @@ easily distinguish the colours.
 Shift-click extends a selection rather than toggling it, so dragging across a range that
 is already partly selected fills the gaps instead of punching holes in it.
 
-## Deleting versus extracting
+## Deleting versus extracting PDF pages
 
 These are the same operation seen from opposite ends, and which one you want depends on
 how many pages you are keeping.
@@ -57,7 +72,7 @@ document's own sequence — so clicking page 7 before page 2 does not reverse an
 
 <ToolCallout slug="extract-pages" />
 
-## What survives the edit, and what does not
+## What survives when you remove pages from a PDF
 
 A PDF is more than its pages. It also carries an outline (the bookmark sidebar), form
 fields, named destinations, page labels, and a structure tree that screen readers navigate
@@ -75,25 +90,36 @@ is a much larger job for a much smaller benefit than keeping the rest of it inta
   only affects tools that need a text layer.
 </Callout>
 
-## You cannot delete every page
+## You cannot delete every page of a PDF
 
 The tool refuses to remove all of them, deliberately. A zero-page PDF is something the
 underlying library will write without complaint and most readers refuse to open, so you
 would get a download that looks like success and is not. If you want no pages, you want
 no file.
 
-## Does the file really not get uploaded?
+## Delete PDF pages without uploading: does it really work that way?
 
 Yes, and it is worth knowing how to check rather than taking anyone's word for it. Open
-your browser's developer tools, switch to the Network tab, and run the deletion. You will
-see the page's own assets load and nothing else — no request carrying your document.
+your browser's developer tools, switch to the Network tab, and delete a page. You will
+see the page's own assets load and nothing else — no request carrying your PDF.
 
-The reason it works this way is not privacy theatre. Rearranging pages is a
-straightforward manipulation of the file's own structure, and browsers have been able to
-do it for years. Sending the file to a server would be slower, would require someone to
-store it however briefly, and would buy nothing.
+The reason it works this way is not privacy theatre. Removing pages is a straightforward
+manipulation of the file's own structure, and browsers have been able to do it for years.
+Sending the PDF to a server would be slower, would require someone to store it however
+briefly, and would buy nothing.
 
 Four tools on this site are the exception and do need a server — converting to and from
 Word, PowerPoint, and Excel, because reconstructing an editable document from positioned
 glyphs is analysis no browser library performs. Each of those says so on the page, before
 the file picker.
+
+## Where page deletion fits with the rest
+
+Deleting pages is one of the smaller jobs people mean when they say they want to
+[edit a PDF](/pdf). The others are close cousins and work the same way, in the browser
+with nothing uploaded: reordering pages, splitting one file into several, merging several
+into one, rotating pages that were scanned sideways, and cropping margins.
+
+If you are here because a document needs more than a couple of pages taken out, the full
+set of [free PDF tools](/pdf) is worth a look — most tasks that sound like they need a
+desktop application turn out to be a tab and a drag-and-drop.
