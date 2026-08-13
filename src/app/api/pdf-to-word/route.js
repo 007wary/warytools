@@ -1,7 +1,7 @@
-import { createClient } from "@supabase/supabase-js";
 import { createHash } from "crypto";
 import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
+import { isRateLimitDbConfigured, rateLimitDb } from "@/lib/rateLimitDb";
 import { SITE_URL } from "@/lib/siteUrl";
 import {
   MAX_UPLOAD_BYTES,
@@ -37,11 +37,12 @@ const CONVERTER_SECRET = process.env.PDF_CONVERTER_SECRET;
 const DOCX_TYPE =
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  { auth: { persistSession: false } }
-);
+// Built per request via the service role, NOT a module-scope anon client.
+//
+// The quota RPC is no longer executable by `anon`: the bucket is a salted hash
+// of the caller's IP, so a publicly callable limiter let a stranger spend
+// someone else's allowance — a lockout primitive rather than a defence. See
+// src/lib/rateLimitDb.js for the full reasoning and the verification.
 
 const SITE_ORIGIN = new URL(SITE_URL).origin;
 
@@ -108,10 +109,16 @@ export async function POST(req) {
     return reject("unavailable", 503);
   }
 
+  // Fails CLOSED when the limiter's key is absent, matching the error branch
+  // below: an unenforceable limit must not silently become no limit.
+  if (!isRateLimitDbConfigured()) {
+    return reject("unavailable", 503);
+  }
+
   // Quota is consumed before the expensive work, so a caller who is over
   // budget costs us a single Postgres round-trip instead of a conversion.
   try {
-    const { data: allowed, error } = await supabase.rpc("consume_pdf_conversion_quota", {
+    const { data: allowed, error } = await rateLimitDb().rpc("consume_pdf_conversion_quota", {
       p_bucket: rateLimitBucket(req),
     });
 
