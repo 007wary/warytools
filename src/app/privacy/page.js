@@ -1,5 +1,6 @@
 import { colors } from "@/lib/theme";
 import JsonLd from "@/components/JsonLd";
+import ConsentSettingsButton from "@/components/ConsentSettingsButton";
 import { jsonLdGraph, breadcrumbJsonLd, webPageJsonLd } from "@/lib/jsonLd";
 import { pageMetadata } from "@/lib/pageMetadata";
 
@@ -15,7 +16,7 @@ export const metadata = pageMetadata({
   path: "/privacy",
 });
 
-const LAST_UPDATED = "August 11, 2026";
+const LAST_UPDATED = "August 13, 2026";
 
 function Section({ id, title, children }) {
   return (
@@ -314,12 +315,18 @@ export default function PrivacyPage() {
             identically either way, because none of them need advertising cookies to run. If
             you refuse, you&rsquo;ll still see ads; they just won&rsquo;t be personalized.
           </p>
-          <p>
+          <p style={{ marginBottom: "10px" }}>
             Your choice is stored in your browser so you&rsquo;re not asked on every page, and
             it&rsquo;s passed to Google&rsquo;s advertising services as a consent signal.
-            Clearing your browser&rsquo;s cookies and site data for WaryTools clears the stored
-            choice, and the message will appear again on your next visit so you can change it.
           </p>
+          <p style={{ marginBottom: "14px" }}>
+            You can change it at any time using the button below, which reopens the same
+            message. Withdrawing consent is meant to be as easy as giving it, so this
+            doesn&rsquo;t ask you to clear cookies or dig through settings. The button appears
+            only if a consent message applies to you — if you&rsquo;re browsing from outside
+            the EEA, UK, or Switzerland there&rsquo;s no stored choice to change.
+          </p>
+          <ConsentSettingsButton />
         </Section>
 
         <Section id="cookies-choices" title="Cookies and your choices">

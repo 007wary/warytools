@@ -325,6 +325,59 @@ const securityHeaders = [
   },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
+
+  // Severs the link between this page and any window it opens or is opened by,
+  // so neither gets a `window.opener` handle to the other. `frame-ancestors`
+  // and X-Frame-Options above cover being *embedded*; this covers the other
+  // direction, which they say nothing about.
+  //
+  // `same-origin-allow-popups`, NOT `same-origin`, and the difference is
+  // load-bearing here. Plain `same-origin` also severs popups this page opens
+  // deliberately, which breaks Google's CMP: the consent flow's "Manage
+  // options" screen and the account chooser open as popups from
+  // consent.google.com and need their opener to post the consent choice back.
+  // Under `same-origin` the popup opens, the visitor makes a choice, and
+  // nothing is recorded — a failure visible only to EEA/UK/Swiss visitors, for
+  // exactly the reason the funding-choices CSP note above gives. The
+  // allow-popups variant keeps every protection that matters (nothing can
+  // reach *into* this page) while letting a popup this page opened talk back.
+  //
+  // Every outbound link here already sets rel="noopener" individually, so this
+  // is defence in depth rather than a fix — it means a link added later
+  // without it is still safe.
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
+
+  // Stops other sites embedding this origin's responses as a subresource
+  // (<img>, <script>, <iframe>). Nothing here is meant to be hotlinked, and it
+  // closes the Spectre-adjacent side channel where a cross-origin page pulls a
+  // response into its own process to measure it.
+  //
+  // `same-origin` is safe for the site's own pages and scripts because
+  // nothing here is meant to be embedded by a third party: no oEmbed, no
+  // public image CDN, no widget.
+  //
+  // Social preview images are the deliberate exception and are overridden to
+  // `cross-origin` in headers() below. They are the one class of asset whose
+  // entire purpose is being displayed on someone else's domain. A crawler
+  // that merely fetches the URL is unaffected either way — CORP governs
+  // subresource embedding, not direct requests — but several preview
+  // surfaces (Slack, Discord, and Twitter's card renderer) load the image
+  // into a rendered page, where it *is* a cross-origin subresource and CORP
+  // applies. `/opengraph-image` already answers with
+  // `Access-Control-Allow-Origin: *`, which is a separate mechanism and does
+  // NOT satisfy CORP, so without the override the card silently stops
+  // rendering on those surfaces while looking perfectly fine in a curl.
+  //
+  // NOTE: Cross-Origin-Embedder-Policy is deliberately NOT set. `require-corp`
+  // would demand a CORP header from every cross-origin subresource, and the ad
+  // stack serves creatives and frames from hosts that send none — so it would
+  // blank the entire ad inventory site-wide, reported by AdSense as zero
+  // impressions with no diagnosis. That is the same silent-failure class the
+  // frame-src note above describes. COEP buys nothing here anyway: its purpose
+  // is unlocking SharedArrayBuffer via cross-origin isolation, and nothing on
+  // this site uses it (the PDF and image workers use plain postMessage with
+  // transferable ArrayBuffers, which needs no isolation).
+  { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
@@ -382,6 +435,40 @@ const nextConfig = {
       {
         source: "/:path*",
         headers: securityHeaders,
+      },
+
+      // Social preview images, relaxed back to `cross-origin`.
+      //
+      // These override the site-wide `Cross-Origin-Resource-Policy:
+      // same-origin` set above, and must come AFTER it — for a header both
+      // rules match, the later entry wins. Their whole purpose is to be
+      // rendered on another domain (a Slack unfurl, a Twitter card, a
+      // Facebook share), which is precisely what `same-origin` forbids.
+      //
+      // Scoped to images only, and named rather than wildcarded: this is a
+      // deliberate hole, so it should cover exactly the files that need it.
+      // - /opengraph-image and /apple-icon.png are Next's generated metadata
+      //   routes from src/app.
+      // - /blog/* covers per-post covers in public/blog, declared by a post's
+      //   `cover:` frontmatter and used for og:image and the JSON-LD image.
+      {
+        source: "/opengraph-image",
+        headers: [{ key: "Cross-Origin-Resource-Policy", value: "cross-origin" }],
+      },
+      {
+        source: "/apple-icon.png",
+        headers: [{ key: "Cross-Origin-Resource-Policy", value: "cross-origin" }],
+      },
+      {
+        source: "/icon-512.png",
+        headers: [{ key: "Cross-Origin-Resource-Policy", value: "cross-origin" }],
+      },
+      {
+        // Blog covers. The Organization JSON-LD's `logo` and every post's
+        // og:image live under here or above; a crawler that cannot load them
+        // falls back to no preview image at all.
+        source: "/blog/:file*.(jpg|jpeg|png|webp|gif)",
+        headers: [{ key: "Cross-Origin-Resource-Policy", value: "cross-origin" }],
       },
     ];
   },
