@@ -183,10 +183,36 @@ export default function PrivacyPage() {
             only to reply to you.
           </p>
           <p>
-            We do not store contact messages in a database, add you to a mailing list, or share
-            what you send with anyone. To limit abuse we keep a count of recent submissions
-            against a one-way hash of your IP address — the same method the other server-backed
-            tools use, and the hash cannot be reversed to an IP.
+            We do not store contact messages in a database, add you to the newsletter, or share
+            what you send with anyone. Writing to us never subscribes you to anything — the
+            newsletter is a separate, explicit opt-in described below. To limit abuse we keep a
+            count of recent submissions against a one-way hash of your IP address — the same
+            method the other server-backed tools use, and the hash cannot be reversed to an IP.
+          </p>
+        </Section>
+
+        <Section id="newsletter" title="Newsletter">
+          <p style={{ marginBottom: "10px" }}>
+            If you subscribe to the newsletter, we store your email address in a Supabase
+            database, along with when you subscribed, when you confirmed, and when you
+            unsubscribed if you do. That is the entire record — no name, no location, and
+            nothing about which tools you use.
+          </p>
+          <p style={{ marginBottom: "10px" }}>
+            Subscribing is confirmed opt-in: we email you a link, and until you click it you
+            receive nothing else. If someone types your address in by mistake, or on purpose,
+            ignoring that one email is the end of it. Emails are delivered by Resend, our email
+            provider, the same one the contact form uses.
+          </p>
+          <p style={{ marginBottom: "10px" }}>
+            Every newsletter email carries a one-click unsubscribe link that works without
+            logging in or replying, and Gmail and Outlook show their own unsubscribe button on
+            them too. We use no tracking pixels, so we do not know whether you opened an email;
+            links in the emails are ordinary links and are not wrapped in a click tracker.
+          </p>
+          <p>
+            We never sell, rent, or share the subscriber list, and we do not use it for anything
+            other than telling you about new posts and tools.
           </p>
         </Section>
 
@@ -329,9 +355,12 @@ export default function PrivacyPage() {
             immediately afterwards, accepts requests only from this site, and stores nothing.
           </p>
           <p>
-            The one piece of persistent backend state, the URL shortener&rsquo;s database, is
-            access-controlled so it only accepts the exact, narrow operations the tool needs
-            (creating a link, reading a redirect, incrementing a click count) — nothing broader.
+            The two pieces of persistent backend state — the URL shortener&rsquo;s database and
+            the newsletter subscriber list — are access-controlled so they only accept the exact,
+            narrow operations needed (creating a link, reading a redirect, incrementing a click
+            count; subscribing, confirming, and unsubscribing an address) — nothing broader. In
+            particular, the public key the site ships in your browser cannot read the subscriber
+            list at all: no request from a browser can retrieve an email address from it.
             No system is unbreakable, and if we ever learn of a security issue that affects your
             data, we&rsquo;ll disclose it here.
           </p>
@@ -343,9 +372,11 @@ export default function PrivacyPage() {
             there&rsquo;s currently no self-serve way to delete one. Analytics and advertising
             data is retained by Google under its own retention policies, not ours. Messages sent
             through the contact form aren&rsquo;t stored in a database, but they do stay in our
-            email inbox the way any email does — ask and we&rsquo;ll delete yours. Files, images,
-            and calculator inputs are never stored in the first place, so there is nothing to
-            retain or delete.
+            email inbox the way any email does — ask and we&rsquo;ll delete yours. Newsletter
+            subscriptions are kept until you unsubscribe; after that we keep a record that the
+            address opted out, so that it is not accidentally re-added, and you can ask us to
+            erase it entirely. Files, images, and calculator inputs are never stored in the first
+            place, so there is nothing to retain or delete.
           </p>
         </Section>
 

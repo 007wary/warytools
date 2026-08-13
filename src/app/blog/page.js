@@ -1,6 +1,7 @@
 import Link from "next/link";
 import JsonLd from "@/components/JsonLd";
 import PostCard from "@/components/blog/PostCard";
+import NewsletterSignup from "@/components/NewsletterSignup";
 import { getAllPosts } from "@/lib/blogPosts";
 import { isoDate } from "@/lib/blogPostList";
 import { colors } from "@/lib/theme";
@@ -97,6 +98,17 @@ export default function BlogIndexPage() {
             ))}
           </div>
         )}
+
+        {/* Below the list, so it never displaces the posts someone came here
+            to scan. Shown even in the empty state: before the first post
+            ships, "tell me when there is one" is the only useful action the
+            page can offer. */}
+        <div style={{ marginTop: "48px" }}>
+          <NewsletterSignup
+            title="Get new posts by email"
+            body="A short email whenever a new guide or tool goes live. Usually once or twice a month. Unsubscribe in one click."
+          />
+        </div>
       </main>
     </>
   );

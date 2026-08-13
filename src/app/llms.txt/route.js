@@ -46,7 +46,8 @@ ${toolSections}
 
 ## Notes
 
-- The URL shortener is the only tool with persistent server-side state (Supabase); it stores the short code, destination URL, and a click count.
+- The URL shortener is the only *tool* with persistent server-side state (Supabase); it stores the short code, destination URL, and a click count.
+- The newsletter is the site's other piece of persistent state, and is not a tool: subscribing stores an email address and its confirm/unsubscribe timestamps. It is confirmed opt-in (an unconfirmed address is emailed once and never again), every email carries a one-click unsubscribe, and there are no tracking pixels.
 - PDF to Word sends the file to a pdf2docx converter we run, which returns the .docx and deletes the file immediately. Nothing is stored.
 - Word to PDF sends the file to a LibreOffice converter we run, which returns the PDF and deletes the file immediately. Nothing is stored. It accepts .docx, .doc, .odt, and .rtf.
 - PowerPoint to PDF sends the file to a separate LibreOffice Impress converter we run, which returns the PDF (one page per slide) and deletes the file immediately. Nothing is stored. It accepts .pptx, .ppt, .ppsx, and .odp. The reverse direction, PDF to PowerPoint, is deliberately not offered: a PDF page has no concept of a slide or a text placeholder, so the output would be either uneditable full-page images or overlapping text boxes.

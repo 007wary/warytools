@@ -203,13 +203,31 @@ export function buildBlogSitemapEntries({ baseUrl, posts }) {
   }));
 }
 
+// Routes that render a page.js but must never be listed for crawling.
+//
+// discoverRoutes finds every page.js by design, which is what makes adding a
+// tool a zero-edit change here — but it means a page that exists only as the
+// end of a private journey gets crawled and indexed unless it is named. Both
+// entries below are the landing pages for links inside newsletter emails: they
+// do nothing without a valid signed token, so a crawler reaches a "this link is
+// invalid" page and indexes that as a wary.tools search result. They also carry
+// `robots: { index: false }` in their own metadata — this list stops us
+// *advertising* them, that stops them being indexed if found another way, and
+// neither alone is sufficient.
+export const SITEMAP_EXCLUDED_ROUTES = [
+  "/newsletter/confirm",
+  "/newsletter/unsubscribe",
+];
+
 export function buildSitemapEntries({ baseUrl, appDir, srcDir, cwd, now = () => new Date() }) {
   // The homepage lives at the app root itself, so it isn't produced by the
   // directory walk — prepend it explicitly. Its route is "/" rather than ""
   // so the emitted <loc> carries a trailing slash and matches the canonical
   // URL declared in layout.js (`canonical: "/"` against metadataBase); a
   // sitemap/canonical trailing-slash mismatch reads as two distinct URLs.
-  const routes = [{ route: "/", dir: appDir }, ...discoverRoutes(appDir)];
+  const routes = [{ route: "/", dir: appDir }, ...discoverRoutes(appDir)].filter(
+    ({ route }) => !SITEMAP_EXCLUDED_ROUTES.includes(route)
+  );
   const fallback = now();
 
   return routes.map(({ route, dir }) => {

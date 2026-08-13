@@ -29,6 +29,10 @@ const FIXTURE = {
   "app/(marketing)/promo/page.js": "export default function Promo() {}",
   "app/_internal/helper/page.js": "export default function Helper() {}",
   "app/api/shorten/route.js": "export function POST() {}",
+  // Real pages that must never be listed: they do nothing without a signed
+  // token from an email, so a crawler finds only "this link is invalid".
+  "app/newsletter/confirm/page.js": "export default function Confirm() {}",
+  "app/newsletter/unsubscribe/page.js": "export default function Unsub() {}",
 };
 
 let tmpDir, srcDir, appDir;
@@ -168,6 +172,25 @@ describe("buildSitemapEntries", () => {
       expect(entry.url).not.toBe(baseUrl);
       expect(entry.url.startsWith(`${baseUrl}/`)).toBe(true);
     }
+  });
+
+  // discoverRoutes finds every page.js by design, which is what makes adding a
+  // tool a zero-edit change — and is exactly why a page that exists only as
+  // the end of a private journey has to be named to stay out. Without this,
+  // adding any token-gated page silently advertises it to crawlers.
+  it("omits the newsletter's token-gated pages", () => {
+    const urls = build().map((entry) => entry.url);
+    expect(urls).not.toContain("https://wary.tools/newsletter/confirm");
+    expect(urls).not.toContain("https://wary.tools/newsletter/unsubscribe");
+    expect(urls.some((url) => url.includes("/newsletter"))).toBe(false);
+  });
+
+  it("still discovers ordinary pages alongside the exclusions", () => {
+    // Guards against the filter being written too broadly — an exclusion that
+    // dropped real pages would be invisible here without this.
+    const urls = build().map((entry) => entry.url);
+    expect(urls).toContain("https://wary.tools/contact");
+    expect(urls).toContain("https://wary.tools/pdf/merge");
   });
 
   it("builds absolute URLs for every discovered route", () => {

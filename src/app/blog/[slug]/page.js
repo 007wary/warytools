@@ -7,6 +7,7 @@ import CoverImage from "@/components/blog/CoverImage";
 import PostBody from "@/components/blog/PostBody";
 import RelatedPosts from "@/components/blog/RelatedPosts";
 import ShareRow from "@/components/blog/ShareRow";
+import NewsletterSignup from "@/components/NewsletterSignup";
 import { getAllPosts, getPostBySlug, getPostSlugs } from "@/lib/blogPosts";
 import { displayDate, isoDate, relatedPosts } from "@/lib/blogPostList";
 import { CATEGORIES } from "@/lib/blogFrontmatter";
@@ -208,6 +209,15 @@ export default async function BlogPostPage({ params }) {
           description={post.description}
           slug={slug}
         />
+
+        {/* After the share row, before related posts. Someone who has finished
+            reading has just been given the evidence for whether they want more
+            of this — which is the only honest moment to ask. Deliberately not a
+            modal or a scroll-triggered popup: those convert better and they are
+            why people install content blockers. */}
+        <div style={{ marginTop: "40px" }}>
+          <NewsletterSignup />
+        </div>
 
         <RelatedPosts posts={related} />
       </main>
