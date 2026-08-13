@@ -2,7 +2,6 @@ import Link from "next/link";
 import { displayDate, isoDate } from "@/lib/blogPostList";
 import { colors } from "@/lib/theme";
 import CategoryBadge from "./CategoryBadge";
-import CoverImage from "./CoverImage";
 
 // One post in the /blog index list.
 //
@@ -23,13 +22,13 @@ export default function PostCard({ post }) {
         textDecoration: "none",
       }}
     >
-      {/* Above the metadata row, which is the one place it does not push the
-          title off a phone screen: the card is already a self-contained unit,
-          so the image reads as its lead rather than as an interruption.
-          Renders nothing at all for a post without a cover, so a mixed index
-          degrades to the text-only card rather than leaving a gap. */}
-      <CoverImage post={post} variant="thumbnail" />
-
+      {/* No thumbnail here, deliberately. The index is a scanning surface —
+          title and description are what someone reads to choose a post, and a
+          1.91:1 image above each card pushes roughly one card per screen on a
+          phone. The cover still does its work where it earns its place: the
+          post page hero, og:image, and the BlogPosting JSON-LD.
+          <CoverImage variant="thumbnail"> remains available if the index is
+          ever reworked into a grid, where the ratio would cost far less. */}
       <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px", flexWrap: "wrap" }}>
         <CategoryBadge category={post.category} />
         <time
