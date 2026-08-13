@@ -5,6 +5,7 @@ import {
   coverAltFor,
   coverImageUrl,
   normalizeCoverPath,
+  validateCoverSize,
 } from "./blogCover";
 
 describe("normalizeCoverPath", () => {
@@ -85,6 +86,40 @@ describe("coverAltFor", () => {
 
   it("throws when alt text is only whitespace", () => {
     expect(() => coverAltFor({ cover: "/blog/a.jpg", coverAlt: "   " })).toThrow(/coverAlt/);
+  });
+});
+
+describe("validateCoverSize", () => {
+  it("accepts the recommended size", () => {
+    expect(() => validateCoverSize({ width: 1200, height: 630 })).not.toThrow();
+  });
+
+  // The real committed cover. A few percent off 1.91:1 is invisible once
+  // objectFit crops it, so refusing it would be the tool being wrong.
+  it("accepts a near-ratio cover", () => {
+    expect(() => validateCoverSize({ width: 1424, height: 752 })).not.toThrow();
+  });
+
+  it("accepts a larger cover at the right ratio", () => {
+    expect(() => validateCoverSize({ width: 2400, height: 1260 })).not.toThrow();
+  });
+
+  // Below 1200px, og:image and Google's article guidance both downgrade the
+  // preview silently — the post still shares, it just shares badly.
+  it("rejects a cover narrower than 1200px", () => {
+    expect(() => validateCoverSize({ width: 800, height: 420 })).toThrow(/at least 1200px/);
+  });
+
+  it.each([
+    [1200, 1200], // square
+    [1200, 1800], // portrait
+    [3000, 630], // ultra-wide banner
+  ])("rejects %ix%i for being the wrong shape", (width, height) => {
+    expect(() => validateCoverSize({ width, height })).toThrow(/should be close to/);
+  });
+
+  it("names the file in the error", () => {
+    expect(() => validateCoverSize({ width: 400, height: 210 }, "post.mdx")).toThrow(/post\.mdx/);
   });
 });
 

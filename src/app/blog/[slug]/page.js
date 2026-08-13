@@ -9,7 +9,7 @@ import RelatedPosts from "@/components/blog/RelatedPosts";
 import { getAllPosts, getPostBySlug, getPostSlugs } from "@/lib/blogPosts";
 import { displayDate, isoDate, relatedPosts } from "@/lib/blogPostList";
 import { CATEGORIES } from "@/lib/blogFrontmatter";
-import { COVER_HEIGHT, COVER_WIDTH, coverImageUrl } from "@/lib/blogCover";
+import { coverImageUrl } from "@/lib/blogCover";
 import { SITE_URL } from "@/lib/siteUrl";
 import { colors } from "@/lib/theme";
 import { blogPostingJsonLd, breadcrumbJsonLd, jsonLdGraph } from "@/lib/jsonLd";
@@ -43,8 +43,19 @@ export async function generateMetadata({ params }) {
   // A post with its own cover overrides the site-wide OG card, so it is
   // distinguishable in a feed. Posts without one keep the site card — a
   // shared link with no image at all is the worse outcome.
+  // Declared dimensions come from the file itself, never from the recommended
+  // target: a crawler that trusts these tags without fetching the image lays
+  // the preview out to the declared box, so a wrong size renders letterboxed
+  // or cropped with nothing in the page's HTML looking incorrect.
   const cover = post.cover
-    ? [{ url: post.cover, width: COVER_WIDTH, height: COVER_HEIGHT, alt: post.coverAlt }]
+    ? [
+        {
+          url: post.cover,
+          width: post.coverWidth,
+          height: post.coverHeight,
+          alt: post.coverAlt,
+        },
+      ]
     : base.openGraph.images;
 
   // The article-only OG fields are spread onto the result rather than added

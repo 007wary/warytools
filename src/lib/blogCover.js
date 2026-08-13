@@ -18,18 +18,63 @@
 export const ALLOWED_COVER_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
 
 // og:image is the binding constraint on dimensions. Facebook, LinkedIn and X
-// all want 1200x630 (1.91:1); Google's article guidance wants at least 1200px
-// wide. Anything smaller gets downgraded to a small summary card or dropped
-// from a rich result, silently — the post still shares, it just shares badly,
-// which nobody notices without checking a debugger.
-export const COVER_WIDTH = 1200;
-export const COVER_HEIGHT = 630;
+// all want roughly 1.91:1 and at least 1200px wide; Google's article guidance
+// agrees on the minimum width. Anything smaller gets downgraded to a small
+// summary card or dropped from a rich result, silently — the post still
+// shares, it just shares badly, which nobody notices without checking a
+// debugger.
+//
+// These are the RECOMMENDED targets used to sanity-check a cover and to shape
+// the layout box, NOT the declared dimensions of any particular file. The real
+// pixel size is read off the file itself (see readImageSize in blogPosts.js) —
+// declaring a size the file does not have makes crawlers that trust the
+// og:image:width/height tags without fetching lay the preview out wrongly.
+export const COVER_TARGET_WIDTH = 1200;
+export const COVER_TARGET_HEIGHT = 630;
 
+// The aspect ratio the layout box reserves. Kept as the ideal rather than
+// per-file so every card on the index is the same shape regardless of what
+// each cover's exact pixel dimensions happen to be — a ragged index is worse
+// than an imperceptible crop.
+export const COVER_ASPECT_RATIO = `${COVER_TARGET_WIDTH} / ${COVER_TARGET_HEIGHT}`;
+
+// Declared above its first use: `class` is not hoisted the way `function` is,
+// so validateCoverSize below would throw a ReferenceError on its error path —
+// the one path least likely to be exercised before shipping.
 export class CoverError extends Error {
   constructor(message, { file } = {}) {
     super(file ? `${file}: ${message}` : message);
     this.name = "CoverError";
     this.file = file;
+  }
+}
+
+// How far a cover's aspect ratio may drift from 1.91:1 before it is refused.
+// Generous, because a crop that is a few percent off is invisible; a portrait
+// or square image in this slot is not, and is the actual mistake worth
+// catching.
+const ASPECT_TOLERANCE = 0.15;
+
+/**
+ * Checks a cover's real pixel dimensions, throwing on the two mistakes that
+ * degrade a share preview silently.
+ */
+export function validateCoverSize({ width, height }, file) {
+  if (width < COVER_TARGET_WIDTH) {
+    throw new CoverError(
+      `cover is ${width}px wide — og:image and Google's article guidance both want at least ${COVER_TARGET_WIDTH}px, below which the share preview silently downgrades to a small card`,
+      { file },
+    );
+  }
+
+  const ratio = width / height;
+  const target = COVER_TARGET_WIDTH / COVER_TARGET_HEIGHT;
+
+  if (Math.abs(ratio - target) > ASPECT_TOLERANCE) {
+    throw new CoverError(
+      `cover is ${width}x${height} (${ratio.toFixed(2)}:1) — covers should be close to ${target.toFixed(2)}:1 (e.g. ${COVER_TARGET_WIDTH}x${COVER_TARGET_HEIGHT}), or social previews crop it unpredictably`,
+      { file },
+    );
   }
 }
 

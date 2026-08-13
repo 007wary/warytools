@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { COVER_HEIGHT, COVER_WIDTH } from "@/lib/blogCover";
+import { COVER_ASPECT_RATIO } from "@/lib/blogCover";
 import { colors } from "@/lib/theme";
 
 // A post's cover image, used both as the hero on a post page and as the
@@ -30,9 +30,14 @@ export default function CoverImage({ post, variant = "hero", priority = false })
         width: "100%",
         // Fixed aspect ratio, not a fixed height: the box scales with the
         // column while still reserving space, so nothing shifts on any
-        // viewport. 1200/630 matches the source, so `cover` never crops a
-        // correctly-sized image.
-        aspectRatio: `${COVER_WIDTH} / ${COVER_HEIGHT}`,
+        // viewport.
+        //
+        // Deliberately the shared ideal rather than each file's own ratio, so
+        // every card on the index is the same shape whatever its cover's exact
+        // pixels are. Covers are validated to sit close to this, so the
+        // objectFit crop is imperceptible — a ragged index is the worse of the
+        // two outcomes.
+        aspectRatio: COVER_ASPECT_RATIO,
         borderRadius: isHero ? "14px" : "10px",
         overflow: "hidden",
         border: `1px solid ${colors.border}`,

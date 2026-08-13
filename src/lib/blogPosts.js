@@ -14,6 +14,27 @@ import fs from "fs";
 import path from "path";
 import { parseFrontmatter, slugFromFilename, splitFrontmatter } from "./blogFrontmatter";
 import { filterPublished, readingTimeMinutes, sortPosts } from "./blogPostList";
+import { validateCoverSize } from "./blogCover";
+import { imageSize } from "./imageSize";
+
+// Dimensions live in the first few dozen bytes of every accepted format, so
+// only a prefix is read. 64 KB is far more than needed for PNG and WebP, and
+// comfortably clears the EXIF/ICC blocks that can push a JPEG's SOF marker
+// deep into the file.
+const HEADER_BYTES = 64 * 1024;
+
+function readHeader(filePath) {
+  const handle = fs.openSync(filePath, "r");
+  try {
+    const buffer = Buffer.alloc(HEADER_BYTES);
+    const read = fs.readSync(handle, buffer, 0, HEADER_BYTES, 0);
+    return buffer.subarray(0, read);
+  } finally {
+    // Closed even when the read throws — a build reading many covers would
+    // otherwise leak a descriptor per failure.
+    fs.closeSync(handle);
+  }
+}
 
 export const BLOG_DIR = path.join(process.cwd(), "src", "content", "blog");
 const PUBLIC_DIR = path.join(process.cwd(), "public");
@@ -66,6 +87,8 @@ export function getAllPosts() {
       // this the post ships with a broken <img>, a 404 og:image, and a
       // JSON-LD image URL that resolves to nothing — none of which is
       // visible in the build output or in the page's own HTML.
+      let coverSize = null;
+
       if (data.cover) {
         const onDisk = path.join(PUBLIC_DIR, data.cover.replace(/^\//, ""));
         if (!fs.existsSync(onDisk)) {
@@ -73,9 +96,25 @@ export function getAllPosts() {
             `${filename}: cover "${data.cover}" does not exist — expected a file at public${data.cover}`,
           );
         }
+
+        // Real pixel dimensions, read from the file's own header. Assuming
+        // the recommended 1200x630 and declaring that for every cover is
+        // wrong for any other size, and a crawler that trusts og:image:width
+        // without fetching lays the preview out to the wrong box.
+        coverSize = imageSize(readHeader(onDisk));
+
+        if (!coverSize) {
+          throw new Error(
+            `${filename}: could not read the dimensions of cover "${data.cover}" — it may be corrupt or not a real ${path.extname(onDisk)} file`,
+          );
+        }
+
+        validateCoverSize(coverSize, filename);
       }
 
       return {
+        coverWidth: coverSize?.width ?? null,
+        coverHeight: coverSize?.height ?? null,
         ...data,
         slug: slugFromFilename(filename),
         filename,
