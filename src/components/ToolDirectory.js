@@ -124,14 +124,24 @@ export default function ToolDirectory({ categories }) {
             </h3>
             {/* The hub pages already exist and rank; linking them from here
                 passes the homepage's authority to them rather than leaving
-                them reachable only from the navbar. */}
-            <Link
-              href={category.hubHref}
-              className="prose-link"
-              style={{ fontSize: "13.5px", whiteSpace: "nowrap" }}
-            >
-              View all {category.label.toLowerCase()}
-            </Link>
+                them reachable only from the navbar.
+
+                Suppressed for single-tool categories, which URL Shortener is:
+                its hubHref and its only card's href are the same URL, so the
+                link reads as "there is more through here" and delivers the
+                page already sitting directly beneath it. The condition is on
+                the tool count rather than the slug so a second shortener-ish
+                tool restores the link automatically, and so any future
+                one-tool category doesn't reintroduce the same dead end. */}
+            {category.tools.length > 1 && (
+              <Link
+                href={category.hubHref}
+                className="prose-link"
+                style={{ fontSize: "13.5px", whiteSpace: "nowrap" }}
+              >
+                View all {category.label.toLowerCase()}
+              </Link>
+            )}
           </div>
           <div
             style={{
