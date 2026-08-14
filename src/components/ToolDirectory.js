@@ -52,6 +52,11 @@ export default function ToolDirectory({ categories }) {
         style={{
           display: "flex",
           flexWrap: "wrap",
+          // Centred to match the hero and the trending chip row directly
+          // above, which are both centre-aligned — left-aligning these put a
+          // third alignment on one screen and made the row read as the start
+          // of the listing rather than as navigation belonging to the hero.
+          justifyContent: "center",
           gap: "8px",
           marginBottom: "36px",
         }}
