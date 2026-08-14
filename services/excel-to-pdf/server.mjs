@@ -579,8 +579,22 @@ async function verifyCalcPipeline() {
     if (status !== "ok") return { ok: false, reason: "macro_not_run" };
 
     return { ok: true };
-  } catch {
-    return { ok: false, reason: "error" };
+  } catch (error) {
+    // The thrown detail is carried out rather than discarded.
+    //
+    // This branch used to be a bare `catch {}` returning only "error", which
+    // the boot handler then reported with the no_pdf wording — "the Calc
+    // module is missing or its filters are unavailable". That message is a
+    // guess, and when it is wrong it sends the reader to rebuild the image
+    // over a package that was never missing. It cost a real debugging session
+    // on the first deploy of this service: soffice was present, the Calc
+    // filters were present, convert.bas was present, and the log still said
+    // the module was missing.
+    //
+    // runConverter() already classifies what it can (timeout, encrypted,
+    // convert_failed) and attaches it as `code`, so the useful signal existed
+    // and was being thrown away one frame below where it was needed.
+    return { ok: false, reason: "error", detail: error?.code || error?.message || String(error) };
   } finally {
     await rm(dir, { recursive: true, force: true }).catch(() => {});
   }
@@ -682,6 +696,21 @@ if (!probe.ok) {
         "orientation settings, producing exactly the sliced-column output this " +
         "service exists to prevent. Check installMacro() and the .xlb/.xlc index " +
         "files. Refusing to start."
+    );
+  } else if (probe.reason === "error") {
+    // Distinct from the no_pdf branch below, which is the "wrong module in the
+    // image" diagnosis. Reaching HERE means the pipeline threw rather than
+    // quietly producing nothing, so the module is almost certainly fine and
+    // the detail is the thing worth reading. Printing the Writer-only-image
+    // message here would be a confident wrong answer — the failure this
+    // codebase repeatedly designs against.
+    console.error(
+      `The Calc boot probe threw before producing a PDF: ${probe.detail}. ` +
+        "This is NOT the missing-module case (that one produces no PDF without " +
+        "throwing) — soffice was reachable and something in the run failed. " +
+        "`convert_failed` most often means the macro invocation itself was " +
+        "rejected; `timeout` means soffice hung, which on a first boot usually " +
+        "means too little memory for the profile warm-up. Refusing to start."
     );
   } else {
     console.error(
