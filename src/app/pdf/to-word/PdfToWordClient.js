@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { useConverterWarmup } from "@/lib/useConverterWarmup";
 import { FileType2, ShieldAlert } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
@@ -38,6 +39,7 @@ export default function PdfToWordClient() {
 
   const { run } = usePdfWorker();
   const fileRef = useRef(null);
+  const warmConverter = useConverterWarmup("pdf-to-word");
   const abortRef = useRef(null);
 
   const resetState = useCallback(() => {
@@ -155,6 +157,11 @@ export default function PdfToWordClient() {
       setFile(check.file);
       setPageCount(info.pageCount);
       setIsSlow(size.isSlow);
+
+      // Start the container now rather than on Convert. It scales to zero, and
+      // a cold start is ~30s — most of which can be spent while the user reads
+      // the page count they just got. See src/lib/converterWarmup.js.
+      warmConverter();
     } catch (err) {
       console.error("PDF to Word: failed to read file", err);
       trackEvent(events.TOOL_ERROR, { reason: "pdf_to_word_read_failed" });

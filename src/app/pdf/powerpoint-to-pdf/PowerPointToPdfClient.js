@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { useConverterWarmup } from "@/lib/useConverterWarmup";
 import { FileText, ShieldAlert } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import DownloadButton from "@/components/DownloadButton";
@@ -43,6 +44,7 @@ export default function PowerPointToPdfClient() {
   const [isConverting, setIsConverting] = useState(false);
 
   const fileRef = useRef(null);
+  const warmConverter = useConverterWarmup("powerpoint-to-pdf");
   const abortRef = useRef(null);
 
   const resetState = useCallback(() => {
@@ -90,6 +92,11 @@ export default function PowerPointToPdfClient() {
     fileRef.current = check.file;
     setFile(check.file);
     setIsSlow(size.isSlow);
+
+    // Start the container now rather than on Convert. It scales to zero, and a
+    // cold start is ~30s — most of which can be spent while the user reads the
+    // filename they just picked. See src/lib/converterWarmup.js.
+    warmConverter();
   }
 
   async function handleConvert() {
