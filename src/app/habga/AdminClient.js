@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, Lock, Mail, RefreshCw, Send, Users } from "lucide-react";
 import { colors } from "@/lib/theme";
 import ErrorBanner from "@/components/ErrorBanner";
+import Pagination from "@/components/Pagination";
+import { paginatePosts } from "@/lib/blogPagination";
 
 // The newsletter dashboard.
 //
@@ -27,6 +29,21 @@ const CARD = {
 // enough to read the number and decide, short enough that the count cannot
 // drift meaningfully underneath it. See the guard in handleSend.
 const PREVIEW_TTL_MS = 2 * 60 * 1000;
+
+// Posts per page in the list below. Matches the public blog index's page size
+// deliberately — the two lists show the same posts in the same order, so a
+// different split here would mean "the third post on page 2" meant two
+// different things depending on which page you were looking at.
+//
+// Note this is a rendering cap only: /api/admin/newsletter still returns every
+// post, because the send flow needs the full sent-state picture (the daily cap
+// and subscriber counts are computed against all of it) and the payload is a
+// few hundred bytes per post. If the archive ever grows enough for that to
+// matter, the cap belongs in the route as well — but paginating the render
+// while the route still returns everything is the correct order to do it in,
+// since it fixes the operator's actual problem (an unscannable wall of rows)
+// without changing what the send logic can see.
+const ADMIN_POSTS_PER_PAGE = 10;
 
 function formatDate(value) {
   if (!value) return null;
@@ -276,6 +293,33 @@ export default function AdminClient() {
   const [notice, setNotice] = useState("");
   const [pending, setPending] = useState(false);
   const [preview, setPreview] = useState(null);
+  const [page, setPage] = useState(1);
+
+  // Changing page disarms any pending send confirmation.
+  //
+  // The preview is keyed by slug, so without this, arming "Confirm send to 87"
+  // on page 1 and then paging away leaves it armed on a row that is no longer
+  // on screen — the operator cannot see what is primed, and coming back to
+  // that page later presents a live confirm button they may no longer expect.
+  // Sending is the one irreversible action here, so the confirmation should
+  // survive only as long as the row that explains it is visible.
+  const goToPage = useCallback((next) => {
+    setPage(next);
+    setPreview(null);
+  }, []);
+
+  // The visible slice of the post list.
+  //
+  // Clamped rather than trusted: the list is refetched after every send, and a
+  // post can leave the list between renders (a published post turned draft).
+  // Holding page 4 while the list shrinks to 3 pages would render an empty
+  // list under a "Page 4 of 3" label — the operator's read as "the posts are
+  // gone", on the one page whose job is telling them what has and hasn't been
+  // sent. paginatePosts returns null out of range, so falling back to page 1
+  // is the recovery.
+  const pagination =
+    paginatePosts(status?.posts ?? [], page, ADMIN_POSTS_PER_PAGE) ??
+    paginatePosts(status?.posts ?? [], 1, ADMIN_POSTS_PER_PAGE);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -561,12 +605,12 @@ export default function AdminClient() {
           </h2>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            {status.posts.length === 0 ? (
+            {pagination.posts.length === 0 ? (
               <p style={{ fontSize: "14px", color: colors.textMuted }}>
                 No published posts yet.
               </p>
             ) : (
-              status.posts.map((post) => (
+              pagination.posts.map((post) => (
                 <PostRow
                   key={post.slug}
                   post={post}
@@ -577,6 +621,18 @@ export default function AdminClient() {
               ))
             )}
           </div>
+
+          {/* Callback mode rather than links: paging here is component state
+              behind a login, so there is no URL to point at. See Pagination. */}
+          <Pagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            from={pagination.from}
+            to={pagination.to}
+            total={pagination.total}
+            onPageChange={goToPage}
+            unit="posts"
+          />
 
           <p
             style={{
