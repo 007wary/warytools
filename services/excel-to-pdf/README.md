@@ -58,9 +58,46 @@ Consequences:
   it. Same trap that bit `services/pdf-to-word` with `convert.py`: the service
   execs a file the image was built without, so it builds fine, health-checks
   green, and fails every conversion.
-- **The macro must be discoverable in the profile.** It is installed per
-  request, along with the `.xlb`/`.xlc` index files LibreOffice needs to find
-  it. Without those indexes the macro invocation silently does nothing and the
+- **The profile must be created by LibreOffice before the macro is written
+  into it.** This is the single least obvious thing about this service, and
+  getting it wrong is what kept Excel to PDF broken from the day it shipped
+  until 2026-08-14. `installMacro()` therefore runs
+  `soffice --headless --terminate_after_init` against the throwaway profile
+  *first*, and only then writes the module and its index files.
+
+  LibreOffice will not load a Basic library out of a profile directory it did
+  not initialise itself. Write a perfectly well-formed `user/basic/Standard`
+  into a bare `mkdtemp` directory and it is simply ignored: the macro resolves
+  to nothing, `soffice` exits **0** having produced no PDF, and no log line
+  anywhere says why.
+
+  Established by elimination inside the deployed image, and worth recording
+  because four plausible explanations are wrong:
+
+  | tried | result |
+  | --- | --- |
+  | hand-built profile + `macro:///…` | never runs |
+  | same layout, after `--terminate_after_init` | **runs** |
+  | module named `Module1` vs `Convert` | no difference |
+  | plain `--convert-to`, no macro at all | converts fine |
+
+  That last row is the one to remember when reading a failure here: Calc, its
+  filters and `convert.bas` can all be present and correct while every macro
+  conversion still produces nothing. The storage form (`.bas` vs `.xba`), the
+  `xlink:href` in `script.xlc`, and the profile's macro security level were
+  each tested and made no difference.
+
+- **The module is stored as `Convert.xba`, not `Convert.bas`.** `script.xlb`
+  names an element and LibreOffice resolves that to `<name>.xba`, an XML
+  container holding the Basic source. A raw `.bas` beside the index is never
+  read. This was not the cause of the outage above — the profile init was — but
+  the two were fixed together rather than leaving the wrong on-disk format in
+  place. `moduleXml()` escapes the source, since `convert.bas` contains `<`,
+  `>` and `&`, and an unescaped `<` ends the element early and yields a module
+  that parses as empty.
+
+- **The `.xlb`/`.xlc` index files are still required**, and still not
+  sufficient. Without them the macro invocation silently does nothing and the
   conversion *succeeds* with Calc's defaults — the exact output this service
   exists to prevent, with nothing in any log to explain it. `server.mjs` probes
   for this specifically at boot, which is why the boot check asserts an `ok`
@@ -145,11 +182,22 @@ needs is `EXCEL_CONVERTER_URL` and `EXCEL_CONVERTER_SECRET` — a **fourth**
 distinct secret, deliberately not shared with the other three converters.
 
 ```bash
-fly launch --no-deploy          # or use the checked-in fly.toml
-fly secrets set CONVERTER_SECRET="$(openssl rand -hex 32)"
-fly deploy
-fly scale count 1               # NOT optional — see fly.toml
+fly apps create warytools-excel-converter    # fly.toml is checked in already
+fly secrets set CONVERTER_SECRET="$(openssl rand -hex 32)" --app warytools-excel-converter
+fly deploy --app warytools-excel-converter
+fly scale count 1 --app warytools-excel-converter   # NOT optional — see fly.toml
 ```
+
+Two things that came up deploying this for real on 2026-08-14:
+
+- **`bom` runs out of capacity.** Both the initial deploy and the redundant
+  second machine Fly creates for HA failed with "no capacity available in bom".
+  `fly deploy --regions lhr` gets the deploy through; the running machine can
+  still end up in `bom` afterwards, which is what is wanted. The `fly scale
+  count 1` step then trims the HA spare, as it always did.
+- **Keep the secret you generate.** It has to be pasted into Vercel as
+  `EXCEL_CONVERTER_SECRET` below, and `fly secrets` cannot read it back — a
+  lost value means setting a fresh one on both sides.
 
 Then on the Next.js side (Vercel project settings, both server-only — a
 converter secret in the browser bundle would be no secret at all):
@@ -173,8 +221,31 @@ test spreadsheet converted *and* the macro reported back:
 fly logs | grep "Excel converter listening"
 ```
 
-If instead you see either of the two refusal messages, read them: one means the
-Calc module is missing, the other means the macro was not discoverable — and
-that second one is the dangerous failure, because without the boot check it
-would have shipped as conversions that succeed while silently ignoring every
-option.
+If instead you see one of the three refusal messages, read which one it is
+before changing anything — they have genuinely different causes and the wrong
+guess sends you rebuilding the image over a package that was never missing:
+
+- **"could not export a spreadsheet to PDF — the Calc module is missing"** —
+  the probe produced no PDF and nothing threw. A Writer-only image does exactly
+  this. Verify with `--convert-to` inside the container before believing it,
+  because until 2026-08-14 this message was *also* printed for the profile-init
+  bug above, where Calc was entirely fine.
+- **"the Calc boot probe threw"** — the run failed rather than quietly
+  producing nothing, and the message carries the real code (`convert_failed`,
+  `timeout`, `encrypted`). Read that code; the module is almost certainly fine.
+- **"convert.bas did not run — the macro was not discoverable"** — a PDF came
+  back but the macro's status token did not. This is the dangerous one: without
+  the boot check it would ship as conversions that succeed while silently
+  ignoring every option.
+
+The fastest way to tell a macro problem from a Calc problem is to run both
+inside the container: `soffice --convert-to pdf:calc_pdf_Export` converting a
+`.fods` while `macro:///Standard.Convert.Ping` does not is the exact signature
+of the profile-init bug.
+
+**A working conversion is not proof the macro ran.** Calc will happily produce
+a PDF with its own defaults, which is what this service exists to avoid. The
+end-to-end check is that the *options change the output* — on a wide workbook,
+`scaling=original;orientation=portrait` must produce more pages than the
+default `fit-width`. If both give the same page count, the macro is being
+ignored no matter how healthy everything looks.
