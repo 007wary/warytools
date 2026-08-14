@@ -46,7 +46,7 @@
 import { createServer } from "node:http";
 import { execFile, execFileSync } from "node:child_process";
 import { randomUUID, timingSafeEqual } from "node:crypto";
-import { mkdtemp, rm, writeFile, readFile, mkdir, readdir, copyFile, access } from "node:fs/promises";
+import { mkdtemp, rm, writeFile, readFile, mkdir, readdir, access } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -116,6 +116,13 @@ const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 // the route's own timeout so the failure surfaces here, with the process
 // actually killed, instead of the route walking away from a live conversion.
 const CONVERT_TIMEOUT_MS = 55_000;
+
+// Bounds the profile-initialisation run in installMacro(). Generous relative to
+// the ~5s it takes warm, because it happens before every conversion and a slow
+// init that gets killed produces the exact silent no-macro failure the init
+// exists to prevent. It is deliberately well under CONVERT_TIMEOUT_MS so the
+// two cannot add up past the route's own patience.
+const PROFILE_INIT_TIMEOUT_MS = 20_000;
 
 // LibreOffice holds the whole document model in memory, and each conversion
 // starts a fresh soffice process with its own profile. Calc's cost is driven by
@@ -312,6 +319,29 @@ function spreadsheetExtension(body, hint = "") {
 }
 
 /**
+ * Wraps Basic source in the XML module container LibreOffice stores it as.
+ *
+ * The source is escaped rather than wrapped in CDATA: convert.bas contains `<`,
+ * `>` and `&` in comparisons and string literals, and an unescaped `<` ends the
+ * element early — which yields a module that parses as empty and a macro that
+ * silently does not exist, the same class of invisible failure this file keeps
+ * guarding against.
+ */
+function moduleXml(name, source) {
+  const escaped = source
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  return (
+    `<?xml version="1.0" encoding="UTF-8"?>\n` +
+    `<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">\n` +
+    `<script:module xmlns:script="http://openoffice.org/2000/script" ` +
+    `script:name="${name}" script:language="StarBasic">${escaped}</script:module>\n`
+  );
+}
+
+/**
  * Installs convert.bas into a per-request LibreOffice profile.
  *
  * The macro has to live inside the profile soffice is started with, and each
@@ -322,16 +352,63 @@ function spreadsheetExtension(body, hint = "") {
  * under load.
  *
  * The script.xlb/dialog.xlb index files are required: LibreOffice will not
- * discover a .bas that is not indexed by its library descriptor, and the
+ * discover a module that is not indexed by its library descriptor, and the
  * failure mode is a macro invocation that silently does nothing and exports
  * with Calc's defaults — i.e. exactly the orphaned-column output this whole
  * service exists to prevent, with nothing in any log to explain it.
+ *
+ * The index files are necessary but NOT sufficient, which is what the first
+ * version of this function got wrong: it wrote a perfectly well-formed library
+ * into a directory LibreOffice had never initialised, and LibreOffice declined
+ * to load it. See the step-by-step notes in the body.
  */
 async function installMacro(profileDir) {
+  // STEP 1 — let LibreOffice build the profile before writing anything into it.
+  //
+  // This call is the whole reason this service works, and its absence is why it
+  // did not. LibreOffice ignores a Basic library in a profile it did not create
+  // itself: writing user/basic/ into a bare directory produces a tree that looks
+  // correct in every respect and is silently never loaded. The macro then
+  // resolves to nothing, soffice exits 0 having produced no PDF, and no log line
+  // anywhere says why.
+  //
+  // Verified directly, three ways, inside this exact image:
+  //   - a hand-built profile + `macro:///Standard.Convert.Ping` → never runs
+  //   - the SAME layout in a --terminate_after_init profile      → runs
+  //   - module named Module1 vs Convert                          → irrelevant
+  // So the decisive factor is the initialisation, not the module name, not the
+  // .xba/.bas form below, and not the xlink:href in script.xlc (all three were
+  // tested and exonerated).
+  //
+  // The cost is a few seconds per conversion. It is paid per request because
+  // each request gets its own profile, which is not negotiable — a shared
+  // profile is the documented way LibreOffice services fail under load. The
+  // image's build-time warm-up primes the font and filter caches, so this is
+  // cheaper than a genuinely cold start.
+  await new Promise((resolve) => {
+    execFile(
+      SOFFICE,
+      [`-env:UserInstallation=file://${profileDir}`, "--headless", "--terminate_after_init"],
+      { timeout: PROFILE_INIT_TIMEOUT_MS, killSignal: "SIGKILL", env: { ...process.env, HOME: profileDir } },
+      // Deliberately ignores its result. If this failed, the conversion below
+      // fails on its own terms with a real diagnosis; turning a slow init into
+      // its own error class would only add a second way to say the same thing.
+      () => resolve()
+    );
+  });
+
   const basicDir = path.join(profileDir, "user", "basic", "Standard");
   await mkdir(basicDir, { recursive: true });
 
-  await copyFile(MACRO_SOURCE, path.join(basicDir, "Convert.bas"));
+  // STEP 2 — the module, as .xba rather than a raw .bas.
+  //
+  // LibreOffice's Basic library storage is XML: script.xlb names an element,
+  // and the file it resolves to is <name>.xba, never <name>.bas. A .bas sitting
+  // beside the index is not read. This alone did not fix the bug (the profile
+  // init above is what did), but a raw .bas is not the on-disk format and the
+  // two were fixed together rather than leaving a second latent defect behind.
+  const source = await readFile(MACRO_SOURCE, "utf8");
+  await writeFile(path.join(basicDir, "Convert.xba"), moduleXml("Convert", source));
 
   await writeFile(
     path.join(basicDir, "script.xlb"),
