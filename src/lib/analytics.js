@@ -24,6 +24,13 @@ export const events = {
   NAV_CLICK: "nav_click",
   OUTBOUND_CLICK: "outbound_click",
   TOOL_ERROR: "tool_error",
+  // PWA install card (components/InstallPrompt.js). One event with an
+  // `action` param — accepted / dismissed / opted_out / installed — rather
+  // than four event names, so the funnel reads as a single row in GA4
+  // instead of four unrelated ones that have to be joined by hand. Note
+  // "accepted" means the user clicked our button, not that the install
+  // completed; only "installed" (from the appinstalled event) means that.
+  INSTALL_PROMPT: "install_prompt",
 };
 
 /**

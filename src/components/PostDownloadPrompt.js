@@ -12,12 +12,17 @@ import NewsletterSignup from "@/components/NewsletterSignup";
 
 // The newsletter ask, shown after a tool has actually produced a file.
 //
-// This is the moment the homepage's version could never be: the person has
-// picked a file, run a tool, and downloaded a result. They have had the value
-// before being asked for anything, which is the same principle the blog's
-// end-of-post card follows — and the reason the homepage card (last thing on
-// a directory page, before the visitor had done anything) converted almost
-// nobody.
+// This is the moment the homepage's card cannot reach: the person has picked
+// a file, run a tool, and downloaded a result. They have had the value before
+// being asked for anything, which is the same principle the blog's
+// end-of-post card follows.
+//
+// It does not replace the homepage card — both exist, deliberately. Someone
+// who arrives from a search result, uses one tool and leaves never scrolls
+// the homepage and would never see that one; someone browsing the site to
+// judge whether it is trustworthy may not convert a file at all. The two
+// surfaces catch different visitors and cannot both appear on one screen,
+// since this renders only on tool pages and that one only on the homepage.
 //
 // Split into a provider, a hook, and a card because of where the two halves
 // have to live. <DownloadButton> is the only component that knows a download

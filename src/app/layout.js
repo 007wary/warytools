@@ -6,6 +6,7 @@ import JsonLd from "@/components/JsonLd";
 import Analytics from "@/components/Analytics";
 import AnalyticsRouteTracker from "@/components/AnalyticsRouteTracker";
 import AdSense from "@/components/AdSense";
+import InstallPrompt from "@/components/InstallPrompt";
 import { jsonLdGraph, organizationJsonLd, websiteJsonLd } from "@/lib/jsonLd";
 import { SITE_URL } from "@/lib/siteUrl";
 import { ADSENSE_CLIENT_ID, adsEnabled } from "@/lib/adsense";
@@ -103,6 +104,12 @@ export default function RootLayout({ children }) {
         <Navbar />
         <main style={{ flex: 1 }}>{children}</main>
         <Footer />
+        {/* Last in the body so its fixed corner card stacks above the page
+            without needing a z-index high enough to fight anything. Renders
+            nothing at all until the browser fires beforeinstallprompt, so it
+            costs an event listener and no markup on the vast majority of
+            views — including every already-installed and iOS session. */}
+        <InstallPrompt />
       </body>
     </html>
   );

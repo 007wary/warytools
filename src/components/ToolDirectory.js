@@ -27,29 +27,21 @@ export default function ToolDirectory({ categories }) {
     <section
       id="all-tools"
       aria-labelledby="all-tools-heading"
-      style={{ maxWidth: "1200px", margin: "0 auto", padding: "8px 20px 80px" }}
+      // Top padding absorbs the space the (now hidden) heading block used to
+      // occupy, so the chip row keeps its distance from the hero instead of
+      // riding up against it.
+      style={{ maxWidth: "1200px", margin: "0 auto", padding: "36px 20px 80px" }}
     >
-      <h2
-        id="all-tools-heading"
-        style={{
-          fontSize: "22px",
-          fontWeight: 700,
-          color: colors.text,
-          marginBottom: "6px",
-        }}
-      >
+      {/* Visually hidden, not deleted. The category chips and the four
+          category headings below already make the section's purpose obvious
+          on screen, so the visible "All tools" title and its subtitle were
+          redundant furniture. The heading itself stays because the section's
+          aria-labelledby points at it — removing the element would leave a
+          dangling reference and an unlabelled region, which is the same
+          silent-failure shape as an orphaned JSON-LD @id. */}
+      <h2 id="all-tools-heading" className="sr-only">
         All tools
       </h2>
-      <p
-        style={{
-          fontSize: "14.5px",
-          color: colors.textMuted,
-          margin: "0 0 20px",
-          lineHeight: 1.6,
-        }}
-      >
-        Jump to a category, or scroll the full list.
-      </p>
 
       {/* Category jump links. A <nav> rather than a plain row: these are the
           page's in-content navigation now that the search box is gone, and a
