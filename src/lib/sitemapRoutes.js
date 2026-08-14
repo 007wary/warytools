@@ -203,6 +203,56 @@ export function buildBlogSitemapEntries({ baseUrl, posts }) {
   }));
 }
 
+/**
+ * Sitemap entries for the blog index's pagination pages (/blog/page/2 …).
+ *
+ * Like the posts above, these cannot come from discoverRoutes: the pages live
+ * behind a [page] dynamic segment, and the /blog/page directory holding it has
+ * no page.js of its own, so the walk finds nothing there at all.
+ *
+ * Page 1 is deliberately absent — it is /blog, which discoverRoutes already
+ * emits. Listing it again here as /blog/page/1 would put a URL in the sitemap
+ * that the route refuses to build and that 404s.
+ *
+ * lastmod is the newest post ON THAT PAGE, not the build time and not the
+ * blog's newest post overall. Page 4 of an archive genuinely does not change
+ * when a new post ships — the posts on it shift only when the page boundaries
+ * move — and stamping every index page with today's date on every deploy is
+ * exactly the "everything changed at once" signal the rest of this module
+ * works to avoid.
+ *
+ * @param {object} args
+ * @param {string} args.baseUrl
+ * @param {Array}  args.posts    Sorted post records from getAllPosts().
+ * @param {number} args.perPage
+ */
+export function buildBlogPaginationEntries({ baseUrl, posts, perPage }) {
+  const entries = [];
+
+  for (let start = perPage; start < posts.length; start += perPage) {
+    const page = Math.floor(start / perPage) + 1;
+    const onPage = posts.slice(start, start + perPage);
+
+    // Posts are newest-first, so the first on the page is its newest.
+    const newest = onPage.reduce((latest, post) => {
+      const at = post.updated || post.date;
+      return !latest || at > latest ? at : latest;
+    }, null);
+
+    entries.push({
+      url: `${baseUrl}/blog/page/${page}`,
+      lastModified: newest,
+      changeFrequency: "monthly",
+      // Below /blog itself (0.8, a one-segment hub) and below a post. These
+      // are navigational pages: worth crawling so the posts on them are
+      // discovered, but never the result someone wants to land on.
+      priority: 0.4,
+    });
+  }
+
+  return entries;
+}
+
 // Routes that render a page.js but must never be listed for crawling.
 //
 // discoverRoutes finds every page.js by design, which is what makes adding a

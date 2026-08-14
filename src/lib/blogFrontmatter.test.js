@@ -228,4 +228,17 @@ describe("slugFromFilename", () => {
       expect(() => slugFromFilename(bad)).toThrow(/kebab-case/);
     });
   }
+
+  // /blog/page/2 is the index pagination route, and Next resolves a literal
+  // segment ahead of the sibling [slug]. A post named page.mdx would build,
+  // ship in the sitemap and the feed, and never be reachable — with nothing
+  // throwing and nothing in the build output saying so.
+  it("rejects the reserved `page` slug that the pagination route shadows", () => {
+    expect(() => slugFromFilename("page.mdx")).toThrow(/reserved slug/);
+  });
+
+  it("still accepts slugs that merely start with a reserved word", () => {
+    expect(slugFromFilename("page-numbers-explained.mdx")).toBe("page-numbers-explained");
+    expect(slugFromFilename("feed-readers.mdx")).toBe("feed-readers");
+  });
 });

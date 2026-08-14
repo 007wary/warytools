@@ -9,6 +9,7 @@ import {
   mtimeLastModified,
   priorityFor,
   buildSitemapEntries,
+  buildBlogPaginationEntries,
 } from "./sitemapRoutes";
 
 // A miniature src/ tree mirroring the real app's shape: hub pages, nested
@@ -322,5 +323,60 @@ describe("buildSitemapEntries", () => {
     const tool = entries.find((entry) => entry.url === "https://wary.tools/pdf/merge");
     expect(home.changeFrequency).toBe("weekly");
     expect(tool.changeFrequency).toBe("monthly");
+  });
+});
+
+describe("buildBlogPaginationEntries", () => {
+  const baseUrl = "https://wary.tools";
+  const posts = (count) =>
+    Array.from({ length: count }, (_, i) => ({
+      slug: `post-${i + 1}`,
+      // Newest-first, matching sortPosts' output.
+      date: new Date(Date.UTC(2026, 0, count - i)),
+    }));
+
+  it("emits nothing while the blog fits on one page", () => {
+    expect(buildBlogPaginationEntries({ baseUrl, posts: posts(10), perPage: 10 })).toEqual([]);
+    expect(buildBlogPaginationEntries({ baseUrl, posts: [], perPage: 10 })).toEqual([]);
+  });
+
+  it("never lists page 1, which is /blog and already discovered", () => {
+    const urls = buildBlogPaginationEntries({ baseUrl, posts: posts(34), perPage: 10 }).map(
+      (entry) => entry.url,
+    );
+
+    // Listing /blog/page/1 would put a URL in the sitemap that the route
+    // refuses to build and that 404s.
+    expect(urls).not.toContain(`${baseUrl}/blog/page/1`);
+    expect(urls).toEqual([
+      `${baseUrl}/blog/page/2`,
+      `${baseUrl}/blog/page/3`,
+      `${baseUrl}/blog/page/4`,
+    ]);
+  });
+
+  it("dates each page from its own newest post, not the build time", () => {
+    // Page 4 of an archive does not change when a new post ships. Stamping
+    // every index page with today's date on every deploy is the
+    // "everything changed at once" signal the module works to avoid.
+    const entries = buildBlogPaginationEntries({ baseUrl, posts: posts(25), perPage: 10 });
+
+    expect(entries[0].lastModified).toEqual(new Date(Date.UTC(2026, 0, 15)));
+    expect(entries[1].lastModified).toEqual(new Date(Date.UTC(2026, 0, 5)));
+  });
+
+  it("prefers a post's `updated` over its `date`", () => {
+    const list = posts(12);
+    list[10] = { ...list[10], updated: new Date(Date.UTC(2026, 5, 1)) };
+
+    const [pageTwo] = buildBlogPaginationEntries({ baseUrl, posts: list, perPage: 10 });
+    expect(pageTwo.lastModified).toEqual(new Date(Date.UTC(2026, 5, 1)));
+  });
+
+  it("ranks pagination below the posts it links to", () => {
+    // Navigational pages: worth crawling so the posts on them are found,
+    // never the result someone should land on.
+    const [entry] = buildBlogPaginationEntries({ baseUrl, posts: posts(15), perPage: 10 });
+    expect(entry.priority).toBeLessThan(0.6);
   });
 });

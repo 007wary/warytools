@@ -1,10 +1,8 @@
-import Link from "next/link";
 import JsonLd from "@/components/JsonLd";
-import PostCard from "@/components/blog/PostCard";
-import NewsletterSignup from "@/components/NewsletterSignup";
+import BlogIndex from "@/components/blog/BlogIndex";
 import { getAllPosts } from "@/lib/blogPosts";
 import { isoDate } from "@/lib/blogPostList";
-import { colors } from "@/lib/theme";
+import { paginatePosts } from "@/lib/blogPagination";
 import { blogJsonLd, breadcrumbJsonLd, jsonLdGraph } from "@/lib/jsonLd";
 import { pageMetadata } from "@/lib/pageMetadata";
 
@@ -31,7 +29,14 @@ export const metadata = {
 };
 
 export default function BlogIndexPage() {
-  const posts = getAllPosts();
+  // Page 1. Later pages are served by /blog/page/[page] — page 1 deliberately
+  // has no /blog/page/1 twin, since two crawlable URLs holding the same ten
+  // posts compete with each other for the same query.
+  //
+  // Non-null by construction: page 1 is always in range, including on an empty
+  // blog (totalPages has a floor of 1), which is what lets the empty state
+  // render here rather than 404ing the only page that can explain it.
+  const pagination = paginatePosts(getAllPosts(), 1);
 
   return (
     <>
@@ -41,7 +46,12 @@ export default function BlogIndexPage() {
             name: "WaryTools Blog",
             description: blogDescription,
             href: "/blog",
-            posts: posts.map((post) => ({
+            // Only the posts this page actually lists. Declaring the whole
+            // archive on every index page tells a crawler each page contains
+            // posts it cannot find in the markup, which is the same kind of
+            // misstatement as declaring og:image dimensions that don't match
+            // the file.
+            posts: pagination.posts.map((post) => ({
               title: post.title,
               href: `/blog/${post.slug}`,
               datePublished: isoDate(post.date),
@@ -54,80 +64,7 @@ export default function BlogIndexPage() {
         )}
       />
 
-      <main style={{ maxWidth: "760px", margin: "0 auto", padding: "48px 20px 72px" }}>
-        <h1
-          style={{
-            fontSize: "34px",
-            fontWeight: 700,
-            color: colors.text,
-            margin: "0 0 12px",
-            letterSpacing: "-0.02em",
-          }}
-        >
-          Blog
-        </h1>
-        <p
-          style={{
-            fontSize: "16.5px",
-            lineHeight: 1.7,
-            color: colors.textMuted,
-            margin: "0 0 40px",
-            maxWidth: "620px",
-          }}
-        >
-          Guides for getting a specific job done, explainers on how file formats actually
-          work, and notes on what&rsquo;s changed here. Every tool mentioned is free and
-          most run entirely in your browser.
-        </p>
-
-        {posts.length === 0 ? (
-          // A real empty state rather than a blank page. This renders only
-          // before the first post ships, but a bare heading with nothing under
-          // it reads as a broken page rather than a new one.
-          <p style={{ fontSize: "15px", color: colors.textMuted, lineHeight: 1.7 }}>
-            No posts yet. In the meantime, the{" "}
-            <Link href="/" style={{ color: colors.primary }}>
-              tools themselves
-            </Link>{" "}
-            are all live and free to use.
-          </p>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            {posts.map((post) => (
-              <PostCard key={post.slug} post={post} />
-            ))}
-          </div>
-        )}
-
-        {/* Below the list, so it never displaces the posts someone came here
-            to scan. Shown even in the empty state: before the first post
-            ships, "tell me when there is one" is the only useful action the
-            page can offer.
-
-            The rule above it is doing real work rather than decorating. The
-            signup card and a PostCard share a border, radius and surface, so
-            stacked with only a gap between them the newsletter reads as one
-            more post in the list — the eye groups by repeated shape before it
-            reads any text. The rule says "the list ended here", which is what
-            lets the card below be understood as a different kind of thing. */}
-        <div style={{ marginTop: "48px" }}>
-          <div
-            // Decorative, so it is a styled div rather than an <hr>: an <hr>
-            // is a semantic thematic break that screen readers announce, and
-            // the heading inside the card already conveys the section change.
-            aria-hidden="true"
-            style={{
-              height: "1px",
-              backgroundColor: colors.border,
-              marginBottom: "48px",
-            }}
-          />
-          <NewsletterSignup
-            title="Get new posts by email"
-            body="A short email whenever a new guide or tool goes live. Usually once or twice a month. Unsubscribe in one click."
-          />
-        </div>
-      </main>
+      <BlogIndex pagination={pagination} />
     </>
   );
 }

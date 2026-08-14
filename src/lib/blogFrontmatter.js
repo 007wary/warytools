@@ -287,6 +287,18 @@ export function parseFrontmatter(block, file) {
   return data;
 }
 
+// Slugs that would be shadowed by a real route under /blog, so a post
+// claiming one is unreachable.
+//
+// `page` is the index pagination route (/blog/page/2). Next resolves a literal
+// segment ahead of the sibling [slug] segment, so `page.mdx` would build a
+// page at /blog/page that the router never serves — no error, no warning, and
+// the post is in the sitemap and the RSS feed pointing at a URL that renders
+// the pagination route instead. `feed.xml` is the RSS route for the same
+// reason, and cannot be a slug anyway (a dot fails the kebab-case check), but
+// it is listed so the reason is recorded in one place.
+const RESERVED_SLUGS = new Set(["page", "feed"]);
+
 // A post's slug comes from its filename, never from frontmatter.
 //
 // Two sources for one identity is how you get a file called
@@ -299,6 +311,12 @@ export function slugFromFilename(filename) {
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(base)) {
     throw new FrontmatterError(
       `post filename "${filename}" must be lowercase kebab-case (letters, digits, single hyphens)`,
+    );
+  }
+
+  if (RESERVED_SLUGS.has(base)) {
+    throw new FrontmatterError(
+      `post filename "${filename}" uses the reserved slug "${base}" — /blog/${base} is already a route, so the post would never be reachable. Rename the file.`,
     );
   }
 

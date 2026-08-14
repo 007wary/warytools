@@ -1,6 +1,11 @@
 import path from "path";
-import { buildBlogSitemapEntries, buildSitemapEntries } from "@/lib/sitemapRoutes";
+import {
+  buildBlogPaginationEntries,
+  buildBlogSitemapEntries,
+  buildSitemapEntries,
+} from "@/lib/sitemapRoutes";
 import { getAllPosts } from "@/lib/blogPosts";
+import { POSTS_PER_PAGE } from "@/lib/blogPagination";
 import { SITE_URL } from "@/lib/siteUrl";
 
 // Route discovery and lastmod derivation live in src/lib/sitemapRoutes.js so
@@ -26,12 +31,15 @@ export default function sitemap() {
   const appDir = path.join(srcDir, "app");
 
   try {
-    // Blog posts are appended rather than discovered: they live behind a
-    // [slug] segment, which the route walk deliberately skips. See
-    // buildBlogSitemapEntries.
+    // Blog posts and index pagination pages are appended rather than
+    // discovered: both live behind dynamic segments, which the route walk
+    // deliberately skips. See buildBlogSitemapEntries.
+    const posts = getAllPosts();
+
     return [
       ...buildSitemapEntries({ baseUrl, appDir, srcDir, cwd }),
-      ...buildBlogSitemapEntries({ baseUrl, posts: getAllPosts() }),
+      ...buildBlogSitemapEntries({ baseUrl, posts }),
+      ...buildBlogPaginationEntries({ baseUrl, posts, perPage: POSTS_PER_PAGE }),
     ];
   } catch (error) {
     // A filesystem or git failure during the walk shouldn't fail the whole
