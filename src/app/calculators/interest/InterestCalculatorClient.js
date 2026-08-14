@@ -2,11 +2,14 @@
 
 import { simpleInterest, compoundInterest, CalculationError } from "@/lib/calculatorMath";
 import { parseFields } from "@/lib/calculatorInput";
-import { formatCurrency, formatPercent } from "@/lib/calculatorFormat";
+import { formatMoney, formatPercent } from "@/lib/calculatorFormat";
 import { useCalculatorState } from "@/lib/useCalculatorState";
+import { useDetectedCurrency } from "@/lib/useDetectedCurrency";
+import { getCurrency, CURRENCY_CODES, DEFAULT_CURRENCY } from "@/lib/calculatorCurrency";
 import { useTrackedCalculation } from "@/lib/analytics";
 import ModeToggle from "@/components/calculator/ModeToggle";
 import NumberField from "@/components/calculator/NumberField";
+import CurrencySelect from "@/components/calculator/CurrencySelect";
 import ResultPanel from "@/components/calculator/ResultPanel";
 import ErrorBanner from "@/components/ErrorBanner";
 import { colors } from "@/lib/theme";
@@ -23,18 +26,32 @@ const compoundFrequencies = [
   { id: "12", label: "Monthly" },
 ];
 
-const defaults = { mode: "simple", principal: "", rate: "", years: "", frequency: "1" };
+const defaults = {
+  mode: "simple",
+  principal: "",
+  rate: "",
+  years: "",
+  frequency: "1",
+  currency: DEFAULT_CURRENCY,
+};
 const schema = {
   mode: ["simple", "compound"],
   principal: "number",
   rate: "number",
   years: "number",
   frequency: compoundFrequencies.map((f) => f.id),
+  // Constrained to the known codes: this value reaches Intl.NumberFormat, which
+  // throws on an unrecognised currency, and the URL is untrusted input.
+  currency: CURRENCY_CODES,
 };
 
 export default function InterestCalculatorClient() {
   const { state, setField, shareUrl } = useCalculatorState(schema, defaults);
-  const { mode, principal, rate, years, frequency } = state;
+  const { mode, principal, rate, years, frequency, currency: currencyCode } = state;
+
+  useDetectedCurrency((next) => setField("currency", next));
+  const currency = getCurrency(currencyCode);
+  const money = (value) => formatMoney(value, currency);
 
   const parsed = parseFields({
     principal: [principal, { label: "Principal", allowNegative: false }],
@@ -97,7 +114,7 @@ export default function InterestCalculatorClient() {
           label="Principal"
           value={principal}
           onChange={(next) => setField("principal", next)}
-          prefix="₹"
+          prefix={currency.symbol}
           maxWidth="180px"
         />
         <NumberField
@@ -112,6 +129,10 @@ export default function InterestCalculatorClient() {
           value={years}
           onChange={(next) => setField("years", next)}
           maxWidth="150px"
+        />
+        <CurrencySelect
+          value={currencyCode}
+          onChange={(next) => setField("currency", next)}
         />
       </div>
 
@@ -135,11 +156,11 @@ export default function InterestCalculatorClient() {
       {result && (
         <div style={{ marginTop: "20px" }}>
           <ResultPanel
-            headline={{ label: "Maturity amount", value: formatCurrency(result.total) }}
+            headline={{ label: "Maturity amount", value: money(result.total) }}
             rows={[
-              { label: "Principal", value: formatCurrency(parsed.values.principal) },
-              { label: "Interest earned", value: formatCurrency(result.interest) },
-              { label: "Total amount", value: formatCurrency(result.total), emphasis: true },
+              { label: "Principal", value: money(parsed.values.principal) },
+              { label: "Interest earned", value: money(result.interest) },
+              { label: "Total amount", value: money(result.total), emphasis: true },
               ...(mode === "compound" && effectiveRate !== null
                 ? [{ label: "Effective annual rate", value: formatPercent(effectiveRate) }]
                 : []),

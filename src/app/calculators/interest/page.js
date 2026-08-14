@@ -58,7 +58,7 @@ const faqs = [
   {
     question: "Can I set how often interest compounds?",
     answer:
-      "Yes. Compound mode offers annual, semi-annual, quarterly, and monthly compounding. Pick the one your bank or deposit actually uses — Indian fixed deposits are usually quarterly, while most savings accounts credit interest quarterly on a daily balance.",
+      "Yes. Compound mode offers annual, semi-annual, quarterly, and monthly compounding. Pick the one your bank or deposit actually uses — it varies by country and by product. Fixed and term deposits commonly compound quarterly, US savings accounts and CDs usually compound monthly or daily, and the figure is always stated in the product's terms.",
   },
   {
     question: "What do I need to enter to calculate interest?",
@@ -124,14 +124,14 @@ export default function InterestCalculatorPage() {
         <p style={{ fontSize: "14px", color: colors.textMuted, lineHeight: 1.7, marginBottom: "14px" }}>
           <strong style={{ color: colors.text }}>Simple interest</strong> is P × r × t ÷ 100 — the
           principal, the annual rate, and the number of years. The interest is the same every year
-          because it is always charged on the original amount. ₹1,00,000 at 8% for 5 years earns
-          ₹40,000.
+          because it is always charged on the original amount. A principal of 100,000 at 8% for 5
+          years earns 40,000.
         </p>
         <p style={{ fontSize: "14px", color: colors.textMuted, lineHeight: 1.7, marginBottom: "14px" }}>
           <strong style={{ color: colors.text }}>Compound interest</strong> is P × (1 + r ÷ n)
           <sup>n×t</sup> − P, where n is how many times a year interest is added. Each period&apos;s
-          interest joins the principal and earns interest itself, so the same ₹1,00,000 at 8%
-          compounded annually earns about ₹46,933 over 5 years — nearly ₹7,000 more than simple
+          interest joins the principal and earns interest itself, so the same 100,000 at 8%
+          compounded annually earns about 46,933 over 5 years — nearly 7,000 more than simple
           interest, from an identical rate.
         </p>
         <p style={{ fontSize: "14px", color: colors.textMuted, lineHeight: 1.7, margin: 0 }}>

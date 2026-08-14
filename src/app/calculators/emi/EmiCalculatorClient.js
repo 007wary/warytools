@@ -2,20 +2,34 @@
 
 import { loanEmi, CalculationError } from "@/lib/calculatorMath";
 import { parseFields } from "@/lib/calculatorInput";
-import { formatCurrency, formatPercent } from "@/lib/calculatorFormat";
+import { formatMoney, formatPercent } from "@/lib/calculatorFormat";
 import { useCalculatorState } from "@/lib/useCalculatorState";
+import { useDetectedCurrency } from "@/lib/useDetectedCurrency";
+import { getCurrency, CURRENCY_CODES, DEFAULT_CURRENCY } from "@/lib/calculatorCurrency";
 import { useTrackedCalculation } from "@/lib/analytics";
 import NumberField from "@/components/calculator/NumberField";
+import CurrencySelect from "@/components/calculator/CurrencySelect";
 import ResultPanel from "@/components/calculator/ResultPanel";
 import ErrorBanner from "@/components/ErrorBanner";
 import { colors } from "@/lib/theme";
 
-const defaults = { amount: "", rate: "", years: "" };
-const schema = { amount: "number", rate: "number", years: "number" };
+const defaults = { amount: "", rate: "", years: "", currency: DEFAULT_CURRENCY };
+const schema = {
+  amount: "number",
+  rate: "number",
+  years: "number",
+  // Constrained to the known codes: this value reaches Intl.NumberFormat, which
+  // throws on an unrecognised currency, and the URL is untrusted input.
+  currency: CURRENCY_CODES,
+};
 
 export default function EmiCalculatorClient() {
   const { state, setField, shareUrl } = useCalculatorState(schema, defaults);
-  const { amount, rate, years } = state;
+  const { amount, rate, years, currency: currencyCode } = state;
+
+  useDetectedCurrency((next) => setField("currency", next));
+  const currency = getCurrency(currencyCode);
+  const money = (value) => formatMoney(value, currency);
 
   const parsed = parseFields({
     amount: [amount, { label: "Loan amount", allowNegative: false }],
@@ -35,7 +49,7 @@ export default function EmiCalculatorClient() {
     }
   }
 
-  // Share of every rupee repaid that is interest rather than principal — the
+  // Share of every unit repaid that is interest rather than principal — the
   // number that actually tells someone whether a loan is expensive.
   const interestShare = result ? (result.totalInterest / result.totalPayable) * 100 : null;
 
@@ -54,7 +68,7 @@ export default function EmiCalculatorClient() {
           label="Loan amount"
           value={amount}
           onChange={(next) => setField("amount", next)}
-          prefix="₹"
+          prefix={currency.symbol}
           maxWidth="190px"
         />
         <NumberField
@@ -70,6 +84,10 @@ export default function EmiCalculatorClient() {
           onChange={(next) => setField("years", next)}
           maxWidth="150px"
         />
+        <CurrencySelect
+          value={currencyCode}
+          onChange={(next) => setField("currency", next)}
+        />
       </div>
 
       <ErrorBanner>{parsed.ok ? calcError : parsed.error}</ErrorBanner>
@@ -77,11 +95,11 @@ export default function EmiCalculatorClient() {
       {result && (
         <div style={{ marginTop: "20px" }}>
           <ResultPanel
-            headline={{ label: "Monthly EMI", value: formatCurrency(result.emi) }}
+            headline={{ label: "Monthly EMI", value: money(result.emi) }}
             rows={[
-              { label: "Principal", value: formatCurrency(result.principal) },
-              { label: "Total interest", value: formatCurrency(result.totalInterest) },
-              { label: "Total payable", value: formatCurrency(result.totalPayable), emphasis: true },
+              { label: "Principal", value: money(result.principal) },
+              { label: "Total interest", value: money(result.totalInterest) },
+              { label: "Total payable", value: money(result.totalPayable), emphasis: true },
               { label: "Number of instalments", value: `${result.months} months` },
               ...(interestShare !== null
                 ? [{ label: "Interest share of repayment", value: formatPercent(interestShare) }]
@@ -90,7 +108,7 @@ export default function EmiCalculatorClient() {
             shareUrl={shareUrl}
           />
 
-          <AmortisationTable schedule={result.schedule} />
+          <AmortisationTable schedule={result.schedule} money={money} />
         </div>
       )}
     </div>
@@ -100,7 +118,7 @@ export default function EmiCalculatorClient() {
 // The year-by-year breakdown is what turns an EMI figure into something
 // useful: it shows how little of an early instalment goes to principal, which
 // is the thing most borrowers are surprised by.
-function AmortisationTable({ schedule }) {
+function AmortisationTable({ schedule, money }) {
   return (
     <div style={{ marginTop: "24px" }}>
       <h2 style={{ fontSize: "16px", fontWeight: 600, color: colors.text, marginBottom: "10px" }}>
@@ -145,9 +163,9 @@ function AmortisationTable({ schedule }) {
                 >
                   {row.year}
                 </th>
-                <Cell>{formatCurrency(row.principalPaid)}</Cell>
-                <Cell>{formatCurrency(row.interestPaid)}</Cell>
-                <Cell>{formatCurrency(row.balance)}</Cell>
+                <Cell>{money(row.principalPaid)}</Cell>
+                <Cell>{money(row.interestPaid)}</Cell>
+                <Cell>{money(row.balance)}</Cell>
               </tr>
             ))}
           </tbody>

@@ -29,14 +29,21 @@ function getFormatter(locale, options) {
   return formatter;
 }
 
-// The money calculators (GST, interest, EMI) are India-first: the GST tool is
-// built around Indian slabs, so ₹ with lakh/crore grouping is the house style.
+// GST is an Indian tax and the tool is built around Indian slabs, so ₹ with
+// lakh/crore grouping is correct there and `formatCurrency` stays pinned to it.
+//
+// EMI and Interest are NOT India-specific — a loan repayment is the same
+// arithmetic everywhere — and they format through `formatMoney` below with a
+// currency the visitor chooses. Pinning those to ₹ showed a US or EU visitor
+// "₹12,34,567.89" for a figure that had nothing to do with rupees.
 export const MONEY_LOCALE = "en-IN";
 export const MONEY_CURRENCY = "INR";
 
 /**
  * Formats a monetary amount with the ₹ symbol and Indian digit grouping.
  * Always two decimals, because money always has two.
+ *
+ * For anything that is not intrinsically Indian, use `formatMoney`.
  */
 export function formatCurrency(value, options = {}) {
   if (!Number.isFinite(value)) return "—";
@@ -46,6 +53,36 @@ export function formatCurrency(value, options = {}) {
     currency: MONEY_CURRENCY,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
+    ...options,
+  }).format(value);
+}
+
+/**
+ * Formats a monetary amount in a chosen currency.
+ *
+ * `currency` is an entry from CURRENCIES in calculatorCurrency.js — the object,
+ * not the code, so this module needs no lookup table and no import cycle. Its
+ * `locale` field is deliberately used rather than the visitor's own locale:
+ * the two are different questions, and the reasoning is documented at length in
+ * that module.
+ *
+ * The decimal count comes from the currency rather than being fixed at 2.
+ * "Money always has two decimals" is an assumption that holds across most of
+ * this list and fails visibly on JPY and IDR, where a fractional unit does not
+ * exist and "¥1,180.00" reads as broken. Intl knows the right value per
+ * currency, so the explicit `decimals` field is only consulted when set.
+ */
+export function formatMoney(value, currency, options = {}) {
+  if (!Number.isFinite(value)) return "—";
+  if (!currency) return formatCurrency(value, options);
+
+  const fractionDigits = currency.decimals ?? 2;
+
+  return getFormatter(currency.locale, {
+    style: "currency",
+    currency: currency.code,
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
     ...options,
   }).format(value);
 }
