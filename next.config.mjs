@@ -1,15 +1,24 @@
 import createMdx from "@next/mdx";
 import { withSentryConfig } from "@sentry/nextjs";
 
+// Relative, not "@/lib/…": the path alias is a bundler concern and this file is
+// evaluated by Node before any of that exists.
+import {
+  adsAllowedInCsp,
+  cspReportingEnabled,
+  sentryCspReportUri as buildSentryCspReportUri,
+} from "./src/lib/cspReporting.mjs";
+
 // Sentry can ingest CSP violation reports on the same DSN used for error
 // tracking (its "security header endpoint"), so violations show up
 // alongside JS errors with no separate reporting infra. Derived from the
 // DSN's own host/key/project-id rather than hardcoded, so it stays correct
 // if the DSN rotates and disappears cleanly (report-uri omitted) if unset.
+//
+// The decision itself lives in src/lib/cspReporting.mjs so it can be tested
+// against a supplied env object; this file only reads process.env and passes
+// the result through. See the note there on why that split exists.
 function sentryCspReportUri() {
-  const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
-  if (!dsn) return null;
-
   // Preview deploys are excluded, and not as a matter of taste: Vercel's
   // deployment protection 302s every request on a *.vercel.app preview to
   // vercel.com/sso-api. That redirect is cross-origin, so the browser blocks
@@ -28,31 +37,34 @@ function sentryCspReportUri() {
   // Follows robots.js's isNonCanonicalDeploy() in spirit, but is deliberately
   // STRICTER, and the difference is what actually stopped the noise.
   //
-  // The first version of this gate was `vercelEnv && vercelEnv !== "production"`
-  // — i.e. an unset VERCEL_ENV counts as canonical, so a self-hosted build
-  // still reports. That is correct for robots.txt, where the failure mode of
-  // guessing wrong is a lost page. Here it is inverted: unset is exactly what a
-  // Vercel build looks like when VERCEL_ENV is not exposed to the step
-  // evaluating this file, so previews fell into the "canonical" branch and kept
-  // emitting report-uri. Preview violations went on arriving for days after the
-  // gate shipped, which is how it was caught — see the *.vercel.app blocked-host
-  // issues of 2026-08-13, whose reported policy contains this very directive.
+  // This gate has now been wrong TWICE, both times by trying to infer whether
+  // the build is on Vercel and treating "can't tell" as canonical:
   //
-  // VERCEL_URL is set on every Vercel deployment including previews, so it
-  // answers "are we on Vercel at all" independently of VERCEL_ENV. Requiring a
-  // positive "production" only when Vercel is detected keeps the self-hosted
-  // case reporting while making the preview case fail closed.
-  const vercelEnv = process.env.VERCEL_ENV;
-  const onVercel = Boolean(vercelEnv || process.env.VERCEL_URL || process.env.VERCEL);
-  if (onVercel && vercelEnv !== "production") return null;
+  //   1. `vercelEnv && vercelEnv !== "production"` — an unset VERCEL_ENV counts
+  //      as canonical. Correct for robots.txt, where guessing wrong costs a lost
+  //      page; inverted here, where it costs a flood of unfixable reports.
+  //   2. Adding VERCEL_URL/VERCEL to the detection, on the assumption that at
+  //      least one survives where VERCEL_ENV doesn't. It doesn't: preview
+  //      violations kept arriving a full day after that shipped, and the
+  //      *.vercel.app reports of 2026-08-14 prove it — their captured policy
+  //      contains BOTH this report-uri AND every AdSense host, which is only
+  //      reachable when all three variables are absent and both gates take the
+  //      production branch.
+  //
+  // So the inference is abandoned rather than refined a third time. Reporting
+  // now requires a positive VERCEL_ENV === "production" and nothing else can
+  // enable it implicitly. The asymmetry is deliberate: a missing report costs
+  // one lost violation on a host we control and can re-check by hand, while a
+  // wrongly-emitted one costs an unfixable stream that buries the reports from
+  // wary.tools — which is the failure that actually happened, twice.
+  //
+  // CSP_REPORT_URI_ENABLED=1 is the escape hatch for a genuine self-hosted
+  // deploy that wants reporting. Opt-in, because a self-hosted build cannot be
+  // told apart from a Vercel preview by any variable this file can read, and
+  // only one of those two should report by default.
+  if (!cspReportingEnabled(process.env)) return null;
 
-  try {
-    const { username: publicKey, hostname, pathname } = new URL(dsn);
-    const projectId = pathname.replace(/^\//, "");
-    return `https://${hostname}/api/${projectId}/security/?sentry_key=${publicKey}`;
-  } catch {
-    return null;
-  }
+  return buildSentryCspReportUri(process.env.NEXT_PUBLIC_SENTRY_DSN);
 }
 
 // Security headers applied to every response. Since all PDF/image processing
@@ -273,16 +285,24 @@ const adsenseFrameHosts = [
 // prevent — so the policy and the component agree rather than the CSP being
 // permanently wide and the component alone holding the line.
 //
-// Uses the same positive Vercel detection as sentryCspReportUri() above rather
-// than `!VERCEL_ENV || VERCEL_ENV === "production"`. That older shape treats an
-// unset VERCEL_ENV as production, which on Vercel is the preview case — so a
-// preview whose build step does not expose VERCEL_ENV would open every ad host
-// in its policy. lib/adsense.js still gates the tag itself, so no ad would
-// actually serve; this keeps the policy from silently disagreeing with it.
-const onVercelForCsp = Boolean(
-  process.env.VERCEL_ENV || process.env.VERCEL_URL || process.env.VERCEL,
-);
-const adsEnabledForCsp = !onVercelForCsp || process.env.VERCEL_ENV === "production";
+// This deliberately mirrors lib/adsense.js's `!vercelEnv || vercelEnv ===
+// "production"` EXACTLY, rather than the stricter shape used by the report-uri
+// gate above, and the difference between the two is the point.
+//
+// The previous version tried to detect Vercel via VERCEL_URL/VERCEL so that a
+// preview with no VERCEL_ENV would close the ad hosts. That detection does not
+// work — see the note in sentryCspReportUri() — so it bought nothing, and it
+// also put this gate one edit away from disagreeing with the component it is
+// supposed to track. A CSP that closes ad hosts while adsense.js renders the
+// tag is the blank-inventory failure documented at length above, and it is
+// invisible locally.
+//
+// So the policy follows the component: whatever adsEnabled() decides, this
+// matches, and lib/adsense.js remains the single place that decision is made.
+// On a preview that exposes VERCEL_ENV both correctly close. On one that does
+// not, both stay open — the policy permits hosts the tag then declines to use,
+// which serves no ad and is the harmless direction of the two.
+const adsEnabledForCsp = adsAllowedInCsp(process.env);
 const adsScriptSrc = adsEnabledForCsp ? ` ${adsenseHosts}` : "";
 const adsFrameSrc = adsEnabledForCsp ? ` ${adsenseFrameHosts}` : "";
 const adsImgSrc = adsEnabledForCsp ? ` ${adsenseHosts}` : "";

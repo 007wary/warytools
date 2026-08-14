@@ -315,7 +315,15 @@ describe("buildSitemapEntries", () => {
     // newest shared-module commit.
     const distinct = new Set(entries.map((entry) => entry.lastModified.getTime()));
     expect(distinct.size).toBeGreaterThan(1);
-  });
+  },
+  // Raised from the 5s default because this is the one test that shells out to
+  // git, once per discovered route (~56 and growing). That is genuinely slow
+  // rather than stuck, and it got slow enough to intermittently blow the
+  // default while the rest of the suite ran in parallel — observed failing
+  // roughly one run in four on 2026-08-14, on unmodified main. An intermittent
+  // red on an unrelated push is worse than a slow test: it trains everyone to
+  // re-run CI instead of reading it.
+  30_000);
 
   it("marks the homepage weekly and other routes monthly", () => {
     const entries = build();

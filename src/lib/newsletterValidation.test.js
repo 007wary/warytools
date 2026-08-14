@@ -26,14 +26,16 @@ describe("normalizeEmail", () => {
 });
 
 describe("checkSubscription", () => {
+  // Fixtures deliberately avoid example.com: it is reserved by RFC 2606 and is
+  // now rejected as undeliverable, so using it here would test the wrong path.
   it("accepts an ordinary address and returns it normalized", () => {
-    const result = checkSubscription({ email: " Reader@Example.com " });
-    expect(result).toEqual({ ok: true, value: { email: "reader@example.com" } });
+    const result = checkSubscription({ email: " Reader@Mailbox.com " });
+    expect(result).toEqual({ ok: true, value: { email: "reader@mailbox.com" } });
   });
 
   it("accepts the address shapes a stricter regex would wrongly reject", () => {
     const valid = [
-      "reader+blog@example.com",
+      "reader+blog@mailbox.com",
       "first.last@sub.example.co.uk",
       "o'brien@example.ie",
       "user@example.technology",
@@ -82,12 +84,73 @@ describe("checkSubscription", () => {
   });
 
   it("rejects a filled honeypot before anything else", () => {
-    const result = checkSubscription({ email: "real@example.com", website: "http://spam" });
+    const result = checkSubscription({ email: "real@mailbox.com", website: "http://spam" });
     expect(result).toEqual({ ok: false, reason: SubscribeRejection.SPAM });
   });
 
   it("ignores an empty honeypot, which is what a person submits", () => {
-    expect(checkSubscription({ email: "real@example.com", website: "" }).ok).toBe(true);
+    expect(checkSubscription({ email: "real@mailbox.com", website: "" }).ok).toBe(true);
+  });
+
+  // Resend refuses these at the API and the subscribe route captures that at
+  // error level, so one person typing user@example.com files a Sentry alert
+  // that looks like the mailer is broken. Caught here instead — no API call,
+  // no false alarm, and an actionable message. See 2026-08-14.
+  it("rejects reserved domains that can never receive mail", () => {
+    const unroutable = [
+      "user@example.com",
+      "user@example.org",
+      "user@example.net",
+      "user@example.edu",
+      "user@mail.example.com", // subdomain reaches Resend identically
+      "user@anything.test",
+      "user@host.invalid",
+      "user@sub.localhost",
+    ];
+
+    for (const email of unroutable) {
+      expect(checkSubscription({ email }), email).toEqual({
+        ok: false,
+        reason: SubscribeRejection.EMAIL_UNROUTABLE,
+      });
+    }
+  });
+
+  it("rejects a dotless reserved domain as malformed, which it already was", () => {
+    // "user@localhost" never reaches the unroutable check: EMAIL_PATTERN
+    // requires a dot in the domain, so it fails as malformed first. Pinned so
+    // the ordering is deliberate rather than incidental — both reject, and the
+    // reason differing here is correct, not a gap.
+    expect(checkSubscription({ email: "user@localhost" })).toEqual({
+      ok: false,
+      reason: SubscribeRejection.EMAIL_MALFORMED,
+    });
+  });
+
+  it("does not reject real domains that merely look like the reserved ones", () => {
+    // The list is a closed set of reserved names, not a substring match. These
+    // are all registrable and deliverable, and rejecting one would turn away a
+    // real reader — the failure mode a general typo blocklist has.
+    const valid = [
+      "user@example.co.uk",
+      "user@example.ie",
+      "user@myexample.com",
+      "user@example-host.com",
+      "user@testing.com",
+      "user@invalidate.com",
+    ];
+
+    for (const email of valid) {
+      expect(checkSubscription({ email }).ok, email).toBe(true);
+    }
+  });
+
+  it("distinguishes unroutable from malformed", () => {
+    // Different reasons because the remedies differ: a malformed address should
+    // be retyped, an example.com one needs a different address entirely.
+    expect(checkSubscription({ email: "user@example.com" }).reason).not.toBe(
+      SubscribeRejection.EMAIL_MALFORMED,
+    );
   });
 
   it("survives a non-object input", () => {

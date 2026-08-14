@@ -22,6 +22,7 @@ export const SubscribeRejection = {
   EMAIL_EMPTY: "email_empty",
   EMAIL_TOO_LONG: "email_too_long",
   EMAIL_MALFORMED: "email_malformed",
+  EMAIL_UNROUTABLE: "email_unroutable",
   SPAM: "spam",
 };
 
@@ -30,6 +31,11 @@ export const REJECTION_MESSAGES = {
   [SubscribeRejection.EMAIL_TOO_LONG]: "That email address is too long.",
   [SubscribeRejection.EMAIL_MALFORMED]:
     "That doesn't look like a valid email address.",
+  // Named distinctly from MALFORMED because the address is well-formed — it
+  // simply cannot receive mail. Telling someone who typed an example.com
+  // address that it is "not valid" invites them to retype the same thing.
+  [SubscribeRejection.EMAIL_UNROUTABLE]:
+    "That domain can't receive email. Please use a real address.",
   // The honeypot never tells the bot what it tripped — a specific message is
   // free feedback for tuning around it. Same reasoning as contactValidation.
   [SubscribeRejection.SPAM]: "That didn't go through. Please try again.",
@@ -53,6 +59,51 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
 // Resend, so this is checked even though EMAIL_PATTERN's \s class already
 // excludes them — belt and braces on the one field that reaches a header.
 const HEADER_UNSAFE = /[\r\n]/;
+
+// Domains reserved by RFC 2606/6761 for documentation and testing. They have no
+// MX records by definition, so mail to them can never be delivered.
+//
+// This is the one place the module is stricter than "let the mail be the test",
+// and the exception is narrow on purpose. Everywhere else a bad address costs a
+// bounce and nothing more; these cost a *Sentry error*. Resend refuses them at
+// the API with "Invalid `to` field … use our testing email address instead of
+// domains like example.com", which the subscribe route captures at error level
+// — so one person typing user@example.com files an alert indistinguishable at a
+// glance from the mailer genuinely being broken. It happened on 2026-08-14.
+//
+// Deliberately NOT a general disposable/typo blocklist. Those need constant
+// upkeep and reject real readers (a mistyped gmail.co is still someone trying
+// to subscribe, and the bounce is the honest answer). This list is closed,
+// standardised, and can never contain a deliverable address.
+const UNROUTABLE_DOMAINS = new Set([
+  "example.com",
+  "example.org",
+  "example.net",
+  "example.edu",
+  // RFC 6761 special-use names. .invalid is explicitly for guaranteed-invalid
+  // names; .test and .localhost never resolve outside a local resolver.
+  "test",
+  "invalid",
+  "localhost",
+]);
+
+/**
+ * Whether the address's domain is reserved and therefore undeliverable.
+ *
+ * Matches the registrable domain and any subdomain of it (`mail.example.com`),
+ * plus bare reserved TLDs used as a suffix (`anything.test`). Both shapes reach
+ * Resend identically, so checking only the exact string would let the common
+ * `foo@sub.example.com` through.
+ *
+ * @param {string} email an already-normalized address
+ * @returns {boolean}
+ */
+function hasUnroutableDomain(email) {
+  const domain = email.slice(email.lastIndexOf("@") + 1);
+  if (domain === "") return false;
+  if (UNROUTABLE_DOMAINS.has(domain)) return true;
+  return [...UNROUTABLE_DOMAINS].some((reserved) => domain.endsWith(`.${reserved}`));
+}
 
 /**
  * Normalizes an address for storage and comparison.
@@ -106,6 +157,12 @@ export function checkSubscription(input) {
 
   if (HEADER_UNSAFE.test(email) || !EMAIL_PATTERN.test(email)) {
     return { ok: false, reason: SubscribeRejection.EMAIL_MALFORMED };
+  }
+
+  // After the shape check, so a reserved domain is only considered once the
+  // address is otherwise well-formed and the domain can be read reliably.
+  if (hasUnroutableDomain(email)) {
+    return { ok: false, reason: SubscribeRejection.EMAIL_UNROUTABLE };
   }
 
   return { ok: true, value: { email } };
