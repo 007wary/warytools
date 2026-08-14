@@ -13,6 +13,7 @@ import {
 } from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
 import { pageMetadata } from "@/lib/pageMetadata";
+import PostDownloadPrompt from "@/components/PostDownloadPrompt";
 
 // The long tail here is dominated by a target size — "resize image to 1920x1080",
 // "resize to 500x500" — so the title names the pixel-dimensions capability
@@ -110,7 +111,9 @@ export default function ResizeImagePage() {
         detail stays crisp and smooth where most online resizers leave it jagged.
       </p>
 
-      <ResizeImageClient />
+      <PostDownloadPrompt>
+        <ResizeImageClient />
+      </PostDownloadPrompt>
 
       <HowToSteps title={howToName} steps={howToSteps} />
       <FaqSection items={faqs} />

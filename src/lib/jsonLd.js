@@ -28,11 +28,14 @@ export function websiteJsonLd() {
     url: SITE_URL,
     name: "WaryTools",
     publisher: { "@id": `${SITE_URL}/#organization` },
-    potentialAction: {
-      "@type": "SearchAction",
-      target: `${SITE_URL}/?q={search_term_string}`,
-      "query-input": "required name=search_term_string",
-    },
+    // No SearchAction, deliberately. It used to advertise /?q={search_term}
+    // for Google's sitelinks search box, honoured by the homepage's client-
+    // side filter. That filter is gone (see ToolDirectory.js), so the
+    // homepage now ignores ?q= entirely — and declaring a search endpoint
+    // that silently returns the unfiltered page is worse than declaring
+    // none: the sitelinks box would render in the SERP and every query typed
+    // into it would land somewhere that never acknowledges it. Restore this
+    // only alongside a route that actually reads the parameter.
   };
 }
 

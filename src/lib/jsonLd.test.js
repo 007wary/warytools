@@ -75,12 +75,15 @@ describe("websiteJsonLd", () => {
     expect(websiteJsonLd().publisher).toEqual({ "@id": `${SITE_URL}/#organization` });
   });
 
-  it("declares a SearchAction whose query-input names the target's placeholder", () => {
-    const action = websiteJsonLd().potentialAction;
-    // The placeholder in `target` and the name in `query-input` must be the
-    // same token, or the sitelinks searchbox silently never appears.
-    const placeholder = action.target.match(/\{(\w+)\}/)[1];
-    expect(action["query-input"]).toBe(`required name=${placeholder}`);
+  it("declares no SearchAction, because no route reads ?q= any more", () => {
+    // The homepage's client-side filter was removed (see ToolDirectory.js),
+    // so /?q=merge now renders the plain homepage. Advertising a sitelinks
+    // searchbox against a URL that ignores the query is worse than
+    // advertising none — the box appears in the SERP and every search
+    // through it lands on an unfiltered page. If a real search route is ever
+    // added, restore the node *and* the placeholder/query-input pairing
+    // assertion this test replaced.
+    expect(websiteJsonLd().potentialAction).toBeUndefined();
   });
 });
 

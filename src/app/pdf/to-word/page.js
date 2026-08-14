@@ -13,6 +13,7 @@ import {
 } from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
 import { pageMetadata } from "@/lib/pageMetadata";
+import PostDownloadPrompt from "@/components/PostDownloadPrompt";
 
 const title = "PDF to Word Converter — Free, No Sign-Up";
 // Note what this description does NOT claim. Every other tool's copy says the
@@ -98,7 +99,9 @@ export default function PdfToWordPage() {
         not something a browser can do; the file is deleted the moment it&apos;s converted.
       </p>
 
-      <PdfToWordClient />
+      <PostDownloadPrompt>
+        <PdfToWordClient />
+      </PostDownloadPrompt>
 
       <HowToSteps title={howToName} steps={howToSteps} />
 

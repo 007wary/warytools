@@ -32,6 +32,7 @@ import {
   FileStack,
   ShieldCheck,
   AppWindow,
+  Server,
 } from "lucide-react";
 
 // Resolves the string icon names stored in tools.js to actual lucide
@@ -98,6 +99,12 @@ const iconMap = {
   // only glyph here that says "browser" at a glance. Deliberately NOT Image —
   // that reads as another photo editor, which is what this isn't.
   AppWindow,
+  // Not a tool icon: used by the homepage's featured cards to mark the four
+  // document converters as server-side, opposite ShieldCheck on the tools that
+  // stay local. Listed here because ToolIcon falls back to FileText for any
+  // unmapped name, so an icon used anywhere on the site has to be registered
+  // even when no tools.js entry names it.
+  Server,
 };
 
 export default function ToolIcon({ name, size = 20, strokeWidth = 1.75, style, ...props }) {

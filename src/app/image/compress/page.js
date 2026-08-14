@@ -13,6 +13,7 @@ import {
 } from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
 import { pageMetadata } from "@/lib/pageMetadata";
+import PostDownloadPrompt from "@/components/PostDownloadPrompt";
 
 // "Compress image" is the head term, but the volume splits hard by format and
 // by the goal ("reduce image file size", "compress image to 100kb"). The title
@@ -119,7 +120,9 @@ export default function CompressImagePage() {
         no queue, no compromise.
       </p>
 
-      <CompressImageClient />
+      <PostDownloadPrompt>
+        <CompressImageClient />
+      </PostDownloadPrompt>
 
       <HowToSteps title={howToName} steps={howToSteps} />
       <FaqSection items={faqs} />

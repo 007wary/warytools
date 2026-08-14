@@ -13,6 +13,7 @@ import {
 } from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
 import { pageMetadata } from "@/lib/pageMetadata";
+import PostDownloadPrompt from "@/components/PostDownloadPrompt";
 
 const title = "Split PDF Online Free";
 const description =
@@ -84,7 +85,9 @@ export default function SplitPdfPage() {
         they started — all processed locally, with no upload step and nothing to sign up for.
       </p>
 
-      <SplitPdfClient />
+      <PostDownloadPrompt>
+        <SplitPdfClient />
+      </PostDownloadPrompt>
 
       <HowToSteps title={howToName} steps={howToSteps} />
 

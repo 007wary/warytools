@@ -69,7 +69,13 @@ export function recordToolUsage(slug, kind = "run") {
 }
 
 /**
- * Records that a user picked this tool out of homepage search results.
+ * Records that a user picked this tool out of search results.
+ *
+ * Currently UNCALLED: the homepage search box this served was removed in
+ * favour of a server-rendered directory (see components/ToolDirectory.js).
+ * Kept because it is the write half of the SEARCH_WEIGHT signal in
+ * toolRanking.js, which stays live for historical rows and is what a real
+ * search route would call. Delete both halves together, or neither.
  *
  * `href` is the registry path ("/pdf/merge"); the counter keys on the slug
  * form ("pdf/merge") that currentToolSlug() produces, so normalise here.

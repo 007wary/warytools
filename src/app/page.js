@@ -1,16 +1,30 @@
 import Link from "next/link";
 import { categories, allTools } from "@/lib/tools";
 import { colors, categoryColors } from "@/lib/theme";
-import { ToolSearchProvider, ToolSearchBox, ToolSearchGrid } from "@/components/ToolSearch";
+import ToolDirectory from "@/components/ToolDirectory";
+import FeaturedTools from "@/components/FeaturedTools";
 import JsonLd from "@/components/JsonLd";
 import TrendingTools from "@/components/TrendingTools";
-import NewsletterSignup from "@/components/NewsletterSignup";
 import { jsonLdGraph, collectionPageJsonLd, faqJsonLd } from "@/lib/jsonLd";
 import { pageMetadata } from "@/lib/pageMetadata";
 import { fetchToolUsageSnapshot } from "@/lib/toolUsage";
 import { rankTools } from "@/lib/toolRanking";
+import { resolveFeaturedTools } from "@/lib/featuredTools";
 
-const title = "Free Online PDF, Image & Calculator Tools";
+// The <title> leads with the verbs people actually type. The old one —
+// "Free Online PDF, Image & Calculator Tools" — was a category claim: nobody
+// searches "free online pdf image and calculator tools", they search "merge
+// pdf", "compress pdf", "compress image". A generic category title competes
+// head-on with iLovePDF and SmallPDF for a term this site cannot win, while
+// matching none of the queries it genuinely answers. Naming the four highest
+// -volume jobs puts the searched phrase in the most weighted element on the
+// page, and still reads as a sentence rather than a keyword list.
+// Kept short on purpose. pageMetadata's absoluteTitle appends " — WaryTools",
+// so the rendered <title> is this plus 12 characters, and Google truncates
+// around 60. The verbs have to survive that cut, so the category words that
+// used to pad this line are gone — they are already carried by the H1, the
+// hero paragraph and the section headings.
+const title = "Merge, Split & Compress PDF Files Free";
 // Says "no sign-up, no watermarks" and deliberately not "no ads": the site
 // runs AdSense (see lib/adsense.js and the /privacy advertising section), so
 // the old claim became false the moment the tag shipped. It mattered more
@@ -96,9 +110,11 @@ export default async function HomePage() {
   // instead. The mode still drives the heading, so the label stays honest.
   const trendingTools = trending.mode === "trending" ? trending.tools : CURATED_FALLBACK;
 
+  // Throws if a featured href has left the registry — see featuredTools.js.
+  const featuredTools = resolveFeaturedTools(allTools);
+
   return (
-    <ToolSearchProvider>
-      <div>
+    <div>
         <JsonLd
           data={jsonLdGraph(
             collectionPageJsonLd({
@@ -131,12 +147,19 @@ export default async function HomePage() {
               lineHeight: 1.15,
             }}
           >
-            {/* Trailing space before the <br> is deliberate: without it the
-                accessible name and the text crawlers extract run together as
-                "Free Online Tools,All in One Place". The H1 names the actual
-                categories rather than saying "tools" generically, so the
-                page's most important heading targets something specific. */}
-            Free Online PDF, Image &amp; Calculator Tools —{" "}
+            {/* Verb-led, because the H1 is the page's strongest on-page
+                signal and it was previously spent on a category phrase
+                ("Free Online PDF, Image & Calculator Tools — All in One
+                Place") that nobody types into a search box. "All in One
+                Place" in particular is a brand-awareness line, and it only
+                means something to someone who already trusts the brand —
+                exactly the visitor this page does not yet have.
+
+                The verbs here are the four highest-intent jobs on the site
+                and match the <title>. The trailing space before the <br> is
+                still deliberate: without it the accessible name and the text
+                crawlers extract run the two lines together as one word. */}
+            Merge, split &amp; compress your files —{" "}
             <br />
             <span
               style={{
@@ -146,7 +169,7 @@ export default async function HomePage() {
                 backgroundClip: "text",
               }}
             >
-              All in One Place
+              free, and in your browser
             </span>
           </h1>
 
@@ -172,13 +195,20 @@ export default async function HomePage() {
             leave your device. No sign-up, no watermarks, no waiting.
           </p>
 
-          <ToolSearchBox />
-
           <TrendingTools mode={trending.mode} tools={trendingTools} />
         </section>
 
-        {/* Tool grid grouped by category, filtered by the search box above */}
-        <ToolSearchGrid categories={categories} />
+        {/* The six promoted tools, above the full listing. This is the change
+            that turns the page from a directory into a product: the grid used
+            to give Merge PDF exactly the same visual weight as the Date
+            Difference Calculator, so the page never answered "what is this
+            for" in the second a visitor spends deciding. */}
+        <FeaturedTools tools={featuredTools} />
+
+        {/* Full listing, server-rendered, with category jump links. This
+            replaced a client-side search island — see ToolDirectory.js for
+            why a text filter over 33 items was not worth its cost. */}
+        <ToolDirectory categories={categories} />
 
         {/* Static, server-rendered content below the grid. Deliberately outside
             the client search island: the grid's category headings and cards are
@@ -250,11 +280,7 @@ export default async function HomePage() {
           style={{
             maxWidth: "900px",
             margin: "0 auto",
-            // Bottom padding trimmed from 88px to 56px: this section no longer
-            // ends the page, and its old spacing plus the divider's would have
-            // left the rule marooned far below the last answer instead of
-            // closing it.
-            padding: "0 20px 56px",
+            padding: "0 20px 88px",
           }}
         >
           <h2
@@ -267,6 +293,11 @@ export default async function HomePage() {
           >
             Frequently asked questions
           </h2>
+          {/* This section closes the page again now that the newsletter card
+              has moved to the tools (see PostDownloadPrompt.js), so the
+              bottom padding is back to the 88px that separates a final
+              section from the footer — the 56px it carried was sized to sit
+              against the divider that used to follow it. */}
           <dl style={{ margin: 0 }}>
             {faqs.map((faq) => (
               <div
@@ -301,50 +332,15 @@ export default async function HomePage() {
           </dl>
         </section>
 
-        {/* Last thing on the page, after the FAQ.
+        {/* The newsletter card that used to close this page has moved to the
+            tools themselves — see PostDownloadPrompt.js. The old placement
+            followed a sound principle (ask only after delivering value) but
+            applied it to the wrong page: on a directory, a visitor who has
+            scrolled to the foot has still not *used* anything, so the ask
+            landed on someone who had received nothing. It now appears under
+            a finished download, which is the first moment the value is real.
+            The signup remains reachable from the blog index and every post. */}
 
-            Placed at the bottom rather than near the tool grid deliberately:
-            someone arriving here wants a tool, and the honest moment to ask
-            for their address is after they have had it — not in front of the
-            thing they came for. The grid stays the page's job.
-
-            The rule above it closes the FAQ. Every FAQ row already carries a
-            borderTop, so the list has no bottom edge of its own — it simply
-            stops, and the signup card then floated in undivided space that
-            read as a gap rather than a section break. The rule is at the FAQ's
-            900px width, not the card's 760px, because it belongs to the list
-            it terminates. */}
-        <section
-          style={{
-            maxWidth: "900px",
-            margin: "0 auto",
-            padding: "0 20px",
-          }}
-        >
-          <div
-            // Decorative: the card's own heading announces the section change,
-            // so an <hr> would have a screen reader announce a thematic break
-            // that adds nothing.
-            aria-hidden="true"
-            style={{ height: "1px", backgroundColor: colors.border }}
-          />
-        </section>
-
-        <section
-          style={{
-            maxWidth: "760px",
-            margin: "0 auto",
-            // Symmetric with the 56px above, so the card sits evenly between
-            // the rule and the footer rather than crowding one of them.
-            padding: "56px 20px 88px",
-          }}
-        >
-          <NewsletterSignup
-            title="Get new tools by email"
-            body="A short email whenever a new tool or guide goes live. Usually once or twice a month. Unsubscribe in one click."
-          />
-        </section>
-      </div>
-    </ToolSearchProvider>
+    </div>
   );
 }

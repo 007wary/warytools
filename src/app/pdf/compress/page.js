@@ -13,6 +13,7 @@ import {
 } from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
 import { pageMetadata } from "@/lib/pageMetadata";
+import PostDownloadPrompt from "@/components/PostDownloadPrompt";
 
 const title = "Compress PDF Online Free";
 // Deliberately promises a *lossless* rebuild rather than a size percentage.
@@ -102,7 +103,9 @@ export default function CompressPdfPage() {
         No account, no watermark, no server round-trip.
       </p>
 
-      <CompressPdfClient />
+      <PostDownloadPrompt>
+        <CompressPdfClient />
+      </PostDownloadPrompt>
 
       <HowToSteps title={howToName} steps={howToSteps} />
 

@@ -13,10 +13,22 @@
 // anchored to tools people actually complete work with, while still letting
 // search demand surface a tool that is hard to find in the grid.
 //
-// Note the write path only records a click, never a bare query match: the
-// homepage search filters live on every keystroke with no submit event, so
-// "queries that matched this tool" would rank tools by how common their
-// leading letters are ("c" matches four). See ToolSearch.js.
+// DORMANT as of the homepage restructure. The homepage search box was
+// removed (see components/ToolDirectory.js), and it was the only caller of
+// recordSearchClick — so no new row carries a non-zero `searches`, and this
+// weight currently contributes nothing to any live score.
+//
+// Kept rather than deleted, and the arithmetic kept with it, for two
+// reasons: historical rows in tool_usage_hourly still hold real search
+// counts and must keep ranking correctly while they remain in the window,
+// and the signal is the natural one to restore if a real search route is
+// ever added. weightedInterest() already treats a missing/zero `searches` as
+// zero, so the dormant path needs no special case.
+//
+// Note the write path only ever recorded a click, never a bare query match:
+// the old filter ran on every keystroke with no submit event, so "queries
+// that matched this tool" would have ranked tools by how common their
+// leading letters are ("c" matched four).
 export const SEARCH_WEIGHT = 0.4;
 
 // A tool needs this much weighted interest in the window before it can be

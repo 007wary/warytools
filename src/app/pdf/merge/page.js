@@ -13,6 +13,7 @@ import {
 } from "@/lib/jsonLd";
 import { colors } from "@/lib/theme";
 import { pageMetadata } from "@/lib/pageMetadata";
+import PostDownloadPrompt from "@/components/PostDownloadPrompt";
 
 // Title carries the modifiers people actually search with ("free", "online")
 // alongside the head term, and the layout template appends " — WaryTools".
@@ -93,7 +94,9 @@ export default function MergePdfPage() {
         byte of your documents leaving the device.
       </p>
 
-      <MergePdfClient />
+      <PostDownloadPrompt>
+        <MergePdfClient />
+      </PostDownloadPrompt>
 
       <HowToSteps title={howToName} steps={howToSteps} />
 
